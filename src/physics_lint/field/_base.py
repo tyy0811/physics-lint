@@ -21,23 +21,62 @@ import numpy as np
 
 
 class Field(ABC):
-    """Abstract field over a discretized domain."""
+    """Abstract field over a discretized domain.
+
+    Shape contract
+    --------------
+    Let ``d`` be the spatial dimension of the domain and ``*spatial`` denote the
+    native discretization shape (e.g. ``(Nx,)``, ``(Nx, Ny)``, or
+    ``(Nx, Ny, Nz)``). Concrete subclasses (``GridField``, ``CallableField``,
+    ``MeshField``) MUST honor the following conventions so rules consuming
+    gradients, Laplacians, and boundary traces agree on shapes.
+
+    - A scalar ``Field``'s ``values()`` has shape ``(*spatial,)``.
+    - ``grad()`` returns a ``Field`` whose ``values()`` has shape
+      ``(d, *spatial)`` — the component axis is **first**.
+    - ``laplacian()`` returns a scalar ``Field`` with ``values()`` of shape
+      ``(*spatial,)``.
+    - ``at(x)`` takes ``x`` of shape ``(npts, d)`` and returns:
+        - ``(npts,)`` if ``self`` is a scalar field, or
+        - ``(d_out, npts)`` if ``self`` is a vector field (component axis
+          first, matching ``grad()``).
+    - ``values_on_boundary()`` returns a 1-D array of boundary-trace values in
+      a deterministic ordering. The ABC promises only that the ordering is
+      reproducible across calls on the same instance; the exact ordering is a
+      concrete-subclass concern.
+
+    Smoothness caveat for PH-NUM-003 is described in the module docstring.
+    """
 
     @abstractmethod
     def values(self) -> np.ndarray:
-        """Return the underlying stored values on the native discretization."""
+        """Return the underlying stored values on the native discretization.
+
+        See class docstring 'Shape contract' for the expected shape.
+        """
 
     @abstractmethod
     def at(self, x: np.ndarray) -> np.ndarray:
-        """Evaluate the field at arbitrary coordinates x via interpolation or AD."""
+        """Evaluate the field at arbitrary coordinates ``x`` via interpolation or AD.
+
+        See class docstring 'Shape contract' for ``x`` and return shapes.
+        """
 
     @abstractmethod
     def grad(self) -> Field:
-        """Return the gradient as a new Field (vector-valued)."""
+        """Return the gradient as a new Field (vector-valued).
+
+        See class docstring 'Shape contract': the returned field's ``values()``
+        has shape ``(d, *spatial)`` with the component axis first.
+        """
 
     @abstractmethod
     def laplacian(self) -> Field:
-        """Return the Laplacian as a new Field (scalar-valued)."""
+        """Return the Laplacian as a new Field (scalar-valued).
+
+        See class docstring 'Shape contract': the returned field's ``values()``
+        has shape ``(*spatial,)``.
+        """
 
     @abstractmethod
     def integrate(self, weight: Field | None = None) -> float:
@@ -45,4 +84,8 @@ class Field(ABC):
 
     @abstractmethod
     def values_on_boundary(self) -> np.ndarray:
-        """Return the field's trace on the domain boundary for BC checking."""
+        """Return the field's trace on the domain boundary for BC checking.
+
+        See class docstring 'Shape contract': a 1-D array in a reproducible
+        ordering determined by the concrete subclass.
+        """
