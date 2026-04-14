@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling>=1.18"]
+build-backend = "hatchling.build"
+
+[project]
+name = "physics-lint"
+version = "0.0.0.dev0"
+description = "Linter for trained neural PDE surrogates — placeholder, under development"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [{ name = "tyy0811" }]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Homepage = "https://github.com/tyy0811/physics-lint"
+Documentation = "https://physics-lint.readthedocs.io"
+Repository = "https://github.com/tyy0811/physics-lint"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/physics_lint"]
