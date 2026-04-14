@@ -133,6 +133,8 @@ class GridField(Field):
             raise TypeError("GridField.integrate currently supports only GridField weights")
         if weight.values().shape != u.shape:
             raise ValueError("weight shape must match values shape")
+        if weight.h != self.h:
+            raise ValueError(f"weight grid spacing {weight.h} must match self.h {self.h}")
         return trapezoidal_integral(u * weight.values(), self.h)
 
     def values_on_boundary(self) -> np.ndarray:

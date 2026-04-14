@@ -1,6 +1,7 @@
 """Norms module tests — L^2 trapezoidal, H^-1 spectral."""
 
 import numpy as np
+import pytest
 
 from physics_lint.norms import (
     h_minus_one_spectral,
@@ -56,7 +57,23 @@ def test_h_minus_one_spectral_sine_mode():
     val = h_minus_one_spectral(u, (h, h))
     # Expected: ||u||^2 / (8 pi^2)  for this single-mode case
     expected_sq = 0.25 / (8 * np.pi**2)
-    assert abs(val - np.sqrt(expected_sq)) < 1e-8
+    assert abs(val - np.sqrt(expected_sq)) < 1e-14
+
+
+def test_h_minus_one_spectral_dc_offset_invariant():
+    # Adding a constant to a nonconstant signal should not change H^-1.
+    # This pins that the DC mode is correctly ignored even when mixed with
+    # nontrivial modes.
+    N = 64  # noqa: N806  (N is grid resolution; math convention)
+    x = np.linspace(0.0, 1.0, N, endpoint=False)
+    y = np.linspace(0.0, 1.0, N, endpoint=False)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806  (meshgrid coords)
+    u = np.sin(2 * np.pi * X) * np.sin(2 * np.pi * Y)
+    h = 1.0 / N
+    base = h_minus_one_spectral(u, (h, h))
+    for c in (0.1, 1.0, 7.0, -3.5):
+        shifted = h_minus_one_spectral(u + c, (h, h))
+        assert abs(shifted - base) < 1e-14, f"c={c}: {shifted} vs {base}"
 
 
 def test_h_minus_one_spectral_zero_mean_required():
@@ -67,3 +84,18 @@ def test_h_minus_one_spectral_zero_mean_required():
     h = 1.0 / N
     val = h_minus_one_spectral(u, (h, h))
     assert val == 0.0
+
+
+def test_h_minus_one_spectral_single_point_grid_returns_zero():
+    # 1x1 grid has only the k=0 mode, so the mask `k_sq_total > 0` is all
+    # False and the early-return `return 0.0` branch (norms.py:86) fires.
+    u = np.array([[7.5]])
+    val = h_minus_one_spectral(u, (1.0, 1.0))
+    assert val == 0.0
+
+
+def test_trapezoidal_integral_rejects_h_length_mismatch():
+    # h length must match u.ndim; mismatches raise (norms.py:32).
+    u = np.zeros((4, 4))
+    with pytest.raises(ValueError, match=r"must match u\.ndim"):
+        trapezoidal_integral(u, (0.1,))  # 1 vs ndim=2
