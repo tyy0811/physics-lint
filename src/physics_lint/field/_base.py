@@ -32,8 +32,14 @@ class Field(ABC):
     gradients, Laplacians, and boundary traces agree on shapes.
 
     - A scalar ``Field``'s ``values()`` has shape ``(*spatial,)``.
-    - ``grad()`` returns a ``Field`` whose ``values()`` has shape
-      ``(d, *spatial)`` — the component axis is **first**.
+    - ``grad()`` returns a Python ``list`` of ``d`` per-axis partial-derivative
+      ``Field`` instances. Each element's ``values()`` has shape ``(*spatial,)``
+      and the list length equals the spatial dimension ``d``. List index ``i``
+      is the partial derivative ``∂/∂x_i``. physics-lint never materializes
+      vector ``Field`` instances: the FD-vs-AD cross-check (PH-RES-002) and
+      boundary flux rules (PH-BC-002) consume partials component-wise, so
+      returning a list rather than a stacked ``(d, *spatial)`` array avoids a
+      gratuitous ``VectorField`` abstraction.
     - ``laplacian()`` returns a scalar ``Field`` with ``values()`` of shape
       ``(*spatial,)``.
     - ``at(x)`` takes ``x`` of shape ``(npts, d)`` and returns:
@@ -63,11 +69,13 @@ class Field(ABC):
         """
 
     @abstractmethod
-    def grad(self) -> Field:
-        """Return the gradient as a new Field (vector-valued).
+    def grad(self) -> list[Field]:
+        """Return per-axis partial derivatives as a list of scalar ``Field``s.
 
-        See class docstring 'Shape contract': the returned field's ``values()``
-        has shape ``(d, *spatial)`` with the component axis first.
+        See class docstring 'Shape contract': the returned list has length
+        ``d`` (spatial dimension), and element ``i`` is the partial derivative
+        ``∂/∂x_i`` as a scalar ``Field`` whose ``values()`` has shape
+        ``(*spatial,)``.
         """
 
     @abstractmethod
