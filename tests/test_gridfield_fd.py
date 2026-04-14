@@ -72,3 +72,47 @@ def test_fd_laplacian_periodic_sine_converges():
         assert (
             np.max(np.abs(lap - expected)) < tol
         ), f"N={N}: max err {np.max(np.abs(lap - expected)):.3e}, tol {tol:.3e}"
+
+
+def test_fd_laplacian_nonperiodic_edge_converges_second_order():
+    # Pins the O(h^2) promise of the non-periodic outer-band fallback.
+    # u(x,y) = x^4 + y^4 has Laplacian 12(x^2 + y^2). The 4th-order central
+    # stencil is exact for quartics up to a truncation involving u^(6) = 0,
+    # so interior error is ~machine precision. The outer band uses the
+    # one-sided 4-point + 3-point central formulas which are O(h^2) with
+    # a non-zero u^(4) = 24, so err ~ C*h^2 with C ~ O(1).
+    prefactors = []
+    for N in (32, 64, 128, 256):  # noqa: N806  (N is grid resolution; math convention)
+        x = np.linspace(0.0, 1.0, N)
+        h = x[1] - x[0]
+        X, Y = np.meshgrid(x, x, indexing="ij")  # noqa: N806  (meshgrid coords)
+        u = X**4 + Y**4
+        f = GridField(u, h=h, periodic=False, backend="fd")
+        lap = f.laplacian().values()
+        expected = 12.0 * (X**2 + Y**2)
+        edge_err = float(np.max(np.abs(lap[:2, :] - expected[:2, :])))
+        edge_err = max(edge_err, float(np.max(np.abs(lap[-2:, :] - expected[-2:, :]))))
+        edge_err = max(edge_err, float(np.max(np.abs(lap[:, :2] - expected[:, :2]))))
+        edge_err = max(edge_err, float(np.max(np.abs(lap[:, -2:] - expected[:, -2:]))))
+        prefactors.append(edge_err / h**2)
+    # O(h^2) means err/h^2 is bounded by a constant; check the ratio is
+    # stable (no first-order creep) across N. Allow a 2x drift to tolerate
+    # finite-N effects.
+    assert (
+        max(prefactors) / min(prefactors) < 2.0
+    ), f"Non-periodic edge prefactors drift: {prefactors}"
+    # And pin an absolute ceiling so a regression to O(h) would blow up.
+    # With u''''=24 and a 4-point one-sided formula (error ~ -11/12 h^2 u''''),
+    # the expected prefactor is ~22 per axis; with both axes contributing,
+    # bound at ~80 for headroom.
+    assert max(prefactors) < 80.0, f"Non-periodic edge prefactor too large: {prefactors}"
+
+
+def test_gridfield_numpy_scalar_h_accepted():
+    f = GridField(np.zeros((4, 4)), h=np.float32(0.25), periodic=False)
+    assert f.h == (0.25, 0.25)
+
+
+def test_gridfield_invalid_h_type_raises_typeerror():
+    with pytest.raises(TypeError, match="scalar or an iterable"):
+        GridField(np.zeros((4, 4)), h="not-a-number", periodic=False)
