@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: field-property-tests
         name: Field property tests (hypothesis, ci-quick profile)
-        entry: pytest tests/test_field_properties.py -q --hypothesis-profile=ci-quick
+        entry: .venv/bin/pytest tests/test_field_properties.py -q --hypothesis-profile=ci-quick
         language: system
         files: '^src/physics_lint/(field/.*|norms)\.py$'
         pass_filenames: false

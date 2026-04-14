@@ -64,6 +64,9 @@ ignore = ["E501"]  # line-length handled by formatter
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B", "N802"]  # allow non-snake-case test names (test_PH_RES_001)
 
+[tool.ruff.lint.isort]
+known-first-party = ["physics_lint"]
+
 [tool.ruff.format]
 quote-style = "double"
 
