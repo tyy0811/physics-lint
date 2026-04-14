@@ -1,7 +1,5 @@
 """Shared rule helpers: _tristate and _load_floor."""
 
-from pathlib import Path
-
 import pytest
 
 from physics_lint.rules._helpers import _load_floor, _tristate
@@ -39,16 +37,13 @@ def test_load_floor_returns_shipped_defaults_before_calibration():
     assert floor.tolerance >= 1.0
 
 
-def test_load_floor_calibrated_path_uses_file():
-    # Create a fake floors.toml at the expected location and assert that
-    # _load_floor reads it instead of falling back to shipped defaults.
+def test_load_floor_calibrated_path_uses_file(tmp_path, monkeypatch):
+    # Redirect _helpers._FLOORS_PATH at a temp file, write a matching entry,
+    # assert _load_floor reads it instead of falling back to shipped defaults.
     from physics_lint.rules import _helpers
 
-    real_path = Path(_helpers.__file__).parent.parent / "data" / "floors.toml"
-    assert (
-        not real_path.exists()
-    ), "test precondition: floors.toml must not exist; Task 14 should not have run yet"
-    real_path.write_text(
+    fake_floors = tmp_path / "floors.toml"
+    fake_floors.write_text(
         "[[floor]]\n"
         'rule = "PH-RES-001"\n'
         'pde = "laplace"\n'
@@ -58,27 +53,24 @@ def test_load_floor_calibrated_path_uses_file():
         "value = 3.14e-6\n"
         "tolerance = 5.0\n"
     )
-    try:
-        floor = _load_floor(
-            rule="PH-RES-001",
-            pde="laplace",
-            grid_shape=(64, 64),
-            method="fd4",
-            norm="H-1",
-        )
-        assert floor.source == "calibrated"
-        assert floor.value == pytest.approx(3.14e-6)
-        assert floor.tolerance == pytest.approx(5.0)
-    finally:
-        real_path.unlink()
+    monkeypatch.setattr(_helpers, "_FLOORS_PATH", fake_floors)
+    floor = _load_floor(
+        rule="PH-RES-001",
+        pde="laplace",
+        grid_shape=(64, 64),
+        method="fd4",
+        norm="H-1",
+    )
+    assert floor.source == "calibrated"
+    assert floor.value == pytest.approx(3.14e-6)
+    assert floor.tolerance == pytest.approx(5.0)
 
 
-def test_load_floor_calibrated_path_no_match_falls_through():
+def test_load_floor_calibrated_path_no_match_falls_through(tmp_path, monkeypatch):
     from physics_lint.rules import _helpers
 
-    real_path = Path(_helpers.__file__).parent.parent / "data" / "floors.toml"
-    assert not real_path.exists()
-    real_path.write_text(
+    fake_floors = tmp_path / "floors.toml"
+    fake_floors.write_text(
         "[[floor]]\n"
         'rule = "PH-BC-001"\n'  # different rule, no match for PH-RES-001
         'pde = "laplace"\n'
@@ -87,17 +79,15 @@ def test_load_floor_calibrated_path_no_match_falls_through():
         'norm = "H-1"\n'
         "value = 1e-9\n"
     )
-    try:
-        floor = _load_floor(
-            rule="PH-RES-001",
-            pde="laplace",
-            grid_shape=(64, 64),
-            method="fd4",
-            norm="H-1",
-        )
-        assert floor.source == "shipped"
-    finally:
-        real_path.unlink()
+    monkeypatch.setattr(_helpers, "_FLOORS_PATH", fake_floors)
+    floor = _load_floor(
+        rule="PH-RES-001",
+        pde="laplace",
+        grid_shape=(64, 64),
+        method="fd4",
+        norm="H-1",
+    )
+    assert floor.source == "shipped"
 
 
 def test_load_floor_missing_rule_uses_fallback_default():

@@ -22,6 +22,13 @@ else:
 
 Status = Literal["PASS", "WARN", "FAIL", "SKIPPED"]
 
+# Module-level constant so tests can monkey-patch the floors file location
+# without racing the real file at physics_lint/data/floors.toml. _load_floor
+# reads from this path at call time, so monkey-patching via
+# `monkeypatch.setattr(_helpers, "_FLOORS_PATH", tmp_path / "floors.toml")`
+# redirects cleanly.
+_FLOORS_PATH: Path = Path(__file__).parent.parent / "data" / "floors.toml"
+
 
 @dataclass
 class Floor:
@@ -76,9 +83,8 @@ def _load_floor(
     the shipped-default fallback is exercised in CI and in the Week 1 test
     suite so rules never raise KeyError on first install.
     """
-    floors_path = Path(__file__).parent.parent / "data" / "floors.toml"
-    if floors_path.is_file():
-        with open(floors_path, "rb") as f:
+    if _FLOORS_PATH.is_file():
+        with open(_FLOORS_PATH, "rb") as f:
             data = tomllib.load(f)
         for entry in data.get("floor", []):
             if (
