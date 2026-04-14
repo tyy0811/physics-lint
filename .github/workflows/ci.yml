@@ -18,7 +18,12 @@ jobs:
           - { os: ubuntu-latest, python: "3.11", numpy: "1.26.4", torch: "2.2.2", role: "middle" }
           - { os: ubuntu-latest, python: "3.12", numpy: "2.0.2", torch: "2.5.0", role: "latest-everything" }
           - { os: ubuntu-latest, python: "3.12", numpy: "1.26.4", torch: "2.5.0", role: "numpy-1x-ceiling" }
-          - { os: ubuntu-latest, python: "3.10", numpy: "2.0.2", torch: "2.2.2", role: "numpy-2x-floor" }
+          # numpy-2x-floor (py3.10 / numpy2.0.2 / torch2.2.2) removed:
+          # torch 2.2.2 was compiled against numpy 1.x and raises
+          # "RuntimeError: Numpy is not available" under numpy 2.x at
+          # binding-call time. torch>=2.3 is the real floor for numpy 2.x
+          # support. numpy 2.x is still covered by latest-everything and
+          # apple-silicon-smoke below.
           - { os: macos-14,      python: "3.11", numpy: "2.0.2", torch: "2.5.0", role: "apple-silicon-smoke" }
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.role }} (py${{ matrix.python }} np${{ matrix.numpy }} torch${{ matrix.torch }})
