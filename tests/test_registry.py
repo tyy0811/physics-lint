@@ -10,12 +10,11 @@ import pytest
 from physics_lint.rules import _registry
 
 
-def test_registry_discovers_at_least_placeholder():
-    # After Task 10 this asserts the full Week-1 rule set; for now we just
-    # ensure the registry can iterate and find the placeholder module.
+def test_registry_discovers_week_1_rules():
     rules = _registry.list_rules()
     ids = {r.rule_id for r in rules}
-    assert "PH-PLACEHOLDER-000" in ids, f"expected placeholder module; found {ids}"
+    expected = {"PH-RES-001", "PH-RES-002", "PH-RES-003"}
+    assert expected.issubset(ids), f"missing rules: {expected - ids}"
 
 
 def test_registry_lazy_check_not_imported():
@@ -27,20 +26,16 @@ def test_registry_lazy_check_not_imported():
 
 def test_registry_materialize_check():
     rules = _registry.list_rules()
-    placeholder = next(r for r in rules if r.rule_id == "PH-PLACEHOLDER-000")
-    check = _registry.load_check(placeholder)
+    first = next(iter(rules))
+    check = _registry.load_check(first)
     assert callable(check)
-    # Exercise the placeholder body so it produces a PASS RuleResult
-    result = check(None, None)
-    assert result.rule_id == "PH-PLACEHOLDER-000"
-    assert result.status == "PASS"
 
 
 def test_load_check_caches_on_entry():
     rules = _registry.list_rules()
-    placeholder = next(r for r in rules if r.rule_id == "PH-PLACEHOLDER-000")
-    check_first = _registry.load_check(placeholder)
-    check_second = _registry.load_check(placeholder)  # second call hits the cache
+    first = next(iter(rules))
+    check_first = _registry.load_check(first)
+    check_second = _registry.load_check(first)  # second call hits the cache
     assert check_first is check_second
 
 
