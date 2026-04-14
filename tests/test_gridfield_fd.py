@@ -69,9 +69,9 @@ def test_fd_laplacian_periodic_sine_converges():
         # wavenumber is ~1367 (stable across N=32..256); 2000 gives CI
         # headroom while still catching a regression to O(h^2).
         tol = 2000 * h**4
-        assert (
-            np.max(np.abs(lap - expected)) < tol
-        ), f"N={N}: max err {np.max(np.abs(lap - expected)):.3e}, tol {tol:.3e}"
+        assert np.max(np.abs(lap - expected)) < tol, (
+            f"N={N}: max err {np.max(np.abs(lap - expected)):.3e}, tol {tol:.3e}"
+        )
 
 
 def test_fd_laplacian_nonperiodic_edge_converges_second_order():
@@ -98,9 +98,9 @@ def test_fd_laplacian_nonperiodic_edge_converges_second_order():
     # O(h^2) means err/h^2 is bounded by a constant; check the ratio is
     # stable (no first-order creep) across N. Allow a 2x drift to tolerate
     # finite-N effects.
-    assert (
-        max(prefactors) / min(prefactors) < 2.0
-    ), f"Non-periodic edge prefactors drift: {prefactors}"
+    assert max(prefactors) / min(prefactors) < 2.0, (
+        f"Non-periodic edge prefactors drift: {prefactors}"
+    )
     # And pin an absolute ceiling so a regression to O(h) would blow up.
     # With u''''=24 and a 4-point one-sided formula (error ~ -11/12 h^2 u''''),
     # the expected prefactor is ~22 per axis; with both axes contributing,

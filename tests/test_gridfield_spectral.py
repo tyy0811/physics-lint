@@ -90,9 +90,9 @@ def test_fd_grad_nonperiodic_converges_second_order():
         prefactors.append(edge_err / h**2)
     # O(h^2) means err/h^2 is bounded by a constant; check the ratio
     # across N is stable within 2x to tolerate finite-N effects.
-    assert (
-        max(prefactors) / min(prefactors) < 2.0
-    ), f"Non-periodic grad edge prefactors drift: {prefactors}"
+    assert max(prefactors) / min(prefactors) < 2.0, (
+        f"Non-periodic grad edge prefactors drift: {prefactors}"
+    )
     # Absolute ceiling to catch a regression to O(h).
     assert max(prefactors) < 100.0, f"Non-periodic grad edge prefactor too large: {prefactors}"
 
