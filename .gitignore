@@ -1,1 +1,5 @@
 .worktrees/
+
+# Local-only design and planning notes (kept out of the public repo)
+docs/design/
+docs/plans/
