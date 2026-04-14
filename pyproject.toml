@@ -5,11 +5,20 @@ build-backend = "hatchling.build"
 [project]
 name = "physics-lint"
 version = "0.0.0.dev0"
-description = "Linter for trained neural PDE surrogates — placeholder, under development"
+description = "Linter for trained neural PDE surrogates"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 authors = [{ name = "tyy0811" }]
 requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "torch>=2.0",
+    "pydantic>=2.0",
+    "typer>=0.12",
+    "rich>=13.0",
+    "tomli>=2.0; python_version<'3.11'",
+]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: Apache Software License",
@@ -19,6 +28,20 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 
+[project.optional-dependencies]
+mesh = ["scikit-fem>=10"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.5",
+    "codespell>=2.2",
+    "pre-commit>=3.5",
+    "sphinx>=7.0",
+    "myst-parser>=3.0",
+    "furo>=2024.5",
+]
+
 [project.urls]
 Homepage = "https://github.com/tyy0811/physics-lint"
 Documentation = "https://physics-lint.readthedocs.io"
@@ -26,3 +49,42 @@ Repository = "https://github.com/tyy0811/physics-lint"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/physics_lint"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/physics_lint/data" = "physics_lint/data"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RET", "RUF"]
+ignore = ["E501"]  # line-length handled by formatter
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B", "N802"]  # allow non-snake-case test names (test_PH_RES_001)
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers --hypothesis-show-statistics"
+
+[tool.coverage.run]
+source = ["physics_lint"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]
+
+[tool.codespell]
+skip = "*.lock,*.pyc,.git,dist,build,*.egg-info,docs/_build,src/physics_lint/data/floors.toml"
+ignore-words-list = "bochner,fosls,riesz,sobolev,dirichlet,neumann,laplace,poisson,helmholtz,ernst,fornberg,trefethen,jekel,hansen,gruver,brandstetter,virkkunen,bachmayr,dahmen,oster,qiu,kovachki,welling,worrall,helwig,ot,cfm,ddpm,dps,fno,pinn,pino,pde,pdes,nd,ue,nin,oint"

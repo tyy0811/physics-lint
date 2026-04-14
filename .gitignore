@@ -1,1 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+dist/
+build/
+*.so
+.hypothesis/
+
+# Venvs
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Docs
+docs/_build/
+
+# Worktrees (used by superpowers workflows)
 .worktrees/
+worktrees/
