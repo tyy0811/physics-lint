@@ -1,7 +1,6 @@
 """PH-RES-003 — Spectral-vs-FD discrepancy on periodic grids."""
 
 import numpy as np
-import pytest
 
 from physics_lint import DomainSpec, GridField
 from physics_lint.rules import ph_res_003
@@ -49,15 +48,20 @@ def test_ph_res_003_skipped_on_nonperiodic():
     assert result.reason and "periodic" in result.reason.lower()
 
 
-def test_ph_res_003_rejects_non_gridfield_on_periodic():
+def test_ph_res_003_accepts_callable_field_periodic():
+    """Adapter-mode periodic: PH-RES-003 materializes the callable and
+    runs the spectral-vs-FD cross-check on the sampled values. sin(x)
+    is exact under both backends so the relative difference is below
+    the rule's PASS threshold."""
     import torch
 
     from physics_lint import CallableField
 
+    n = 32
     grid = torch.stack(
         torch.meshgrid(
-            torch.linspace(0.0, 2 * np.pi, 8),
-            torch.linspace(0.0, 2 * np.pi, 8),
+            torch.linspace(0.0, 2 * np.pi, n + 1)[:-1],
+            torch.linspace(0.0, 2 * np.pi, n + 1)[:-1],
             indexing="ij",
         ),
         dim=-1,
@@ -65,8 +69,8 @@ def test_ph_res_003_rejects_non_gridfield_on_periodic():
     field = CallableField(
         lambda x: torch.sin(x[..., 0]).unsqueeze(-1),
         sampling_grid=grid,
-        h=(2 * np.pi / 8, 2 * np.pi / 8),
+        h=(2 * np.pi / n, 2 * np.pi / n),
         periodic=True,
     )
-    with pytest.raises(TypeError, match="requires GridField"):
-        ph_res_003.check(field, _periodic_spec())
+    result = ph_res_003.check(field, _periodic_spec())
+    assert result.status == "PASS"

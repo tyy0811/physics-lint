@@ -253,33 +253,94 @@ def test_ph_res_001_poisson_source_shape_mismatch_skipped(tmp_path):
     assert "shape" in (result.reason or "").lower()
 
 
-def test_ph_res_001_rejects_non_gridfield():
+def test_ph_res_001_accepts_callable_field_adapter_mode():
+    """Adapter-mode: PH-RES-001 must accept a CallableField and materialize it.
+
+    Regression for the "ph_res_001 rejects CallableField but declares
+    adapter in __input_modes__" bug. The rule now runs ensure_grid_field,
+    which materializes the callable onto its sampling grid, so a harmonic
+    callable (u = x^2 - y^2) through the adapter path passes the same
+    way it does through dump mode.
+    """
     import torch
 
     from physics_lint import CallableField
 
+    n = 32
     grid = torch.stack(
         torch.meshgrid(
-            torch.linspace(0.0, 1.0, 4),
-            torch.linspace(0.0, 1.0, 4),
+            torch.linspace(0.0, 1.0, n),
+            torch.linspace(0.0, 1.0, n),
             indexing="ij",
         ),
         dim=-1,
     )
+    # Harmonic: Laplacian is exactly zero, so PH-RES-001 should PASS.
+    model = lambda pts: (pts[..., 0] ** 2 - pts[..., 1] ** 2).unsqueeze(-1)  # noqa: E731
     field = CallableField(
-        lambda x: x[..., 0].unsqueeze(-1),
+        model,
         sampling_grid=grid,
-        h=(1.0 / 3, 1.0 / 3),
+        h=(1.0 / (n - 1), 1.0 / (n - 1)),
+        periodic=False,
     )
     spec = DomainSpec.model_validate(
         {
             "pde": "laplace",
-            "grid_shape": [4, 4],
+            "grid_shape": [n, n],
             "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
             "periodic": False,
             "boundary_condition": {"kind": "dirichlet"},
             "field": {"type": "callable", "backend": "fd", "adapter_path": "x.py"},
         }
     )
-    with pytest.raises(TypeError, match="requires a GridField"):
-        ph_res_001.check(field, spec)
+    result = ph_res_001.check(field, spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None
+    # 4th-order FD central stencil is exact on a degree-2 polynomial in the
+    # interior, but the boundary one-sided stencils pick up ~1e-4 edge
+    # error. That's still ~20x below the WARN threshold (pass_ tolerance
+    # is 20 for fd4). Sanity-check it's small, not machine-precision.
+    assert result.raw_value < 1e-3
+
+
+def test_ph_res_001_end_to_end_adapter_through_loader(tmp_path):
+    """End-to-end regression: load_target(adapter.py) -> ph_res_001.check.
+
+    The previous regression test constructed a CallableField manually and
+    stopped before the loader path. This test goes through the actual
+    public entrypoint — load_target with a .py adapter file — which is
+    how users will invoke the rule in production.
+    """
+    from physics_lint.loader import load_target
+
+    adapter_path = tmp_path / "harmonic_adapter.py"
+    adapter_path.write_text(
+        "import torch\n"
+        "from physics_lint import DomainSpec\n"
+        "\n"
+        "def load_model():\n"
+        "    def _model(x):\n"
+        "        return (x[..., 0] ** 2 - x[..., 1] ** 2).unsqueeze(-1)\n"
+        "    return _model\n"
+        "\n"
+        "def domain_spec():\n"
+        "    return {\n"
+        "        'pde': 'laplace',\n"
+        "        'grid_shape': [32, 32],\n"
+        "        'domain': {'x': [0.0, 1.0], 'y': [0.0, 1.0]},\n"
+        "        'periodic': False,\n"
+        "        'boundary_condition': {'kind': 'dirichlet'},\n"
+        "        'field': {'type': 'callable', 'backend': 'fd'},\n"
+        "    }\n"
+    )
+
+    loaded = load_target(adapter_path, cli_overrides={}, toml_path=None)
+    # Loader returns a CallableField for .py adapters — this assertion is
+    # the contract the rule has to handle.
+    from physics_lint import CallableField
+
+    assert isinstance(loaded.field, CallableField)
+
+    result = ph_res_001.check(loaded.field, loaded.spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None and result.raw_value < 1e-3

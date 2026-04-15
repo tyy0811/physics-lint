@@ -1,7 +1,6 @@
 """PH-BC-002 — boundary flux imbalance via divergence theorem."""
 
 import numpy as np
-import pytest
 
 from physics_lint import DomainSpec, GridField
 from physics_lint.rules import ph_bc_002
@@ -92,15 +91,19 @@ def test_ph_bc_002_heat_pde_is_skipped():
     assert "laplace/poisson only" in result.reason
 
 
-def test_ph_bc_002_rejects_non_gridfield():
+def test_ph_bc_002_accepts_callable_field_adapter_mode():
+    """Adapter-mode: PH-BC-002 materializes the callable and runs the
+    divergence-theorem check against the sampled values. Harmonic
+    u = x^2 - y^2 has zero net flux, so the rule should PASS."""
     import torch
 
     from physics_lint import CallableField
 
+    n = 64
     grid = torch.stack(
         torch.meshgrid(
-            torch.linspace(0.0, 1.0, 4),
-            torch.linspace(0.0, 1.0, 4),
+            torch.linspace(0.0, 1.0, n),
+            torch.linspace(0.0, 1.0, n),
             indexing="ij",
         ),
         dim=-1,
@@ -108,11 +111,13 @@ def test_ph_bc_002_rejects_non_gridfield():
     field = CallableField(
         lambda x: (x[..., 0] ** 2 - x[..., 1] ** 2).unsqueeze(-1),
         sampling_grid=grid,
-        h=(1.0 / 3, 1.0 / 3),
+        h=(1.0 / (n - 1), 1.0 / (n - 1)),
+        periodic=False,
     )
     spec = _laplace_spec()
-    with pytest.raises(TypeError, match="requires GridField"):
-        ph_bc_002.check(field, spec)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None and abs(result.raw_value) < 0.01
 
 
 def test_ph_bc_002_metadata():

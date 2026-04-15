@@ -31,7 +31,7 @@ from physics_lint.norms import (
     l2_grid,
 )
 from physics_lint.report import RuleResult
-from physics_lint.rules._helpers import Floor, _load_floor, _tristate
+from physics_lint.rules._helpers import Floor, _load_floor, _tristate, ensure_grid_field
 from physics_lint.spec import DomainSpec
 
 # np.gradient(..., edge_order=2) needs at least 3 samples along the axis.
@@ -52,13 +52,13 @@ _CITATION = "Bachmayr et al. 2024; Ernst et al. 2025 v3"
 
 def check(field: Field, spec: DomainSpec) -> RuleResult:
     """Compute strong-form residual, measure in H^-1 / Bochner, report."""
-    if not isinstance(field, GridField):
-        # Callable fields are handled by materializing via the loader before
-        # rule dispatch; if we still see one here, raise to surface the bug.
-        raise TypeError(
-            f"PH-RES-001 requires a GridField; got {type(field).__name__}. "
-            "Adapter-mode callables must be materialized by the loader."
-        )
+    # Accept both dump (GridField) and adapter (CallableField) inputs, per
+    # __input_modes__ = {"adapter", "dump"}. ensure_grid_field materializes
+    # the callable onto its sampling grid, picks a backend from
+    # spec.field.backend, and caches the result — so later calls to
+    # field.values() / field.laplacian() in this check (and any follow-up
+    # rule in the same run) hit the cached materialization.
+    field = ensure_grid_field(field, spec)
 
     method = field.backend  # "fd" or "spectral"
     method_key = "fd4" if method == "fd" else method
