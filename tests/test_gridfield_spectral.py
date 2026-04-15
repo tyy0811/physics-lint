@@ -56,6 +56,34 @@ def test_spectral_laplacian_multimode():
         assert rel_err < 1e-12, f"k={k} failed rel_err={rel_err:.3e}"
 
 
+def test_spectral_laplacian_checkerboard_nyquist_mode():
+    # Pure checkerboard u[i, j] = (-1)**(i + j) lives entirely in the Nyquist
+    # bin of the DFT (k = pi/h along both axes). The continuum Laplacian of
+    # the piecewise-constant checkerboard is ill-defined, but the spectral
+    # Laplacian should *not* silently return zero — a zero Laplacian reports
+    # PH-RES-001 PASS on a mode that obviously violates Laplace's equation.
+    #
+    # Regression guard for the "zero Nyquist in _spectral_laplacian" bug.
+    # Even-order derivatives keep their Nyquist content real (cos -> -k^2 cos
+    # stays a cosine); Trefethen's zero-Nyquist advice is for *odd* derivatives
+    # only. With Nyquist retained, -k^2 at k = pi/h is -(pi/h)^2, so the
+    # spectral Laplacian of the checkerboard is -(2 * pi^2 / h^2) * u in 2D.
+    N = 8  # noqa: N806
+    h = 1.0 / N
+    u = np.fromfunction(lambda i, j: (-1.0) ** (i + j), (N, N))
+    f = GridField(u, h=h, periodic=True)  # auto-selects spectral
+    lap = f.laplacian().values()
+    # Must not be identically zero — that would be the false-negative bug.
+    assert np.max(np.abs(lap)) > 1.0, (
+        "spectral Laplacian of a checkerboard is identically zero — "
+        "Nyquist bin is being zeroed for an even-order derivative"
+    )
+    # With Nyquist retained the answer is analytic: -(k_x^2 + k_y^2) * u
+    # at k_x = k_y = pi/h, so lap = -(2 * pi^2 / h^2) * u.
+    expected = -(2.0 * np.pi**2 / h**2) * u
+    assert np.max(np.abs(lap - expected)) < 1e-8
+
+
 def test_spectral_laplacian_3d():
     N = 32  # noqa: N806  (N is grid resolution; math convention)
     h = 1.0 / N

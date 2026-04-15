@@ -46,16 +46,29 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     if not isinstance(field, GridField):
         raise TypeError(f"PH-BC-002 requires GridField; got {type(field).__name__}")
 
-    lap = field.laplacian().values()
-    u_vol_integral_of_lap = trapezoidal_integral(lap, field.h)
     if spec.pde == "poisson":
         # Week 1 scope: source term is not yet plumbed through DomainSpec.
-        # Raise rather than silently returning a wrong imbalance (the
-        # placeholder expected=-integral(Lap) would make imbalance=2*integral,
-        # which is worse than no answer at all).
-        raise NotImplementedError(
-            "PH-BC-002 for Poisson requires source integration; lands in Week 2."
+        # Emit SKIPPED rather than raising — the linter must not crash on a
+        # valid spec. Source integration (and thus a real imbalance) lands
+        # in Week 2.
+        return RuleResult(
+            rule_id=__rule_id__,
+            rule_name=__rule_name__,
+            severity=__default_severity__,
+            status="SKIPPED",
+            raw_value=None,
+            violation_ratio=None,
+            mode=None,
+            reason="PH-BC-002 for Poisson requires source integration; lands in Week 2.",
+            refinement_rate=None,
+            spatial_map=None,
+            recommended_norm="",
+            citation="classical divergence theorem",
+            doc_url=_DOC_URL,
         )
+
+    lap = field.laplacian().values()
+    u_vol_integral_of_lap = trapezoidal_integral(lap, field.h)
     # Laplace: expected net boundary flux is 0 (f = 0).
     expected = 0.0
     imbalance = float(u_vol_integral_of_lap - expected)

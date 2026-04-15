@@ -36,6 +36,25 @@ class LoaderError(RuntimeError):
     """Raised when physics-lint cannot load the user's target."""
 
 
+# Week 1 scope is Laplace/Poisson only
+# (docs/plans/2026-04-14-physics-lint-v1-week-1.md line 13:
+# "no time-dependent PDEs"). The DomainSpec pydantic model accepts heat/wave
+# — Week 2 will wire them through GridField's time axis and the Bochner
+# norms — but the Week 1 loader has no code path for a (Nx, Ny, Nt) tensor.
+# Gate here with a clear "Week 2" error instead of crashing in GridField's
+# h-tuple length check.
+_WEEK_2_PDES: frozenset[str] = frozenset({"heat", "wave"})
+
+
+def _assert_week_1_scope(spec: DomainSpec, path: Path) -> None:
+    if spec.pde in _WEEK_2_PDES:
+        raise LoaderError(
+            f"{path}: PDE '{spec.pde}' is time-dependent and lands in Week 2; "
+            "Week 1 supports laplace/poisson on spatial-only grids. "
+            "Remove the time domain and use pde='laplace' or 'poisson' to run today."
+        )
+
+
 @dataclass
 class LoadedTarget:
     spec: DomainSpec
@@ -121,6 +140,7 @@ def _load_adapter(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
+    _assert_week_1_scope(spec, path)
 
     # For Week 1 we materialize the callable onto a GridField via CallableField.
     # Build a sampling grid from the spec. `_build_sampling_grid` imports
@@ -141,22 +161,45 @@ def _load_dump(
     toml_spec: dict[str, Any],
     cli_overrides: dict[str, Any],
 ) -> LoadedTarget:
-    """Load a .npz dump: read prediction + metadata and wrap in GridField."""
+    """Load a .npz/.npy dump: read prediction + metadata and wrap in GridField.
+
+    .npz carries a ``prediction`` array and an optional ``metadata`` 0-d object
+    array that holds the adapter spec dict. .npy is a bare ndarray with no
+    embedded metadata, so its spec must come from the TOML config or CLI
+    overrides; if both are empty, we raise LoaderError rather than letting
+    pydantic fail with an obscure "missing pde" error.
+    """
     if not path.is_file():
         raise LoaderError(f"dump file not found: {path}")
 
     loaded = np.load(path, allow_pickle=True)
-    if "prediction" not in loaded.files:
-        raise LoaderError(f"{path}: .npz must contain a 'prediction' array")
-    prediction = loaded["prediction"]
-    metadata_raw = loaded.get("metadata") if "metadata" in loaded.files else None
-    if metadata_raw is None:
-        adapter_spec_dict = {}
+    if isinstance(loaded, np.ndarray):
+        # .npy: bare prediction array, no embedded metadata. Spec must come
+        # from toml_spec / cli_overrides; if neither supplies the required
+        # fields, surface a clear error pointing at the .npz alternative.
+        prediction = loaded
+        adapter_spec_dict: dict[str, Any] = {}
+        if not toml_spec and not cli_overrides:
+            raise LoaderError(
+                f"{path}: .npy dumps carry no metadata; supply a "
+                "[tool.physics-lint] TOML config (or CLI overrides) with "
+                "pde/grid_shape/domain/boundary_condition, or convert to "
+                ".npz with a metadata dict."
+            )
     else:
-        # np.savez wraps dicts in 0-dim object arrays
-        adapter_spec_dict = metadata_raw.item() if metadata_raw.shape == () else dict(metadata_raw)
-    if not isinstance(adapter_spec_dict, dict):
-        raise LoaderError(f"{path}: metadata must be a dict")
+        if "prediction" not in loaded.files:
+            raise LoaderError(f"{path}: .npz must contain a 'prediction' array")
+        prediction = loaded["prediction"]
+        metadata_raw = loaded.get("metadata") if "metadata" in loaded.files else None
+        if metadata_raw is None:
+            adapter_spec_dict = {}
+        else:
+            # np.savez wraps dicts in 0-dim object arrays
+            adapter_spec_dict = (
+                metadata_raw.item() if metadata_raw.shape == () else dict(metadata_raw)
+            )
+        if not isinstance(adapter_spec_dict, dict):
+            raise LoaderError(f"{path}: metadata must be a dict")
 
     adapter_spec_dict.setdefault("field", {})
     adapter_spec_dict["field"]["dump_path"] = str(path)
@@ -164,6 +207,19 @@ def _load_dump(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
+    _assert_week_1_scope(spec, path)
+
+    # Catch mismatched dumps *before* computing h: a wrong grid_shape picks
+    # the wrong spacing and the wrong calibrated floor, producing rule
+    # results that look numerical but mean nothing. Week 1 is spatial-only
+    # (heat/wave already gated above), so prediction.shape must match
+    # spec.grid_shape exactly.
+    if tuple(prediction.shape) != tuple(spec.grid_shape):
+        raise LoaderError(
+            f"{path}: prediction shape {tuple(prediction.shape)} does not match "
+            f"spec grid_shape {tuple(spec.grid_shape)}; fix the dump or the "
+            "[tool.physics-lint] config so they agree."
+        )
 
     h = _compute_h_from_spec(spec)
     field = GridField(

@@ -108,6 +108,112 @@ def test_load_dump_missing_file_errors(tmp_path: Path):
         load_target(tmp_path / "missing.npz", cli_overrides={}, toml_path=None)
 
 
+def test_load_dump_heat_rejected_until_week_2(tmp_path: Path):
+    # Week 1 scope is Laplace/Poisson only (docs/plans/2026-04-14-
+    # physics-lint-v1-week-1.md line 13: "no time-dependent PDEs"). A heat
+    # dump is a *valid* DomainSpec but the loader can't plumb a time axis
+    # through GridField yet, so the loader must reject it with a clear
+    # LoaderError instead of crashing inside GridField on a shape mismatch.
+    import numpy as np
+
+    dump_path = tmp_path / "heat.npz"
+    metadata = {
+        "pde": "heat",
+        "grid_shape": [8, 8, 4],
+        "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0], "t": [0.0, 0.1]},
+        "periodic": False,
+        "boundary_condition": "dirichlet_homogeneous",
+        "field": {"type": "grid", "backend": "fd"},
+        "diffusivity": 0.01,
+    }
+    np.savez(dump_path, prediction=np.zeros((8, 8, 4)), metadata=metadata)
+    with pytest.raises(LoaderError, match="Week 2"):
+        load_target(dump_path, cli_overrides={}, toml_path=None)
+
+
+def test_load_adapter_heat_rejected_until_week_2(tmp_path: Path):
+    adapter = tmp_path / "heat_adapter.py"
+    adapter.write_text(
+        "def load_model():\n"
+        "    return lambda x: x[..., :1]\n"
+        "def domain_spec():\n"
+        "    return {\n"
+        "        'pde': 'heat',\n"
+        "        'grid_shape': [8, 8, 4],\n"
+        "        'domain': {'x':[0.0,1.0],'y':[0.0,1.0],'t':[0.0,0.1]},\n"
+        "        'periodic': False,\n"
+        "        'boundary_condition': {'kind':'dirichlet_homogeneous'},\n"
+        "        'field': {'type':'callable','backend':'auto'},\n"
+        "        'diffusivity': 0.01,\n"
+        "    }\n"
+    )
+    with pytest.raises(LoaderError, match="Week 2"):
+        load_target(adapter, cli_overrides={}, toml_path=None)
+
+
+def test_load_npy_with_toml_spec(tmp_path: Path):
+    # .npy is a bare array — no metadata in the file — so the spec must come
+    # from the TOML config. The loader should read np.load() as an ndarray
+    # (not an NpzFile) and hand it to GridField with the toml-derived spec.
+    import numpy as np
+
+    pred = np.zeros((16, 16))
+    npy_path = tmp_path / "pred.npy"
+    np.save(npy_path, pred)
+
+    toml_path = tmp_path / "pyproject.toml"
+    toml_path.write_text(
+        "[tool.physics-lint]\n"
+        'pde = "laplace"\n'
+        "grid_shape = [16, 16]\n"
+        "domain = { x = [0.0, 1.0], y = [0.0, 1.0] }\n"
+        "periodic = false\n"
+        'boundary_condition = "dirichlet"\n\n'
+        "[tool.physics-lint.field]\n"
+        'type = "grid"\n'
+        'backend = "fd"\n'
+        'dump_path = "pred.npy"\n'
+    )
+    loaded = load_target(npy_path, cli_overrides={}, toml_path=toml_path)
+    assert isinstance(loaded.field, GridField)
+    assert loaded.spec.pde == "laplace"
+    assert loaded.model is None
+
+
+def test_load_npy_without_spec_errors(tmp_path: Path):
+    # .npy carries no metadata; without a TOML or CLI spec the loader must
+    # raise a clear LoaderError rather than silently crashing inside pydantic
+    # or GridField construction.
+    import numpy as np
+
+    npy_path = tmp_path / "pred.npy"
+    np.save(npy_path, np.zeros((8, 8)))
+    with pytest.raises(LoaderError, match=r"\.npy"):
+        load_target(npy_path, cli_overrides={}, toml_path=None)
+
+
+def test_load_dump_shape_mismatch_errors(tmp_path: Path):
+    # A mismatched (prediction.shape vs spec.grid_shape) dump silently picks
+    # the wrong h and therefore the wrong calibrated floor, producing
+    # numerically meaningless rule results. The loader must reject the
+    # mismatch with a clear LoaderError.
+    import numpy as np
+
+    dump_path = tmp_path / "bad_shape.npz"
+    metadata = {
+        "pde": "laplace",
+        "grid_shape": [32, 32],  # spec says 32x32
+        "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+        "periodic": False,
+        "boundary_condition": "dirichlet_homogeneous",
+        "field": {"type": "grid", "backend": "fd"},
+    }
+    # ...but the prediction is 16x16
+    np.savez(dump_path, prediction=np.zeros((16, 16)), metadata=metadata)
+    with pytest.raises(LoaderError, match="grid_shape"):
+        load_target(dump_path, cli_overrides={}, toml_path=None)
+
+
 def test_load_dump_missing_prediction_errors(tmp_path: Path):
     import numpy as np
 

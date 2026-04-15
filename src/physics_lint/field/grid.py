@@ -264,18 +264,19 @@ def _spectral_laplacian(u: np.ndarray, h: tuple[float, ...]) -> np.ndarray:
     (N_0, N_1, ...), the physical length along axis i is L_i = N_i * h_i
     (endpoint=False convention). Wavenumbers k_i = 2*pi*fftfreq(N_i, d=h_i).
 
-    Laplacian transform: -(k_0^2 + k_1^2 + ...) * u_hat; zero out Nyquist
-    per Trefethen 2000 advice for first-derivative consistency (harmless
-    for the Laplacian too since it preserves symmetry).
+    Laplacian transform: -(k_0^2 + k_1^2 + ...) * u_hat. The Nyquist bin is
+    KEPT (not zeroed) for the Laplacian: Trefethen 2000's zero-Nyquist advice
+    is for *odd* derivatives, where k_Nyquist * cosine becomes an unrepresentable
+    sine. Even-order derivatives map cosines to cosines, so the Nyquist content
+    is real and physical — zeroing it silently drops every checkerboard mode
+    (u_{ij} = (-1)^{i+j}) from the residual, producing a PH-RES-001 false
+    negative on the exact pattern checkerboard instabilities take.
     """
     shape = u.shape
     ndim = u.ndim
     k_grids = []
     for axis in range(ndim):
         k = np.fft.fftfreq(shape[axis], d=h[axis]) * (2.0 * np.pi)
-        # Zero out Nyquist bin for even-N grids.
-        if shape[axis] % 2 == 0:
-            k[shape[axis] // 2] = 0.0
         shape_broadcast = [1] * ndim
         shape_broadcast[axis] = shape[axis]
         k_grids.append(k.reshape(shape_broadcast))

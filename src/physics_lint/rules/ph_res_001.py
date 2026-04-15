@@ -25,6 +25,24 @@ __default_thresholds__ = {"tol_pass": 10.0, "tol_fail": 100.0}
 _DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-RES-001"
 
 
+def _skipped(reason: str) -> RuleResult:
+    return RuleResult(
+        rule_id=__rule_id__,
+        rule_name=__rule_name__,
+        severity=__default_severity__,
+        status="SKIPPED",
+        raw_value=None,
+        violation_ratio=None,
+        mode=None,
+        reason=reason,
+        refinement_rate=None,
+        spatial_map=None,
+        recommended_norm="",
+        citation="Bachmayr et al. 2024; Ernst et al. 2025 v3",
+        doc_url=_DOC_URL,
+    )
+
+
 def check(field: Field, spec: DomainSpec) -> RuleResult:
     """Compute strong-form residual, measure in H^-1 (or L^2 fallback), report."""
     if not isinstance(field, GridField):
@@ -35,22 +53,19 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             "Adapter-mode callables must be materialized by the loader."
         )
 
-    # Compute the residual: R = -Delta u for Laplace; R = -Delta u - f for Poisson
+    # Week 1 ships Laplace only. Poisson source-term plumbing and the
+    # heat/wave Bochner norm land in Week 2 — for a linter, crashing on
+    # a valid spec is worse than emitting SKIPPED with a clear reason.
+    if spec.pde == "poisson":
+        return _skipped("PH-RES-001 for Poisson requires source-term plumbing; lands in Week 2.")
+    if spec.pde in {"heat", "wave"}:
+        return _skipped(
+            f"PH-RES-001 for {spec.pde} requires the Bochner L^2(H^-1) norm; lands in Week 2."
+        )
+
+    # Laplace: residual is just -Delta u.
     lap = field.laplacian().values()
-    if spec.pde == "laplace":
-        residual = -lap
-    elif spec.pde == "poisson":
-        # Week 1 scope covers Laplace (automatic source=0); Poisson source
-        # wiring lands in Week 2 once the loader plumbs spec.source_term.
-        raise NotImplementedError(
-            "PH-RES-001 for Poisson requires a source term on spec; Week 1 scope "
-            "covers Laplace (automatic source=0); Poisson source wiring lands in Week 2."
-        )
-    elif spec.pde in {"heat", "wave"}:
-        raise NotImplementedError(
-            f"PH-RES-001 for {spec.pde} lands in Week 2 with the Bochner norm."
-        )
-    # pydantic guarantees spec.pde is one of the PDEKind literals; no else.
+    residual = -lap
 
     # Norm selection
     method = field.backend  # "fd" or "spectral"
