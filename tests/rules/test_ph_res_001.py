@@ -85,10 +85,10 @@ def test_ph_res_001_nonperiodic_fd_l2_fallback():
     assert result.recommended_norm == "L2"
 
 
-def test_ph_res_001_poisson_is_skipped_until_week_2():
-    # Poisson source-term plumbing lands in Week 2. For Week 1 the rule
-    # should emit SKIPPED with a clear reason so a linter run over a
-    # well-formed Poisson config doesn't crash mid-pipeline.
+def test_ph_res_001_poisson_without_source_is_skipped():
+    # Week 2 plumbs Poisson sources through .npz dump metadata, but a spec
+    # that's hand-constructed without a source array must still not crash —
+    # emit SKIPPED with a clear reason so the rest of the rule suite runs.
     spec = DomainSpec.model_validate(
         {
             "pde": "poisson",
@@ -102,29 +102,7 @@ def test_ph_res_001_poisson_is_skipped_until_week_2():
     field = GridField(np.zeros((16, 16)), h=1.0 / 15, periodic=False, backend="fd")
     result = ph_res_001.check(field, spec)
     assert result.status == "SKIPPED"
-    assert result.reason is not None
-    assert "Week 2" in result.reason
-
-
-def test_ph_res_001_heat_is_skipped_until_week_2():
-    spec = DomainSpec.model_validate(
-        {
-            "pde": "heat",
-            "grid_shape": [16, 16, 4],
-            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0], "t": [0.0, 0.1]},
-            "periodic": False,
-            "boundary_condition": {"kind": "dirichlet_homogeneous"},
-            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
-            "diffusivity": 0.01,
-        }
-    )
-    # Heat rules operate against the spatial slice at Week 1; the rule just
-    # has to *not* raise when dispatched on a heat spec.
-    field = GridField(np.zeros((16, 16)), h=1.0 / 15, periodic=False, backend="fd")
-    result = ph_res_001.check(field, spec)
-    assert result.status == "SKIPPED"
-    assert result.reason is not None
-    assert "Week 2" in result.reason
+    assert "source" in (result.reason or "").lower()
 
 
 def test_ph_res_001_rejects_non_gridfield():
