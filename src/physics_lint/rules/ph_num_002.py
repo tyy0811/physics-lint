@@ -62,13 +62,14 @@ __input_modes__ = frozenset({"adapter", "dump"})
 _DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-NUM-002"
 _CITATION = "Fornberg 1988; Trefethen 2000"
 
-# Minimum acceptable refinement rate per doubling.
-#
-# 1.8 per doubling is the non-periodic boundary-dominated fd4 floor (our
-# measured 2.5 on a harmonic exp(x)cos(y) test minus 0.7 margin). Periodic
-# interior-dominated fd4 sits near 4 and spectral saturates at machine
-# precision, so the same 1.8 threshold passes every well-behaved
-# Laplace/Poisson refinement pair.
+# Minimum acceptable refinement rate per doubling for a homogeneous
+# Laplace prediction. 1.8 is the non-periodic boundary-dominated fd4
+# floor — our measured 2.5 on a harmonic exp(x)cos(y) test minus 0.7
+# margin. Periodic interior-dominated fd4 sits near 4 and spectral
+# saturates at machine precision, so the same 1.8 threshold passes
+# every well-behaved Laplace refinement pair regardless of backend or
+# BC. Poisson/heat/wave are SKIPPED at the top of check(); adding a
+# per-PDE expected rate is future work.
 _DEFAULT_EXPECTED_RATE = 1.8
 
 
