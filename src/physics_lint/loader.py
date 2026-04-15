@@ -36,25 +36,6 @@ class LoaderError(RuntimeError):
     """Raised when physics-lint cannot load the user's target."""
 
 
-# Week 1 scope is Laplace/Poisson only
-# (docs/plans/2026-04-14-physics-lint-v1-week-1.md line 13:
-# "no time-dependent PDEs"). The DomainSpec pydantic model accepts heat/wave
-# — Week 2 will wire them through GridField's time axis and the Bochner
-# norms — but the Week 1 loader has no code path for a (Nx, Ny, Nt) tensor.
-# Gate here with a clear "Week 2" error instead of crashing in GridField's
-# h-tuple length check.
-_WEEK_2_PDES: frozenset[str] = frozenset({"heat", "wave"})
-
-
-def _assert_week_1_scope(spec: DomainSpec, path: Path) -> None:
-    if spec.pde in _WEEK_2_PDES:
-        raise LoaderError(
-            f"{path}: PDE '{spec.pde}' is time-dependent and lands in Week 2; "
-            "Week 1 supports laplace/poisson on spatial-only grids. "
-            "Remove the time domain and use pde='laplace' or 'poisson' to run today."
-        )
-
-
 @dataclass
 class LoadedTarget:
     spec: DomainSpec
@@ -68,7 +49,13 @@ def load_target(
     cli_overrides: dict[str, Any],
     toml_path: Path | None,
 ) -> LoadedTarget:
-    """Load a target file, merge config, and return a LoadedTarget."""
+    """Load a target file, merge config, and return a LoadedTarget.
+
+    After dispatch, _resolve_source_term runs for both adapter and dump
+    paths so a Poisson config can carry a ``source_term="source.npy"``
+    pointer and have PH-RES-001 see the source array without the user
+    having to use the .npz-with-embedded-source form.
+    """
     path = Path(path)
     suffix = path.suffix.lower()
 
@@ -77,15 +64,19 @@ def load_target(
         toml_spec = load_spec_from_toml(toml_path)
 
     if suffix == ".py":
-        return _load_adapter(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
-    if suffix in (".npz", ".npy"):
-        return _load_dump(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
-    if suffix in (".pt", ".pth"):
+        target = _load_adapter(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
+    elif suffix in (".npz", ".npy"):
+        target = _load_dump(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
+    elif suffix in (".pt", ".pth"):
         raise LoaderError(
             f"{path.name}: .pt/.pth files are not supported directly. "
             "Please use an adapter or convert to .npz; see docs/loading.html"
         )
-    raise LoaderError(f"{path.name}: unsupported file extension {suffix}")
+    else:
+        raise LoaderError(f"{path.name}: unsupported file extension {suffix}")
+
+    _resolve_source_term(target, base_path=path)
+    return target
 
 
 def _load_adapter(
@@ -140,7 +131,6 @@ def _load_adapter(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
-    _assert_week_1_scope(spec, path)
 
     # For Week 1 we materialize the callable onto a GridField via CallableField.
     # Build a sampling grid from the spec. `_build_sampling_grid` imports
@@ -207,13 +197,22 @@ def _load_dump(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
-    _assert_week_1_scope(spec, path)
+
+    # Plumb optional runtime-injected attributes: Poisson source term and
+    # heat/wave initial condition. Rules read these via
+    # getattr(spec, '_source_array', None) etc. Using object.__setattr__
+    # bypasses pydantic's frozen-model guard while keeping the validated
+    # fields of spec immutable.
+    if isinstance(loaded, np.lib.npyio.NpzFile):
+        if "source" in loaded.files:
+            object.__setattr__(spec, "_source_array", np.asarray(loaded["source"]))
+        if "initial_condition" in loaded.files:
+            object.__setattr__(spec, "_initial_condition", np.asarray(loaded["initial_condition"]))
 
     # Catch mismatched dumps *before* computing h: a wrong grid_shape picks
     # the wrong spacing and the wrong calibrated floor, producing rule
-    # results that look numerical but mean nothing. Week 1 is spatial-only
-    # (heat/wave already gated above), so prediction.shape must match
-    # spec.grid_shape exactly.
+    # results that look numerical but mean nothing. The spatial + time axes
+    # must all line up, so compare the full shape tuple.
     if tuple(prediction.shape) != tuple(spec.grid_shape):
         raise LoaderError(
             f"{path}: prediction shape {tuple(prediction.shape)} does not match "
@@ -234,26 +233,102 @@ def _load_dump(
 
 
 def _compute_h_from_spec(spec: DomainSpec) -> tuple[float, ...]:
-    """Derive uniform grid spacings from domain extents and grid_shape."""
+    """Derive uniform grid spacings for spatial + (optional) time axes.
+
+    Convention: spatial axes first, then — if spec.domain.is_time_dependent
+    — a time axis as the LAST entry. This matches the Week-2 time-last
+    convention throughout the library (Bochner norm, heat/wave rule
+    branches, dump prediction tensors). Non-periodic uses endpoint-inclusive
+    spacing L/(N-1); periodic uses endpoint-exclusive L/N. Time is ALWAYS
+    endpoint-inclusive — spec.periodic refers only to spatial periodicity.
+    """
     lengths = spec.domain.spatial_lengths
-    # endpoint-inclusive for non-periodic, endpoint-exclusive for periodic
     shape = spec.grid_shape
+    ndim_spatial = len(lengths)
+    h_spatial: tuple[float, ...]
     if spec.periodic:
-        return tuple(length / n for length, n in zip(lengths, shape[: len(lengths)], strict=False))
-    return tuple(
-        length / (n - 1) for length, n in zip(lengths, shape[: len(lengths)], strict=False)
-    )
+        h_spatial = tuple(
+            length / n for length, n in zip(lengths, shape[:ndim_spatial], strict=False)
+        )
+    else:
+        h_spatial = tuple(
+            length / (n - 1) for length, n in zip(lengths, shape[:ndim_spatial], strict=False)
+        )
+    if not spec.domain.is_time_dependent:
+        return h_spatial
+    if len(shape) < ndim_spatial + 1:
+        raise LoaderError(
+            f"time-dependent spec requires grid_shape with a time entry after "
+            f"the {ndim_spatial} spatial entries; got grid_shape={tuple(shape)}"
+        )
+    t_lo, t_hi = spec.domain.t  # type: ignore[misc]
+    n_t = shape[ndim_spatial]
+    h_t = (t_hi - t_lo) / (n_t - 1)
+    return (*h_spatial, h_t)
 
 
 def _build_sampling_grid(spec: DomainSpec) -> torch.Tensor:
     import torch
 
     lengths = spec.domain.spatial_lengths
-    shape = spec.grid_shape[: len(lengths)]
-    axes = []
-    for length, n in zip(lengths, shape, strict=False):
+    shape = spec.grid_shape
+    ndim_spatial = len(lengths)
+    axes: list[torch.Tensor] = []
+    for length, n in zip(lengths, shape[:ndim_spatial], strict=False):
         if spec.periodic:
             axes.append(torch.linspace(0.0, length, n + 1)[:-1])
         else:
             axes.append(torch.linspace(0.0, length, n))
+    if spec.domain.is_time_dependent:
+        t_lo, t_hi = spec.domain.t  # type: ignore[misc]
+        n_t = shape[ndim_spatial]
+        axes.append(torch.linspace(t_lo, t_hi, n_t))
     return torch.stack(torch.meshgrid(*axes, indexing="ij"), dim=-1)
+
+
+def _resolve_source_term(target: LoadedTarget, *, base_path: Path) -> None:
+    """Load spec.source_term (if set) from disk and inject into the spec.
+
+    Poisson residuals need a source array, and the user-facing API offers
+    two ways to provide one:
+
+    1. .npz dump with an embedded ``source`` key — handled inline in
+       _load_dump by stashing it under spec._source_array.
+    2. A ``source_term`` string on the validated DomainSpec pointing at a
+       separate .npy/.npz file — handled here so adapter mode and dump
+       mode share one code path. Relative paths resolve against the
+       adapter/dump file's directory so user projects can ship a
+       ``model_adapter.py`` + ``source.npy`` pair without hardcoding
+       absolute paths.
+
+    If both forms are used and disagree, source_term wins (it's the more
+    explicit of the two). If neither is used, PH-RES-001's Poisson branch
+    emits SKIPPED with a clear reason.
+    """
+    source_term = target.spec.source_term
+    if source_term is None:
+        return
+
+    source_path = Path(source_term)
+    if not source_path.is_absolute():
+        source_path = base_path.parent / source_path
+    if not source_path.is_file():
+        raise LoaderError(
+            f"spec.source_term='{source_term}' resolved to {source_path}: "
+            "file not found. Use an absolute path, or place the source "
+            "file next to the adapter/dump."
+        )
+
+    loaded = np.load(source_path, allow_pickle=True)
+    source: np.ndarray
+    if isinstance(loaded, np.ndarray):
+        source = loaded
+    elif "source" in loaded.files:
+        source = np.asarray(loaded["source"])
+    else:
+        raise LoaderError(
+            f"{source_path}: expected a bare .npy array or an .npz with a "
+            "'source' key; got .npz with keys "
+            f"{sorted(loaded.files)!r}."
+        )
+    object.__setattr__(target.spec, "_source_array", source)

@@ -85,10 +85,10 @@ def test_ph_res_001_nonperiodic_fd_l2_fallback():
     assert result.recommended_norm == "L2"
 
 
-def test_ph_res_001_poisson_is_skipped_until_week_2():
-    # Poisson source-term plumbing lands in Week 2. For Week 1 the rule
-    # should emit SKIPPED with a clear reason so a linter run over a
-    # well-formed Poisson config doesn't crash mid-pipeline.
+def test_ph_res_001_poisson_without_source_is_skipped():
+    # Week 2 plumbs Poisson sources through .npz dump metadata, but a spec
+    # that's hand-constructed without a source array must still not crash —
+    # emit SKIPPED with a clear reason so the rest of the rule suite runs.
     spec = DomainSpec.model_validate(
         {
             "pde": "poisson",
@@ -102,58 +102,245 @@ def test_ph_res_001_poisson_is_skipped_until_week_2():
     field = GridField(np.zeros((16, 16)), h=1.0 / 15, periodic=False, backend="fd")
     result = ph_res_001.check(field, spec)
     assert result.status == "SKIPPED"
-    assert result.reason is not None
-    assert "Week 2" in result.reason
+    assert "source" in (result.reason or "").lower()
 
 
-def test_ph_res_001_heat_is_skipped_until_week_2():
-    spec = DomainSpec.model_validate(
-        {
-            "pde": "heat",
-            "grid_shape": [16, 16, 4],
-            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0], "t": [0.0, 0.1]},
-            "periodic": False,
-            "boundary_condition": {"kind": "dirichlet_homogeneous"},
-            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
-            "diffusivity": 0.01,
-        }
+def test_ph_res_001_poisson_with_source_plumbed_through_dump(tmp_path):
+    """PH-RES-001 Poisson path with source plumbed through .npz dump metadata."""
+    from physics_lint.analytical import poisson as poisson_sols
+    from physics_lint.loader import load_target
+
+    sol = poisson_sols.periodic_sin_sin()
+    n = 64
+    x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    u = sol.u(X, Y)
+    f = sol.source(X, Y)
+
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [n, n],
+        "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi]},
+        "periodic": True,
+        "boundary_condition": {"kind": "periodic"},
+        "field": {"type": "grid", "backend": "spectral"},
+    }
+    path = tmp_path / "pred.npz"
+    np.savez(path, prediction=u, metadata=metadata, source=f)
+
+    loaded = load_target(path, cli_overrides={}, toml_path=None)
+    result = ph_res_001.check(loaded.field, loaded.spec)
+    assert result.status == "PASS"
+    assert result.recommended_norm == "H-1"
+
+
+def test_ph_res_001_poisson_source_term_via_adapter(tmp_path):
+    """Finding 2 regression: source_term on a validated spec is plumbed from disk.
+
+    Previously only .npz dumps with an embedded 'source' key could feed
+    the Poisson residual — an adapter module setting
+    domain_spec()['source_term'] = 'source.npy' would validate but then
+    skip PH-RES-001 because the loader never read the file. Now the
+    loader resolves source_term relative to the adapter's directory.
+    """
+    from physics_lint.analytical import poisson as poisson_sols
+    from physics_lint.loader import load_target
+
+    sol = poisson_sols.periodic_sin_sin()
+    n = 64
+    x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    u = sol.u(X, Y)
+    f = sol.source(X, Y)
+
+    # Persist the source as a plain .npy next to the adapter.
+    np.save(tmp_path / "source.npy", f)
+    # Persist the prediction as a .npz next to it — adapter returns the
+    # *values* directly via a closure over this file. (A hand-written
+    # adapter for a real model would call the model instead.)
+    np.save(tmp_path / "pred.npy", u)
+
+    adapter_path = tmp_path / "poisson_adapter.py"
+    adapter_path.write_text(
+        "import numpy as np\n"
+        "from pathlib import Path\n"
+        "import torch\n"
+        "_HERE = Path(__file__).parent\n"
+        "_U = np.load(_HERE / 'pred.npy')\n"
+        "def load_model():\n"
+        "    def fn(coords):\n"
+        "        return torch.from_numpy(_U).unsqueeze(-1)\n"
+        "    return fn\n"
+        "def domain_spec():\n"
+        "    return {\n"
+        "        'pde': 'poisson',\n"
+        "        'grid_shape': [64, 64],\n"
+        "        'domain': {'x': [0.0, 6.283185307179586], 'y': [0.0, 6.283185307179586]},\n"
+        "        'periodic': True,\n"
+        "        'boundary_condition': {'kind': 'periodic'},\n"
+        "        'field': {'type': 'callable', 'backend': 'spectral'},\n"
+        "        'source_term': 'source.npy',\n"
+        "    }\n"
     )
-    # Heat rules operate against the spatial slice at Week 1; the rule just
-    # has to *not* raise when dispatched on a heat spec.
-    field = GridField(np.zeros((16, 16)), h=1.0 / 15, periodic=False, backend="fd")
-    result = ph_res_001.check(field, spec)
+
+    loaded = load_target(adapter_path, cli_overrides={}, toml_path=None)
+    # Source array should have been plumbed via source_term.
+    injected = getattr(loaded.spec, "_source_array", None)
+    assert injected is not None
+    assert injected.shape == (64, 64)
+
+    # Materialize the callable onto a GridField (the rule requires GridField)
+    # and run PH-RES-001. Periodic spectral path gives an exact H^-1 zero.
+    from physics_lint.field import GridField as _GridField
+
+    grid_field = _GridField(
+        u, h=(2 * np.pi / 64, 2 * np.pi / 64), periodic=True, backend="spectral"
+    )
+    result = ph_res_001.check(grid_field, loaded.spec)
+    assert result.status == "PASS"
+    assert result.recommended_norm == "H-1"
+
+
+def test_ph_res_001_poisson_source_term_missing_file_errors(tmp_path):
+    from physics_lint.loader import LoaderError, load_target
+
+    # Bare .npy prediction + a TOML that points at a source file that
+    # doesn't exist. The loader should raise LoaderError with the resolved
+    # path in the message, not pass a dangling pointer to the rule.
+    np.save(tmp_path / "pred.npy", np.zeros((16, 16)))
+    toml_path = tmp_path / "pyproject.toml"
+    toml_path.write_text(
+        "[tool.physics-lint]\n"
+        'pde = "poisson"\n'
+        "grid_shape = [16, 16]\n"
+        "domain = { x = [0.0, 1.0], y = [0.0, 1.0] }\n"
+        "periodic = false\n"
+        'boundary_condition = { kind = "dirichlet_homogeneous" }\n'
+        'source_term = "does_not_exist.npy"\n'
+        "\n[tool.physics-lint.field]\n"
+        'type = "grid"\n'
+        'backend = "fd"\n'
+        'dump_path = "pred.npy"\n'
+    )
+    with pytest.raises(LoaderError, match="source_term"):
+        load_target(tmp_path / "pred.npy", cli_overrides={}, toml_path=toml_path)
+
+
+def test_ph_res_001_poisson_source_shape_mismatch_skipped(tmp_path):
+    """Source array with wrong shape -> SKIPPED, not crash."""
+    from physics_lint.loader import load_target
+
+    n = 32
+    u = np.zeros((n, n))
+    wrong_source = np.zeros((n + 2, n))  # off-by-a-halo shape mismatch
+
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [n, n],
+        "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi]},
+        "periodic": True,
+        "boundary_condition": {"kind": "periodic"},
+        "field": {"type": "grid", "backend": "spectral"},
+    }
+    path = tmp_path / "pred.npz"
+    np.savez(path, prediction=u, metadata=metadata, source=wrong_source)
+
+    loaded = load_target(path, cli_overrides={}, toml_path=None)
+    result = ph_res_001.check(loaded.field, loaded.spec)
     assert result.status == "SKIPPED"
-    assert result.reason is not None
-    assert "Week 2" in result.reason
+    assert "shape" in (result.reason or "").lower()
 
 
-def test_ph_res_001_rejects_non_gridfield():
+def test_ph_res_001_accepts_callable_field_adapter_mode():
+    """Adapter-mode: PH-RES-001 must accept a CallableField and materialize it.
+
+    Regression for the "ph_res_001 rejects CallableField but declares
+    adapter in __input_modes__" bug. The rule now runs ensure_grid_field,
+    which materializes the callable onto its sampling grid, so a harmonic
+    callable (u = x^2 - y^2) through the adapter path passes the same
+    way it does through dump mode.
+    """
     import torch
 
     from physics_lint import CallableField
 
+    n = 32
     grid = torch.stack(
         torch.meshgrid(
-            torch.linspace(0.0, 1.0, 4),
-            torch.linspace(0.0, 1.0, 4),
+            torch.linspace(0.0, 1.0, n),
+            torch.linspace(0.0, 1.0, n),
             indexing="ij",
         ),
         dim=-1,
     )
+    # Harmonic: Laplacian is exactly zero, so PH-RES-001 should PASS.
+    model = lambda pts: (pts[..., 0] ** 2 - pts[..., 1] ** 2).unsqueeze(-1)  # noqa: E731
     field = CallableField(
-        lambda x: x[..., 0].unsqueeze(-1),
+        model,
         sampling_grid=grid,
-        h=(1.0 / 3, 1.0 / 3),
+        h=(1.0 / (n - 1), 1.0 / (n - 1)),
+        periodic=False,
     )
     spec = DomainSpec.model_validate(
         {
             "pde": "laplace",
-            "grid_shape": [4, 4],
+            "grid_shape": [n, n],
             "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
             "periodic": False,
             "boundary_condition": {"kind": "dirichlet"},
             "field": {"type": "callable", "backend": "fd", "adapter_path": "x.py"},
         }
     )
-    with pytest.raises(TypeError, match="requires a GridField"):
-        ph_res_001.check(field, spec)
+    result = ph_res_001.check(field, spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None
+    # 4th-order FD central stencil is exact on a degree-2 polynomial in the
+    # interior, but the boundary one-sided stencils pick up ~1e-4 edge
+    # error. That's still ~20x below the WARN threshold (pass_ tolerance
+    # is 20 for fd4). Sanity-check it's small, not machine-precision.
+    assert result.raw_value < 1e-3
+
+
+def test_ph_res_001_end_to_end_adapter_through_loader(tmp_path):
+    """End-to-end regression: load_target(adapter.py) -> ph_res_001.check.
+
+    The previous regression test constructed a CallableField manually and
+    stopped before the loader path. This test goes through the actual
+    public entrypoint — load_target with a .py adapter file — which is
+    how users will invoke the rule in production.
+    """
+    from physics_lint.loader import load_target
+
+    adapter_path = tmp_path / "harmonic_adapter.py"
+    adapter_path.write_text(
+        "import torch\n"
+        "from physics_lint import DomainSpec\n"
+        "\n"
+        "def load_model():\n"
+        "    def _model(x):\n"
+        "        return (x[..., 0] ** 2 - x[..., 1] ** 2).unsqueeze(-1)\n"
+        "    return _model\n"
+        "\n"
+        "def domain_spec():\n"
+        "    return {\n"
+        "        'pde': 'laplace',\n"
+        "        'grid_shape': [32, 32],\n"
+        "        'domain': {'x': [0.0, 1.0], 'y': [0.0, 1.0]},\n"
+        "        'periodic': False,\n"
+        "        'boundary_condition': {'kind': 'dirichlet'},\n"
+        "        'field': {'type': 'callable', 'backend': 'fd'},\n"
+        "    }\n"
+    )
+
+    loaded = load_target(adapter_path, cli_overrides={}, toml_path=None)
+    # Loader returns a CallableField for .py adapters — this assertion is
+    # the contract the rule has to handle.
+    from physics_lint import CallableField
+
+    assert isinstance(loaded.field, CallableField)
+
+    result = ph_res_001.check(loaded.field, loaded.spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None and result.raw_value < 1e-3

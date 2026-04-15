@@ -6,6 +6,7 @@ import numpy as np
 
 from physics_lint.field import Field, GridField
 from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import ensure_grid_field
 from physics_lint.spec import DomainSpec
 
 __rule_id__ = "PH-RES-003"
@@ -33,8 +34,10 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             citation="Trefethen 2000; Fornberg 1988",
             doc_url=_DOC_URL,
         )
-    if not isinstance(field, GridField):
-        raise TypeError(f"PH-RES-003 requires GridField; got {type(field).__name__}")
+    # Accept both dump (GridField) and adapter (CallableField) inputs;
+    # ensure_grid_field materializes the callable so we can rebuild two
+    # backend-specific GridFields over the same values.
+    field = ensure_grid_field(field, spec)
 
     vals = field.values()
     spectral_f = GridField(vals, h=field.h, periodic=True, backend="spectral")

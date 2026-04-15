@@ -13,9 +13,10 @@ lands in Week 2 when the loader plumbs ``spec.source_term``.
 
 from __future__ import annotations
 
-from physics_lint.field import Field, GridField
+from physics_lint.field import Field
 from physics_lint.norms import l2_grid, trapezoidal_integral
 from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import ensure_grid_field
 from physics_lint.spec import DomainSpec
 
 __rule_id__ = "PH-BC-002"
@@ -43,8 +44,11 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             citation="divergence theorem",
             doc_url=_DOC_URL,
         )
-    if not isinstance(field, GridField):
-        raise TypeError(f"PH-BC-002 requires GridField; got {type(field).__name__}")
+    # Accept both dump (GridField) and adapter (CallableField) inputs per
+    # __input_modes__; ensure_grid_field materializes the callable onto its
+    # sampling grid so the downstream divergence-theorem computation uses
+    # concrete values and a backend.
+    field = ensure_grid_field(field, spec)
 
     if spec.pde == "poisson":
         # Week 1 scope: source term is not yet plumbed through DomainSpec.

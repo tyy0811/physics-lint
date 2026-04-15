@@ -32,3 +32,9 @@ docs/plans/
 # Worktrees (used by superpowers workflows)
 .worktrees/
 worktrees/
+
+# Dogfood harness artifacts (external repo clone + generated dumps/results).
+# Reproducible from dogfood/clone_laplace_uq_bench.sh + generate_dumps.py.
+dogfood/laplace-uq-bench/
+dogfood/laplace_uq_bench/*.npz
+dogfood/results/
