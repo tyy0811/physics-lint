@@ -1,0 +1,312 @@
+{
+  "$defs": {
+    "BCSpec": {
+      "description": "Boundary condition with computed properties replacing rule-side BC taxonomy.\n\nThe computed properties are the design doc \u00a74.2 deduplication mechanism:\nper-rule conservation and sign-preservation checks read these booleans\ninstead of re-encoding the PER/hN/hD logic in each rule.",
+      "properties": {
+        "kind": {
+          "enum": [
+            "periodic",
+            "dirichlet_homogeneous",
+            "dirichlet",
+            "neumann_homogeneous",
+            "neumann"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "BCSpec",
+      "type": "object"
+    },
+    "FieldSourceSpec": {
+      "description": "Field source: adapter module or dump file. Exactly one must be set.",
+      "properties": {
+        "type": {
+          "enum": [
+            "grid",
+            "callable",
+            "mesh"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "backend": {
+          "default": "auto",
+          "enum": [
+            "fd",
+            "spectral",
+            "auto"
+          ],
+          "title": "Backend",
+          "type": "string"
+        },
+        "adapter_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Adapter Path"
+        },
+        "dump_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dump Path"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "FieldSourceSpec",
+      "type": "object"
+    },
+    "GridDomain": {
+      "description": "Spatial (and optionally temporal) domain extents.",
+      "properties": {
+        "x": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "X",
+          "type": "array"
+        },
+        "y": {
+          "maxItems": 2,
+          "minItems": 2,
+          "prefixItems": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "number"
+            }
+          ],
+          "title": "Y",
+          "type": "array"
+        },
+        "t": {
+          "anyOf": [
+            {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "T"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "GridDomain",
+      "type": "object"
+    },
+    "SARIFSpec": {
+      "description": "Optional source-mapping config for SARIF Tier 2 (PR-check surfacing).",
+      "properties": {
+        "source_file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Source File"
+        },
+        "pde_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pde Line"
+        },
+        "bc_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bc Line"
+        },
+        "symmetry_line": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Symmetry Line"
+        }
+      },
+      "title": "SARIFSpec",
+      "type": "object"
+    },
+    "SymmetrySpec": {
+      "description": "User-declared problem-instance symmetries.\n\nNot auto-detected. Design doc \u00a79.4 explains why: operator-level admissibility\nis PDE-class-dependent but problem-instance symmetry depends on domain,\nsource/IC, and BCs in ways physics-lint cannot mechanically verify.",
+      "properties": {
+        "declared": {
+          "items": {
+            "enum": [
+              "D4",
+              "C4",
+              "reflection_x",
+              "reflection_y",
+              "translation_x",
+              "translation_y",
+              "SO2"
+            ],
+            "type": "string"
+          },
+          "title": "Declared",
+          "type": "array"
+        }
+      },
+      "title": "SymmetrySpec",
+      "type": "object"
+    }
+  },
+  "description": "Top-level validated spec consumed by every rule.",
+  "properties": {
+    "pde": {
+      "enum": [
+        "laplace",
+        "poisson",
+        "heat",
+        "wave"
+      ],
+      "title": "Pde",
+      "type": "string"
+    },
+    "grid_shape": {
+      "items": {
+        "type": "integer"
+      },
+      "maxItems": 3,
+      "minItems": 2,
+      "title": "Grid Shape",
+      "type": "array"
+    },
+    "domain": {
+      "$ref": "#/$defs/GridDomain"
+    },
+    "periodic": {
+      "default": false,
+      "title": "Periodic",
+      "type": "boolean"
+    },
+    "boundary_condition": {
+      "$ref": "#/$defs/BCSpec"
+    },
+    "symmetries": {
+      "$ref": "#/$defs/SymmetrySpec"
+    },
+    "field": {
+      "$ref": "#/$defs/FieldSourceSpec"
+    },
+    "diffusivity": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Diffusivity"
+    },
+    "wave_speed": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Wave Speed"
+    },
+    "source_term": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Term"
+    },
+    "sarif": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SARIFSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "pde",
+    "grid_shape",
+    "domain",
+    "boundary_condition",
+    "field"
+  ],
+  "title": "DomainSpec",
+  "type": "object"
+}

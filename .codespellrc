@@ -1,0 +1,3 @@
+[codespell]
+skip = *.lock,*.pyc,.git,dist,build,*.egg-info,docs/_build,src/physics_lint/data/floors.toml
+ignore-words-list = bochner,fosls,riesz,sobolev,dirichlet,neumann,laplace,poisson,helmholtz,ernst,fornberg,trefethen,jekel,hansen,gruver,brandstetter,virkkunen,bachmayr,dahmen,oster,qiu,kovachki,welling,worrall,helwig,ot,cfm,ddpm,dps,fno,pinn,pino,pde,pdes,nd,ue,nin,oint

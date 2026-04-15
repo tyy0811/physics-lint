@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.10
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.3.0
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+
+  - repo: local
+    hooks:
+      - id: field-property-tests
+        name: Field property tests (hypothesis, ci-quick profile)
+        entry: .venv/bin/pytest tests/test_field_properties.py -q --hypothesis-profile=ci-quick
+        language: system
+        files: '^src/physics_lint/(field/.*|norms)\.py$'
+        pass_filenames: false
