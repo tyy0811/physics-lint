@@ -91,3 +91,88 @@ def test_ph_num_002_rejects_non_grid_refined_field():
         assert "refined_field" in str(e)
         return
     raise AssertionError("expected TypeError for non-GridField refined_field")
+
+
+def _poisson_periodic_spec(n: int) -> DomainSpec:
+    return DomainSpec.model_validate(
+        {
+            "pde": "poisson",
+            "grid_shape": [n, n],
+            "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi]},
+            "periodic": True,
+            "boundary_condition": {"kind": "periodic"},
+            "field": {"type": "grid", "backend": "spectral", "dump_path": "p.npz"},
+        }
+    )
+
+
+def _poisson_exact_sin_sin(n: int) -> GridField:
+    """u = sin(x) sin(y), -Laplace(u) = 2 sin(x) sin(y); exact solution."""
+    x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    u = np.sin(X) * np.sin(Y)
+    return GridField(u, h=(2 * np.pi / n, 2 * np.pi / n), periodic=True, backend="spectral")
+
+
+def test_ph_num_002_poisson_is_skipped():
+    # Review regression: previously this WARN-ed with rate ~0 because the
+    # rule treated ||Delta u|| as the residual and never subtracted the
+    # Poisson source. The V1 scope is now Laplace-only and this path must
+    # SKIP with a clear reason.
+    spec = _poisson_periodic_spec(64)
+    result = ph_num_002.check(
+        _poisson_exact_sin_sin(64),
+        spec,
+        refined_field=_poisson_exact_sin_sin(128),
+    )
+    assert result.status == "SKIPPED"
+    assert "laplace" in (result.reason or "").lower()
+    assert "poisson" in (result.reason or "").lower()
+
+
+def _heat_periodic_spec(n: int, nt: int) -> DomainSpec:
+    return DomainSpec.model_validate(
+        {
+            "pde": "heat",
+            "grid_shape": [n, n, nt],
+            "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi], "t": [0.0, 0.5]},
+            "periodic": True,
+            "boundary_condition": {"kind": "periodic"},
+            "diffusivity": 0.01,
+            "field": {"type": "grid", "backend": "spectral", "dump_path": "p.npz"},
+        }
+    )
+
+
+def _heat_exact(n: int, nt: int) -> GridField:
+    """u = cos(x) cos(y) exp(-2 * kappa * t), an exact heat solution."""
+    kappa = 0.01
+    x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    t = np.linspace(0.0, 0.5, nt)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    pred = np.stack(
+        [np.cos(X) * np.cos(Y) * np.exp(-2 * kappa * ti) for ti in t],
+        axis=-1,
+    )
+    return GridField(
+        pred,
+        h=(2 * np.pi / n, 2 * np.pi / n, 0.5 / (nt - 1)),
+        periodic=True,
+        backend="spectral",
+    )
+
+
+def test_ph_num_002_heat_is_skipped():
+    # Review regression: previously this WARN-ed because field.laplacian()
+    # differentiated over the time axis too, producing garbage. The V1
+    # scope is Laplace-only so heat must SKIP.
+    spec = _heat_periodic_spec(64, 16)
+    result = ph_num_002.check(
+        _heat_exact(64, 16),
+        spec,
+        refined_field=_heat_exact(128, 16),
+    )
+    assert result.status == "SKIPPED"
+    assert "heat" in (result.reason or "").lower()

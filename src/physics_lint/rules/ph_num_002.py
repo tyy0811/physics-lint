@@ -1,11 +1,12 @@
 """PH-NUM-002: Refinement convergence rate below expected.
 
-Per design doc §7.5. Given a predicted Laplace field at two resolutions
-(``field`` at grid h and ``refined_field`` at grid h/2), the rule
-measures how fast the L^2 norm of the strong-form residual -Delta_h u
-shrinks under refinement. If the user's prediction is an approximate
-Laplace solution, the residual is dominated by the FD operator
-truncation error and converges at a resolution-dependent rate:
+Per design doc §7.5. Given a predicted homogeneous-Laplace field at
+two resolutions (``field`` at grid h and ``refined_field`` at grid
+h/2), the rule measures how fast the L^2 norm of the strong-form
+residual -Delta_h u shrinks under refinement. If the user's
+prediction is an approximate Laplace solution, the residual is
+dominated by the FD operator truncation error and converges at a
+resolution-dependent rate:
 
 - spectral (periodic): saturates at machine precision almost
   immediately, so the measured rate is effectively infinite.
@@ -19,6 +20,22 @@ prediction on any backend/BC combination passes. Non-converging
 predictions (rate << 2) land in WARN; the rule's severity is
 'warning' by default so PR gates are not blocked on a single
 convergence rate signal.
+
+**V1 scope: homogeneous Laplace only.** PH-NUM-002 uses
+``field.laplacian()`` directly as the residual, which is only correct
+for ``spec.pde == "laplace"``:
+
+- Poisson would need the source term subtracted — ``||Delta_h u||``
+  alone measures the source magnitude, not the residual error.
+- Heat/wave have time-dependent residual constructions with spatial
+  slice Laplacians and time derivatives (see PH-RES-001), and a
+  GridField-wide ``laplacian()`` would differentiate the time axis.
+
+Both cases are explicitly SKIPPED with a reason string. Extending the
+rule to delegate residual computation to PH-RES-001 per PDE is
+straightforward but needs refined-source / refined-initial-condition
+plumbing on the ``refined_field`` contract; that lands in a future
+task.
 
 For the refined field we intentionally keep a narrow contract — the
 caller passes a GridField at denser spacing — because adapter-mode
@@ -61,24 +78,16 @@ def check(
     *,
     refined_field: GridField | None = None,
 ) -> RuleResult:
+    if spec.pde != "laplace":
+        return _skipped(
+            f"PH-NUM-002 V1 scope is homogeneous Laplace only; got pde={spec.pde!r}. "
+            f"Poisson/heat/wave residual construction requires refined source or "
+            f"initial-condition plumbing and is deferred to a future task."
+        )
     if refined_field is None:
-        return RuleResult(
-            rule_id=__rule_id__,
-            rule_name=__rule_name__,
-            severity=__default_severity__,
-            status="SKIPPED",
-            raw_value=None,
-            violation_ratio=None,
-            mode=None,
-            reason=(
-                "PH-NUM-002 needs a refined_field (same physical domain, "
-                "denser grid) to estimate the convergence rate"
-            ),
-            refinement_rate=None,
-            spatial_map=None,
-            recommended_norm="",
-            citation=_CITATION,
-            doc_url=_DOC_URL,
+        return _skipped(
+            "PH-NUM-002 needs a refined_field (same physical domain, "
+            "denser grid) to estimate the convergence rate"
         )
     if not isinstance(refined_field, GridField):
         raise TypeError(
@@ -124,6 +133,24 @@ def check(
         refinement_rate=rate,
         spatial_map=None,
         recommended_norm="log2 ratio of L^2 residual between coarse and refined grids",
+        citation=_CITATION,
+        doc_url=_DOC_URL,
+    )
+
+
+def _skipped(reason: str) -> RuleResult:
+    return RuleResult(
+        rule_id=__rule_id__,
+        rule_name=__rule_name__,
+        severity=__default_severity__,
+        status="SKIPPED",
+        raw_value=None,
+        violation_ratio=None,
+        mode=None,
+        reason=reason,
+        refinement_rate=None,
+        spatial_map=None,
+        recommended_norm="",
         citation=_CITATION,
         doc_url=_DOC_URL,
     )
