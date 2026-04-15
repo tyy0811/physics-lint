@@ -3,33 +3,76 @@
 Design doc §3.4. The Week-1 Day-2 scikit-fem spike passed on 2026-04-14
 (commit 941658d); MeshField ships unconditionally in V1.
 
-**Laplacian via Galerkin projection.** The continuous Laplacian is
-projected onto the FE space via ``M lap = -K u`` where ``K`` is the
-stiffness matrix (``∫ grad(u) · grad(v) dx``) and ``M`` is the
-consistent mass matrix (``∫ u * v dx``). Both are assembled from
-scikit-fem's built-in BilinearForm helpers and returned as scipy
-sparse matrices.
+V1 scope and the ``.laplacian()`` stub
+--------------------------------------
 
-The raw ``-M^{-1} K u`` projection is contaminated at the boundary
-whenever ``∂u/∂n ≠ 0``: the missing boundary-flux term from
-integration by parts (``∫ (∂u/∂n) v ds``) pollutes rows touching the
-boundary DOFs and blows up the nodal values there. To keep the
-projected Laplacian well-behaved the system is solved with
-*homogeneous Dirichlet* on the boundary DOFs of the result via
-``skfem.condense/solve`` — i.e. the returned Laplacian lives in the
-zero-trace subspace. This matches the convention the scikit-fem spike
-(commit 941658d) used for the Poisson manufactured-solution check and
-is the right scope for V1: PH-CON-004 / PH-NUM-001 only consume the
-Laplacian on interior DOFs, where this projection is consistent and
-superconverges on P2 meshes for smooth inputs. Fields whose
-analytical Laplacian does *not* vanish on the boundary will still be
-correct in the interior; the boundary trace of the returned Laplacian
-should not be interpreted as a pointwise value of Δu.
+The ``Field`` ABC contract for ``.laplacian()`` says the returned Field's
+``values()`` has shape ``(*spatial,)``, with per-point values interpreted
+pointwise. ``GridField`` and ``CallableField`` satisfy this contract by
+returning an FD/spectral or autograd-computed pointwise approximation at
+every DOF.
 
-**Scope.** V1 exposes ``values``, ``laplacian``, ``integrate``, and
-``values_on_boundary``. ``at`` and ``grad`` are deferred to V1.1:
-point-evaluation and per-component gradients require an interpolation
-path the Week-3 rules don't consume.
+**MeshField does NOT implement ``.laplacian()`` in V1** because the V1
+finite-element operator does not satisfy the pointwise-approximation
+contract that the ABC implies. ``.laplacian()`` raises
+``NotImplementedError`` and points callers at
+``laplacian_l2_projected_zero_trace()``, which is the V1 operator
+physics-lint's mesh rules actually consume.
+
+V1.1 may add a true pointwise ``.laplacian()`` via superconvergent patch
+recovery (SPR) of gradients followed by a second recovery pass, or via
+another technique that satisfies the ABC contract at every DOF. That is
+tracked as a V1.1 backlog item; it is deliberately out of Week-3 scope.
+
+The V1 operator: ``laplacian_l2_projected_zero_trace``
+------------------------------------------------------
+
+Given a MeshField ``u`` on a basis, this method returns a new MeshField
+whose DOFs are the L² projection of ``Δu`` onto the **zero-trace FE
+subspace** ``V_{h,0}`` — that is, the subset of the FE space whose
+members vanish on the domain boundary. Concretely, the returned DOFs
+satisfy::
+
+    M_II lap_I = -(K u)_I          on interior DOFs
+    lap_B      = 0                  on boundary DOFs
+
+where ``K = ∫ ∇u · ∇v dx`` is the stiffness matrix, ``M = ∫ u v dx`` is
+the consistent mass matrix, and ``I``/``B`` index interior / boundary
+DOFs. The implementation uses ``skfem.condense`` and ``skfem.solve`` to
+enforce ``lap_B = 0`` as a hard Dirichlet boundary condition on the
+projection.
+
+**Why not the plan's raw ``-M⁻¹ K u``.** The plan scaffolded
+``lap = -M⁻¹ K u`` as a Galerkin projection of the pointwise Laplacian.
+This formulation is mathematically unsound for fields with non-zero
+``∂u/∂n`` on the boundary: integration by parts leaves a boundary flux
+term ``∫_{∂Ω} (∂u/∂n) v dS`` that the stiffness matrix alone does not
+capture. Worse, the error does not stay at the boundary — the mass
+matrix ``M`` couples interior and boundary rows, so the missing flux
+term pollutes ``M⁻¹ K u`` globally. Numerical verification on
+``u = sin(πx) sin(πy)`` at P2 refine=4 shows interior relative error
+~260% for the raw formula, vs ~1.2% for the zero-trace projection.
+
+**Boundary semantics.** The boundary trace of the returned MeshField is
+**not** a pointwise approximation to the true boundary value of ``Δu``;
+it is hard-pinned to zero by construction. Downstream rules must either
+restrict to interior DOFs/elements by construction or explicitly
+acknowledge the artifact. PH-CON-004 (the V1 consumer) takes the
+structural approach: its per-element residual excludes boundary
+elements so boundary-DOF values never reach the rule output.
+
+**Convergence.** The refinement test in ``tests/test_meshfield.py``
+observed O(h²) interior convergence on the smooth analytical solution
+``sin(πx) sin(πy)`` with P2 elements. The rate may be lower for
+non-smooth fields (piecewise H¹ but not H² inputs, discontinuous
+sources, kinked solutions) where L² projection is at best O(h). This
+is a property of the inputs, not a regression.
+
+**Scope of V1 public methods.** V1 exposes ``values``,
+``laplacian_l2_projected_zero_trace``, ``integrate``, and
+``values_on_boundary``. ``at`` (point evaluation) and ``grad`` (per-axis
+partials) raise ``NotImplementedError``; they are not consumed by Week-3
+rules and adding them needs an interpolation path that is V1.1 work.
 """
 
 from __future__ import annotations
@@ -56,7 +99,26 @@ class MeshField(Field):
     def grad(self) -> list[Field]:
         raise NotImplementedError("MeshField.grad() lands in V1.1 if needed")
 
-    def laplacian(self) -> MeshField:
+    def laplacian(self) -> Field:
+        raise NotImplementedError(
+            "MeshField does not implement a pointwise Laplacian in V1. The V1 "
+            "finite-element operator is an L² projection of Δu onto the zero-"
+            "trace FE subspace and does not satisfy the pointwise-approximation "
+            "contract that the Field ABC's .laplacian() implies (boundary DOFs "
+            "are hard-pinned to 0 rather than approximating the true boundary "
+            "trace of Δu). Use MeshField.laplacian_l2_projected_zero_trace() "
+            "for the V1 operator; a true pointwise .laplacian() via SPR or "
+            "similar is tracked as V1.1 backlog."
+        )
+
+    def laplacian_l2_projected_zero_trace(self) -> MeshField:
+        """Return the L² projection of Δu onto the zero-trace FE subspace.
+
+        See module docstring for full semantics. Briefly: this is NOT a
+        pointwise Laplacian; it is an FE projection with boundary DOFs
+        hard-pinned to 0. Interior convergence is O(h²) on smooth inputs
+        (empirically observed; see ``tests/test_meshfield.py``).
+        """
         if self._cached_lap is None:
             from skfem import BilinearForm, condense, solve
             from skfem.helpers import dot, grad
@@ -72,11 +134,6 @@ class MeshField(Field):
             k_mat = _laplace_form.assemble(self._basis)
             m_mat = _mass_form.assemble(self._basis)
 
-            # Galerkin Laplacian with homogeneous Dirichlet on boundary DOFs:
-            #   M lap = -K u   on interior,   lap = 0 on the boundary trace.
-            # See module docstring for why the boundary is pinned to 0 rather
-            # than left to the raw L^2 projection (which is contaminated by
-            # the missing ∫ (∂u/∂n) v ds flux term when ∂u/∂n ≠ 0).
             rhs = -(k_mat @ self._dofs)
             boundary_dofs = self._basis.get_dofs().flatten()
             lap_dofs = solve(*condense(m_mat, rhs, D=boundary_dofs))
