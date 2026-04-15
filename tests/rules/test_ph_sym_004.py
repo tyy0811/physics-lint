@@ -1,8 +1,9 @@
-"""PH-SYM-004 — periodic translation equivariance (periodic domains only)."""
+"""PH-SYM-004 — V1 structural stub; always SKIPs with explanatory reason."""
 
 import numpy as np
+import torch
 
-from physics_lint import DomainSpec, GridField
+from physics_lint import CallableField, DomainSpec, GridField
 from physics_lint.rules import ph_sym_004
 
 
@@ -34,17 +35,33 @@ def _non_periodic_spec(declared: list[str]) -> DomainSpec:
     )
 
 
-def test_ph_sym_004_periodic_translation_passes_on_sin():
+def test_ph_sym_004_periodic_declared_skips_as_v1_stub():
     n = 32
     x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
-    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
-    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    X, Y = np.meshgrid(x, x, indexing="ij")  # noqa: N806
     u = np.sin(X) + np.sin(Y)
     field = GridField(u, h=(2 * np.pi / n, 2 * np.pi / n), periodic=True)
     spec = _periodic_spec(["translation_x", "translation_y"])
     result = ph_sym_004.check(field, spec)
-    assert result.status == "PASS"
-    assert result.raw_value is not None
+    assert result.status == "SKIPPED"
+    assert "V1.1" in (result.reason or "")
+
+
+def test_ph_sym_004_callable_field_also_skips_as_v1_stub():
+    # Adapter-mode call site: CallableField should not raise, just SKIP.
+    def sin_sum(pts: torch.Tensor) -> torch.Tensor:
+        return torch.sin(pts[..., 0]).unsqueeze(-1) + torch.sin(pts[..., 1]).unsqueeze(-1)
+
+    n = 16
+    x = torch.linspace(0.0, 2 * np.pi, n + 1)[:-1]
+    grid = torch.stack(torch.meshgrid(x, x, indexing="ij"), dim=-1)
+    field = CallableField(
+        sin_sum, sampling_grid=grid, h=(2 * np.pi / n, 2 * np.pi / n), periodic=True
+    )
+    spec = _periodic_spec(["translation_x"])
+    result = ph_sym_004.check(field, spec)
+    assert result.status == "SKIPPED"
+    assert "V1.1" in (result.reason or "")
 
 
 def test_ph_sym_004_skipped_on_nonperiodic():

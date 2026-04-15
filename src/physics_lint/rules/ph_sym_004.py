@@ -1,25 +1,28 @@
-"""PH-SYM-004: Translation equivariance (periodic domains only in V1).
+"""PH-SYM-004: Translation equivariance (V1 structural stub).
 
-**V1 scope:** periodic domains only (``field.periodic == True``).
-Non-periodic translation would require zero-padding or other boundary
-handling and is deferred to V2. On offline fields this rule degrades to
-a "shifted field vs original" sanity bound — the discrete L^2 difference
-of ``np.roll(u)`` and ``u``, normalized by ``||u||``. For smooth periodic
-sines this is O(shift/N), which sits comfortably below the V1 sanity
-threshold of 2.0.
+**V1 scope:** this rule is a structural stub that always emits ``SKIPPED``
+once past its declared/periodic gates. True translation equivariance is a
+*model* property — comparing ``f(roll(x))`` against ``roll(f(x))`` on a
+live callable — and requires adapter-mode plumbing that lands in V1.1.
 
-True model-based translation equivariance (comparing ``f(roll(x))`` to
-``roll(f(x))`` on a live callable model) is deferred to V1.1 when
-``CallableField`` is plumbed through this rule.
+The prior implementation measured the offline quantity
+``||roll(u) - u|| / ||roll(u)||``, but ``np.roll`` preserves norm, so the
+triangle inequality caps this quantity at 2.0. A PASS-if-<2.0 threshold
+rubber-stamped random noise, smooth ramps, and most structured fields;
+only a pathologically Nyquist-aligned checkerboard could reach WARN. The
+false-pass was removed rather than shipping a metric that cannot fail on
+realistic inputs.
+
+The rule keeps its ``declared`` and ``periodic`` gates so the SKIP reasons
+explain *which* precondition is missing (not declared, non-periodic, or
+the V1-stub deferral).
 """
 
 from __future__ import annotations
 
-import numpy as np
-
-from physics_lint.field import Field, GridField
+from physics_lint.field import Field
 from physics_lint.report import RuleResult
-from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
+from physics_lint.rules._symmetry_helpers import is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
 __rule_id__ = "PH-SYM-004"
@@ -28,8 +31,6 @@ __default_severity__ = "warning"
 __input_modes__ = frozenset({"adapter", "dump"})
 
 _DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-SYM-004"
-
-_SANITY_THRESHOLD = 2.0
 
 
 def check(field: Field, spec: DomainSpec) -> RuleResult:
@@ -42,49 +43,12 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             "PH-SYM-004 is periodic-only in V1; non-periodic translation "
             "requires interpolation and is deferred to V2"
         )
-    if not isinstance(field, GridField):
-        raise TypeError(f"PH-SYM-004 requires GridField; got {type(field).__name__}")
-
-    u = field.values()
-    if u.ndim != 2:
-        raise ValueError(f"PH-SYM-004 requires 2D field; got shape {u.shape}")
-
-    errs: list[float] = []
-    if wants_x:
-        for shift in (1, u.shape[0] // 4):
-            errs.append(equivariance_error_np(np.roll(u, shift=shift, axis=0), u))
-    if wants_y:
-        for shift in (1, u.shape[1] // 4):
-            errs.append(equivariance_error_np(np.roll(u, shift=shift, axis=1), u))
-
-    max_err = max(errs) if errs else 0.0
-
-    # Offline-field sanity bound. For smooth periodic sines, roll(u) - u is
-    # O(shift / N) so max_err < 2.0 easily. A raw_value near or above 2.0
-    # on an offline field means the stored tensor is pathologically
-    # structured (roll doubles its norm) — warn the user.
-    status = "PASS" if max_err < _SANITY_THRESHOLD else "WARN"
-
-    return RuleResult(
-        rule_id=__rule_id__,
-        rule_name=__rule_name__,
-        severity=__default_severity__,
-        status=status,
-        raw_value=max_err,
-        violation_ratio=max_err / _SANITY_THRESHOLD,
-        mode=None,
-        reason=(
-            "offline-field sanity check; model-output translation equivariance "
-            "via CallableField lands in V1.1"
-            if status == "PASS"
-            else f"offline-field sanity bound {_SANITY_THRESHOLD} exceeded "
-            f"(max_err {max_err:.2e}); field may be pathologically structured"
-        ),
-        refinement_rate=None,
-        spatial_map=None,
-        recommended_norm="max relative L^2 of shifted field vs original",
-        citation="design doc §9.2 periodic translation",
-        doc_url=_DOC_URL,
+    return _skip(
+        "PH-SYM-004 is a V1 structural stub: true translation equivariance "
+        "is a model property (compare f(roll(x)) to roll(f(x))) and requires "
+        "adapter-mode plumbing that lands in V1.1. Offline field invariance "
+        "is bounded above by 2.0 via triangle inequality and is not a "
+        "meaningful check; it has been removed rather than fabricate a PASS."
     )
 
 
