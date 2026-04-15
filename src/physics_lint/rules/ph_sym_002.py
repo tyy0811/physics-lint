@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from physics_lint.field import Field, GridField
+from physics_lint.field import Field
 from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import ensure_grid_field
 from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
@@ -28,8 +29,7 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     wants_y = is_symmetry_declared(spec.symmetries, "reflection_y")
     if not (wants_x or wants_y):
         return _skip("no reflection_x or reflection_y declared")
-    if not isinstance(field, GridField):
-        raise TypeError(f"PH-SYM-002 requires GridField; got {type(field).__name__}")
+    field = ensure_grid_field(field, spec)
 
     u = field.values()
     if u.ndim != 2:

@@ -67,3 +67,25 @@ def test_ph_sym_001_d4_implies_c4():
     field = _c4_symmetric_field()
     result = ph_sym_001.check(field, spec)
     assert result.status == "PASS"
+
+
+def test_ph_sym_001_accepts_callable_field_via_materialization():
+    """CallableField inputs should be materialized, not TypeError."""
+    import torch
+
+    from physics_lint import CallableField
+
+    def radial(pts: torch.Tensor) -> torch.Tensor:
+        r2 = pts[..., 0] ** 2 + pts[..., 1] ** 2
+        return r2.unsqueeze(-1)
+
+    n = 32
+    axis = torch.linspace(-0.5, 0.5, n)
+    grid = torch.stack(torch.meshgrid(axis, axis, indexing="ij"), dim=-1)
+    field = CallableField(radial, sampling_grid=grid, h=(1 / (n - 1), 1 / (n - 1)))
+    spec = _square_laplace_spec(["C4"])
+    result = ph_sym_001.check(field, spec)
+    assert result.status == "PASS"
+    assert result.raw_value is not None
+    # loose - materialized float32 values have more noise than pure np.rot90
+    assert result.raw_value < 1e-6

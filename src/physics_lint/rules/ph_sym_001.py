@@ -10,8 +10,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from physics_lint.field import Field, GridField
+from physics_lint.field import Field
 from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import ensure_grid_field
 from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
@@ -40,8 +41,7 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             citation="",
             doc_url=_DOC_URL,
         )
-    if not isinstance(field, GridField):
-        raise TypeError(f"PH-SYM-001 requires GridField; got {type(field).__name__}")
+    field = ensure_grid_field(field, spec)
 
     u = field.values()
     if u.ndim != 2 or u.shape[0] != u.shape[1]:
