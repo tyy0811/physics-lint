@@ -49,7 +49,13 @@ def load_target(
     cli_overrides: dict[str, Any],
     toml_path: Path | None,
 ) -> LoadedTarget:
-    """Load a target file, merge config, and return a LoadedTarget."""
+    """Load a target file, merge config, and return a LoadedTarget.
+
+    After dispatch, _resolve_source_term runs for both adapter and dump
+    paths so a Poisson config can carry a ``source_term="source.npy"``
+    pointer and have PH-RES-001 see the source array without the user
+    having to use the .npz-with-embedded-source form.
+    """
     path = Path(path)
     suffix = path.suffix.lower()
 
@@ -58,15 +64,19 @@ def load_target(
         toml_spec = load_spec_from_toml(toml_path)
 
     if suffix == ".py":
-        return _load_adapter(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
-    if suffix in (".npz", ".npy"):
-        return _load_dump(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
-    if suffix in (".pt", ".pth"):
+        target = _load_adapter(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
+    elif suffix in (".npz", ".npy"):
+        target = _load_dump(path, toml_spec=toml_spec, cli_overrides=cli_overrides)
+    elif suffix in (".pt", ".pth"):
         raise LoaderError(
             f"{path.name}: .pt/.pth files are not supported directly. "
             "Please use an adapter or convert to .npz; see docs/loading.html"
         )
-    raise LoaderError(f"{path.name}: unsupported file extension {suffix}")
+    else:
+        raise LoaderError(f"{path.name}: unsupported file extension {suffix}")
+
+    _resolve_source_term(target, base_path=path)
+    return target
 
 
 def _load_adapter(
@@ -274,3 +284,51 @@ def _build_sampling_grid(spec: DomainSpec) -> torch.Tensor:
         n_t = shape[ndim_spatial]
         axes.append(torch.linspace(t_lo, t_hi, n_t))
     return torch.stack(torch.meshgrid(*axes, indexing="ij"), dim=-1)
+
+
+def _resolve_source_term(target: LoadedTarget, *, base_path: Path) -> None:
+    """Load spec.source_term (if set) from disk and inject into the spec.
+
+    Poisson residuals need a source array, and the user-facing API offers
+    two ways to provide one:
+
+    1. .npz dump with an embedded ``source`` key — handled inline in
+       _load_dump by stashing it under spec._source_array.
+    2. A ``source_term`` string on the validated DomainSpec pointing at a
+       separate .npy/.npz file — handled here so adapter mode and dump
+       mode share one code path. Relative paths resolve against the
+       adapter/dump file's directory so user projects can ship a
+       ``model_adapter.py`` + ``source.npy`` pair without hardcoding
+       absolute paths.
+
+    If both forms are used and disagree, source_term wins (it's the more
+    explicit of the two). If neither is used, PH-RES-001's Poisson branch
+    emits SKIPPED with a clear reason.
+    """
+    source_term = target.spec.source_term
+    if source_term is None:
+        return
+
+    source_path = Path(source_term)
+    if not source_path.is_absolute():
+        source_path = base_path.parent / source_path
+    if not source_path.is_file():
+        raise LoaderError(
+            f"spec.source_term='{source_term}' resolved to {source_path}: "
+            "file not found. Use an absolute path, or place the source "
+            "file next to the adapter/dump."
+        )
+
+    loaded = np.load(source_path, allow_pickle=True)
+    source: np.ndarray
+    if isinstance(loaded, np.ndarray):
+        source = loaded
+    elif "source" in loaded.files:
+        source = np.asarray(loaded["source"])
+    else:
+        raise LoaderError(
+            f"{source_path}: expected a bare .npy array or an .npz with a "
+            "'source' key; got .npz with keys "
+            f"{sorted(loaded.files)!r}."
+        )
+    object.__setattr__(target.spec, "_source_array", source)

@@ -35,13 +35,29 @@ def _heat_spec() -> DomainSpec:
 
 
 def test_ph_var_002_fires_on_wave():
+    # Info-level caveat: status is PASS (so overall_status stays PASS) but
+    # severity is info (so the reporter can still surface it) and `reason`
+    # carries the message. A WARN status here would poison every clean
+    # wave report regardless of whether any real rule actually warned.
     spec = _wave_spec()
     field = GridField(np.zeros((16, 16, 8)), h=(1 / 15, 1 / 15, 1 / 7), periodic=False)
     result = ph_var_002.check(field, spec)
     assert result.rule_id == "PH-VAR-002"
     assert result.severity == "info"
-    assert result.status == "WARN"
+    assert result.status == "PASS"
     assert "hyperbolic" in (result.reason or "").lower()
+
+
+def test_ph_var_002_does_not_degrade_overall_status_on_wave():
+    # Regression: the rule must not flip a clean wave report from overall
+    # PASS to WARN just by being present.
+    from physics_lint.report import PhysicsLintReport
+
+    spec = _wave_spec()
+    field = GridField(np.zeros((16, 16, 8)), h=(1 / 15, 1 / 15, 1 / 7), periodic=False)
+    var_result = ph_var_002.check(field, spec)
+    report = PhysicsLintReport(pde="wave", grid_shape=(16, 16, 8), rules=[var_result])
+    assert report.overall_status == "PASS"
 
 
 def test_ph_var_002_skipped_on_non_wave():

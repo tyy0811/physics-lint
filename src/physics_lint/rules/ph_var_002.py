@@ -1,11 +1,17 @@
 """PH-VAR-002: Hyperbolic norm-equivalence conjectural caveat.
 
-Info-level rule that always fires (WARN) on wave PDEs and is SKIPPED
-elsewhere. The Bachmayr-Ernst variational-correctness framework is
-parabolic; applying it to hyperbolic problems is a conjecture, not a
-theorem. physics-lint still measures a wave residual in Bochner
-L^2(0,T; H^-1), but users need to know that "PASS" for wave means
-"within the conjectural tolerance", not "certified by theory".
+Info-level diagnostic rule. The Bachmayr-Ernst variational-correctness
+framework is parabolic; applying it to hyperbolic problems is a
+conjecture, not a theorem. physics-lint still measures a wave residual
+in Bochner L^2(0,T; H^-1), but users need to know that "PASS" for wave
+means "within the conjectural tolerance", not "certified by theory".
+
+Status discipline: the rule returns PASS on wave (the caveat goes in
+`reason` and `severity` stays `info`), SKIPPED on other PDEs. Returning
+WARN here would degrade every clean wave report's overall_status via
+PhysicsLintReport._STATUS_RANK, which ignores severity — "info-level
+caveat that shows up in the report but does not flag the run as bad"
+is exactly PASS + reason + severity=info.
 
 The rule is diagnostic; it doesn't compute anything against the field.
 """
@@ -51,7 +57,7 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         rule_id=__rule_id__,
         rule_name=__rule_name__,
         severity=__default_severity__,
-        status="WARN",
+        status="PASS",
         raw_value=None,
         violation_ratio=None,
         mode=None,

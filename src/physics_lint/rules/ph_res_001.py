@@ -4,10 +4,19 @@ Design doc §7.5. Norm selection by PDE class:
 
 - Laplace / Poisson (stationary, elliptic): H^-1 on periodic spectral grids,
   L^2 fallback on non-periodic FD.
-- Heat (parabolic): Bochner L^2(0, T; H^-1) — slice by slice spatial H^-1
-  with midpoint-rule time quadrature. Residual computed as u_t - kappa * Lap u.
+- Heat (parabolic): Bochner L^2(0, T; H^-1) when the spatial grid is
+  periodic+spectral (variationally correct); Bochner L^2(0, T; L^2) as a
+  non-variational fallback otherwise. Trapezoidal time quadrature throughout
+  matches the loader's endpoint-inclusive sampling.
 - Wave (hyperbolic): same Bochner norm, but the variational framework is
   conjectural — see PH-VAR-002 which always fires on wave.
+
+The non-periodic fallback exists because h_minus_one_spectral drops the DC
+mode: a constant-in-space residual (e.g. u_t = 1 from a linear-in-t field)
+would be silently reported as zero on an hD grid, producing a physics
+false negative. Bochner-L2 keeps every mode at the cost of not being
+variationally correct for H^-1 — that tradeoff is documented per-result
+via recommended_norm="Bochner-L2" so reports surface it.
 """
 
 from __future__ import annotations
@@ -15,10 +24,19 @@ from __future__ import annotations
 import numpy as np
 
 from physics_lint.field import Field, GridField
-from physics_lint.norms import bochner_l2_h_minus_one, h_minus_one_spectral, l2_grid
+from physics_lint.norms import (
+    bochner_l2_fallback,
+    bochner_l2_h_minus_one,
+    h_minus_one_spectral,
+    l2_grid,
+)
 from physics_lint.report import RuleResult
 from physics_lint.rules._helpers import Floor, _load_floor, _tristate
 from physics_lint.spec import DomainSpec
+
+# np.gradient(..., edge_order=2) needs at least 3 samples along the axis.
+# Fewer than that is a spec error, not a runtime exception — emit SKIPPED.
+_MIN_TIME_STEPS_FOR_GRADIENT = 3
 
 __rule_id__ = "PH-RES-001"
 __rule_name__ = "Residual exceeds variationally-correct norm threshold"
@@ -64,10 +82,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             )
         residual = -lap - source
         raw_value, norm_name = _compute_spatial_norm(residual, field, spec)
-    elif spec.pde == "heat":
-        raw_value, norm_name = _compute_heat_bochner_residual(field, spec)
-    elif spec.pde == "wave":
-        raw_value, norm_name = _compute_wave_bochner_residual(field, spec)
+    elif spec.pde in {"heat", "wave"}:
+        skip = _check_time_axis_preconditions(field, spec)
+        if skip is not None:
+            return skip
+        if spec.pde == "heat":
+            raw_value, norm_name = _compute_heat_bochner_residual(field, spec)
+        else:
+            raw_value, norm_name = _compute_wave_bochner_residual(field, spec)
     else:  # pragma: no cover — pydantic guarantees spec.pde is a literal
         raise ValueError(f"unknown PDE {spec.pde}")
 
@@ -126,19 +148,70 @@ def _resolve_source(spec: DomainSpec) -> np.ndarray | None:
     return np.asarray(source)
 
 
+def _check_time_axis_preconditions(field: GridField, spec: DomainSpec) -> RuleResult | None:
+    """Return a SKIPPED RuleResult if heat/wave preconditions are unmet, else None.
+
+    Two guards:
+    1. Field must actually carry a time axis. `spec.domain.is_time_dependent`
+       is true for heat/wave, but a malformed dump could still hand us a
+       2D tensor — catch that here rather than letting u.ndim < 3 raise
+       deep inside the residual helpers.
+    2. np.gradient(edge_order=2) needs at least 3 samples along the axis.
+       A heat/wave spec with grid_shape=[N, N, 2] validates through
+       pydantic today (DomainSpec only checks the tuple length); without
+       this guard the rule would raise ValueError mid-run.
+    """
+    u = field.values()
+    if u.ndim < 3:
+        return _skipped(
+            f"PH-RES-001 {spec.pde} residual requires a time-axis field; got values shape {u.shape}"
+        )
+    nt = u.shape[-1]
+    if nt < _MIN_TIME_STEPS_FOR_GRADIENT:
+        return _skipped(
+            f"PH-RES-001 {spec.pde} residual needs at least "
+            f"{_MIN_TIME_STEPS_FOR_GRADIENT} time samples for the 2nd-order "
+            f"central-difference time derivative; got nt={nt}. "
+            "Increase grid_shape[-1] or resample the prediction."
+        )
+    return None
+
+
+def _bochner_of(
+    residual_series: np.ndarray,
+    *,
+    field: GridField,
+    spec: DomainSpec,
+    spatial_h: tuple[float, ...],
+    dt: float,
+) -> tuple[float, str]:
+    """Pick the right Bochner norm based on periodic+spectral availability.
+
+    Periodic spatial grids with the spectral backend get the variationally
+    correct Bochner L^2(0,T; H^-1). Everything else (non-periodic hD/hN,
+    or FD-backed periodic grids) falls back to Bochner L^2(0,T; L^2). The
+    fallback label propagates via recommended_norm so downstream reports
+    flag the approximate measurement.
+    """
+    if spec.periodic and field.backend == "spectral":
+        bochner = bochner_l2_h_minus_one(residual_series, spatial_h=spatial_h, dt=dt)
+        return float(bochner), "Bochner-H-1"
+    bochner = bochner_l2_fallback(residual_series, spatial_h=spatial_h, dt=dt)
+    return float(bochner), "Bochner-L2"
+
+
 def _compute_heat_bochner_residual(
     field: GridField,
     spec: DomainSpec,
 ) -> tuple[float, str]:
-    """Heat residual u_t - kappa * Lap u, measured in Bochner L^2(0, T; H^-1).
+    """Heat residual u_t - kappa * Lap u, measured in Bochner L^2 over time.
 
     Slice-by-slice spatial Laplacian (reusing the field's backend for
     consistency with the calibration floor); central-difference time
-    derivative via np.gradient with edge_order=2.
+    derivative via np.gradient with edge_order=2. Periodic+spectral path
+    uses Bochner-H^-1; everything else uses Bochner-L2 (see module docstring).
     """
     u = field.values()
-    if u.ndim < 3:
-        raise ValueError(f"heat residual needs a time axis; got shape {u.shape}")
     spatial_h = field.h[:-1]
     dt = field.h[-1]
     kappa = spec.diffusivity
@@ -158,25 +231,25 @@ def _compute_heat_bochner_residual(
         lap_k = sub_field.laplacian().values()
         residual_series[..., k] = np.take(u_t, k, axis=-1) - kappa * lap_k
 
-    bochner = bochner_l2_h_minus_one(residual_series, spatial_h=spatial_h, dt=dt)
-    return float(bochner), "Bochner-H-1"
+    return _bochner_of(residual_series, field=field, spec=spec, spatial_h=spatial_h, dt=dt)
 
 
 def _compute_wave_bochner_residual(
     field: GridField,
     spec: DomainSpec,
 ) -> tuple[float, str]:
-    """Wave residual u_tt - c^2 * Lap u, measured in Bochner L^2(0, T; H^-1)."""
+    """Wave residual u_tt - c^2 * Lap u, measured in Bochner L^2 over time.
+
+    Two central-difference passes give u_tt; edge_order=2 keeps 2nd-order
+    accuracy at the boundary too. Norm selection is the same as for heat
+    (periodic+spectral -> Bochner-H^-1, otherwise Bochner-L2).
+    """
     u = field.values()
-    if u.ndim < 3:
-        raise ValueError(f"wave residual needs a time axis; got shape {u.shape}")
     spatial_h = field.h[:-1]
     dt = field.h[-1]
     c = spec.wave_speed
     assert c is not None
 
-    # Two central differences gives u_tt; edge_order=2 keeps 2nd-order
-    # accuracy at the boundary too.
     u_t = np.gradient(u, dt, axis=-1, edge_order=2)
     u_tt = np.gradient(u_t, dt, axis=-1, edge_order=2)
     nt = u.shape[-1]
@@ -192,8 +265,7 @@ def _compute_wave_bochner_residual(
         lap_k = sub_field.laplacian().values()
         residual_series[..., k] = np.take(u_tt, k, axis=-1) - (c**2) * lap_k
 
-    bochner = bochner_l2_h_minus_one(residual_series, spatial_h=spatial_h, dt=dt)
-    return float(bochner), "Bochner-H-1"
+    return _bochner_of(residual_series, field=field, spec=spec, spatial_h=spatial_h, dt=dt)
 
 
 def _skipped(reason: str) -> RuleResult:
