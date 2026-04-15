@@ -3,7 +3,7 @@
 See docs/design/2026-04-14-physics-lint-v1.md for the V1 design.
 """
 
-from physics_lint.field import CallableField, Field, GridField
+from physics_lint.field import CallableField, Field, GridField, MeshField
 from physics_lint.spec import (
     BCSpec,
     DomainSpec,
@@ -22,6 +22,7 @@ __all__ = [
     "FieldSourceSpec",
     "GridDomain",
     "GridField",
+    "MeshField",
     "SARIFSpec",
     "SymmetrySpec",
     "__version__",
