@@ -4,7 +4,8 @@
 - trapezoidal_integral: weighted L^1 integral via the same trapezoidal rule
 - h_minus_one_spectral: sqrt(sum_{k != 0} |u_hat|^2 / |k|^2) on periodic grids
 - h_minus_one_fe: (Task 8, conditional on scikit-fem spike)
-- bochner_l2_h_minus_one: (Week 2, heat/wave)
+- bochner_l2_h_minus_one: midpoint-rule Bochner L^2(0,T; H^-1) norm for
+  time-dependent residuals (heat, wave) with time as the last axis
 """
 
 from __future__ import annotations
@@ -93,3 +94,47 @@ def h_minus_one_spectral(r: np.ndarray, h: float | tuple[float, ...]) -> float:
         np.sum(np.abs(r_hat[mask]) ** 2 / k_sq_total[mask]) / (n_total**2) * volume
     )
     return float(np.sqrt(h_minus_one_sq))
+
+
+def bochner_l2_h_minus_one(
+    r_series: np.ndarray,
+    *,
+    spatial_h: tuple[float, ...],
+    dt: float,
+) -> float:
+    """sqrt(integral_0^T ||r(., t)||_{H^-1}^2 dt) via midpoint rule.
+
+    Per design doc §7.4. The caller provides a residual time series with time
+    as the *last* axis, matching the Week-2 time-last convention throughout
+    the library (GridField's h tuple, the loader's sampling grid, and the
+    heat/wave rule branches all encode time as the final axis).
+
+    Args:
+        r_series: residual time series with time as the LAST axis. Shape
+            (N_0, N_1, [N_2,] n_steps). At least one spatial axis is required.
+        spatial_h: per-spatial-axis spacings. Length must equal
+            r_series.ndim - 1 so that each slice r_series[..., k] has a
+            well-formed spacing tuple for h_minus_one_spectral.
+        dt: timestep width. Each slice contributes dt * H^-1(slice)^2 to the
+            squared Bochner norm (midpoint rule — no endpoint half-weights,
+            because the caller is expected to sample at midpoints when the
+            quadrature accuracy matters).
+
+    Returns:
+        Bochner norm of r.
+    """
+    if r_series.ndim < 2:
+        raise ValueError(
+            f"bochner_l2_h_minus_one requires at least one spatial axis plus "
+            f"a time axis; got r_series.ndim={r_series.ndim}"
+        )
+    if len(spatial_h) != r_series.ndim - 1:
+        raise ValueError(
+            f"spatial_h length {len(spatial_h)} must equal r_series.ndim - 1 ({r_series.ndim - 1})"
+        )
+    n_steps = r_series.shape[-1]
+    total_sq = 0.0
+    for k in range(n_steps):
+        slice_k = np.take(r_series, k, axis=-1)
+        total_sq += dt * (h_minus_one_spectral(slice_k, spatial_h) ** 2)
+    return float(np.sqrt(total_sq))
