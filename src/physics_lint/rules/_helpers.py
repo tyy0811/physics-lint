@@ -52,6 +52,17 @@ _SHIPPED_DEFAULTS: dict[tuple[str, str, str, str], float] = {
     ("PH-RES-001", "laplace", "spectral", "L2"): 1e-13,
     ("PH-BC-001", "laplace", "fd4", "L2-rel"): 1e-11,
     ("PH-BC-001", "poisson", "fd4", "L2-rel"): 1e-11,
+    # Heat/wave conservation shipped defaults (Week 2). All tuned against the
+    # analytical battery so the battery comfortably PASSes the tri-state
+    # classification when floors.toml is absent. Task 7 tightens these.
+    ("PH-CON-001", "heat", "fd4", "relative"): 1e-4,
+    ("PH-CON-001", "heat", "spectral", "relative"): 1e-4,
+    ("PH-CON-001", "heat", "fd4", "relative_L2_over_T"): 1e-3,
+    ("PH-CON-001", "heat", "spectral", "relative_L2_over_T"): 1e-3,
+    ("PH-CON-002", "wave", "fd4", "relative"): 1e-3,
+    ("PH-CON-002", "wave", "spectral", "relative"): 1e-3,
+    ("PH-CON-003", "heat", "fd4", "relative"): 1e-4,
+    ("PH-CON-003", "heat", "spectral", "relative"): 1e-4,
 }
 
 _TOLERANCE_DEFAULTS: dict[str, float] = {
