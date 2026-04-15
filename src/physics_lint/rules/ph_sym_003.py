@@ -44,6 +44,8 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     grid = field._grid  # shape (..., 2) for 2D
     if grid.shape[-1] != 2:
         return _skip("SO(2) LEE requires a 2D spatial grid")
+    if grid.numel() == 0:
+        return _skip("SO(2) LEE requires a non-empty sampling grid")
 
     def rotated_model(theta_param: torch.Tensor) -> torch.Tensor:
         c = torch.cos(theta_param)
@@ -57,7 +59,7 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         rotated_grid = torch.stack([x_rot, y_rot], dim=-1)
         return model(rotated_grid).squeeze(-1)
 
-    theta0 = torch.zeros(1, requires_grad=True)
+    theta0 = torch.zeros(1)  # jvp is forward-mode; no requires_grad needed
     tangent = torch.ones_like(theta0)
 
     from torch.autograd.functional import jvp
