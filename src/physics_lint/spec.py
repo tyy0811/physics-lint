@@ -51,6 +51,10 @@ class GridDomain(BaseModel):
         return tuple(hi - lo for lo, hi in (self.x, self.y))
 
     @property
+    def spatial_bounds(self) -> tuple[tuple[float, float], ...]:
+        return (self.x, self.y)
+
+    @property
     def is_time_dependent(self) -> bool:
         return self.t is not None
 

@@ -46,6 +46,19 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         return _skip("SO(2) LEE requires a 2D spatial grid")
     if grid.numel() == 0:
         return _skip("SO(2) LEE requires a non-empty sampling grid")
+    # Origin-centered gate — the rotation matrix rotates about (0, 0),
+    # so the Lie derivative is only meaningful if the sampling grid is
+    # symmetric about the origin. A grid on [0, 1] x [0, 1] rotated
+    # about the origin would leave the domain entirely.
+    grid_max = float(torch.abs(grid).max())
+    center = torch.stack([grid[..., 0].mean(), grid[..., 1].mean()])
+    center_offset = float(torch.norm(center))
+    if center_offset > 1e-6 * max(grid_max, 1.0):
+        return _skip(
+            f"SO(2) LEE requires an origin-centered sampling grid; "
+            f"got grid center offset {center_offset:.3e} "
+            f"(grid max |coord| = {grid_max:.3e})"
+        )
 
     def rotated_model(theta_param: torch.Tensor) -> torch.Tensor:
         c = torch.cos(theta_param)
