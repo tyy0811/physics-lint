@@ -164,6 +164,30 @@ def _heat_exact(n: int, nt: int) -> GridField:
     )
 
 
+def test_ph_num_002_saturated_residual_passes_without_noise_rate():
+    # Harmonic polynomial x^2 - y^2 has FD Laplacian at machine roundoff
+    # (~1e-12) on both 64^2 and 128^2 grids, so the log2 ratio of the two
+    # residuals is pure floating-point noise (e.g., -1.94) and cannot be
+    # interpreted as a convergence rate. The rule should clamp the rate
+    # to 'inf' via the saturation floor and PASS.
+    spec = _non_periodic_spec(64)
+
+    def _harmonic_polynomial(n: int) -> GridField:
+        x = np.linspace(0.0, 1.0, n)
+        y = np.linspace(0.0, 1.0, n)
+        X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+        u = X**2 - Y**2
+        return GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False, backend="fd")
+
+    result = ph_num_002.check(
+        _harmonic_polynomial(64),
+        spec,
+        refined_field=_harmonic_polynomial(128),
+    )
+    assert result.status == "PASS"
+    assert result.refinement_rate == float("inf")
+
+
 def test_ph_num_002_heat_is_skipped():
     # Review regression: previously this WARN-ed because field.laplacian()
     # differentiated over the time axis too, producing garbage. The V1

@@ -72,6 +72,16 @@ _CITATION = "Fornberg 1988; Trefethen 2000"
 # per-PDE expected rate is future work.
 _DEFAULT_EXPECTED_RATE = 1.8
 
+# Residual saturation threshold. If both the coarse and refined residual
+# L^2 norms fall below this absolute value, we treat the prediction as
+# already super-converged and report rate=inf. The number is one order
+# above the worst calibrated analytical-battery floor in floors.toml
+# (PH-RES-001 laplace fd4 L2 = 1.003e-12) so a harmonic polynomial on
+# either grid cannot produce a spurious noise-dominated rate while any
+# real prediction residual (O(h^2) ~ O(1e-3)) still lands above the
+# threshold and gets a meaningful measurement.
+_SATURATION_FLOOR = 1e-11
+
 
 def check(
     field: Field,
@@ -102,10 +112,14 @@ def check(
     r_coarse = l2_grid(lap_coarse, field.h)
     r_fine = l2_grid(lap_fine, refined_field.h)
 
-    if r_fine <= 0.0:
-        # Fine residual already at machine-precision floor; treat as
-        # super-converged. Covers both the constant/polynomial degenerate
-        # case and the usual spectral saturation path.
+    if r_fine < _SATURATION_FLOOR and r_coarse < _SATURATION_FLOOR:
+        # Both residuals already at machine precision — the analytical
+        # battery's harmonic polynomials, spectral methods, and any
+        # other case where the rule has nothing to measure. Declaring
+        # the rate as 'inf' avoids the log2 ratio degenerating into
+        # floating-point noise on the order of +/-2.
+        rate = float("inf")
+    elif r_fine <= 0.0:
         rate = float("inf")
     elif r_coarse <= 0.0:
         rate = 0.0
