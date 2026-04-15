@@ -188,6 +188,17 @@ def _load_dump(
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
 
+    # Plumb optional runtime-injected attributes: Poisson source term and
+    # heat/wave initial condition. Rules read these via
+    # getattr(spec, '_source_array', None) etc. Using object.__setattr__
+    # bypasses pydantic's frozen-model guard while keeping the validated
+    # fields of spec immutable.
+    if isinstance(loaded, np.lib.npyio.NpzFile):
+        if "source" in loaded.files:
+            object.__setattr__(spec, "_source_array", np.asarray(loaded["source"]))
+        if "initial_condition" in loaded.files:
+            object.__setattr__(spec, "_initial_condition", np.asarray(loaded["initial_condition"]))
+
     # Catch mismatched dumps *before* computing h: a wrong grid_shape picks
     # the wrong spacing and the wrong calibrated floor, producing rule
     # results that look numerical but mean nothing. The spatial + time axes

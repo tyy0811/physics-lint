@@ -105,6 +105,61 @@ def test_ph_res_001_poisson_without_source_is_skipped():
     assert "source" in (result.reason or "").lower()
 
 
+def test_ph_res_001_poisson_with_source_plumbed_through_dump(tmp_path):
+    """PH-RES-001 Poisson path with source plumbed through .npz dump metadata."""
+    from physics_lint.analytical import poisson as poisson_sols
+    from physics_lint.loader import load_target
+
+    sol = poisson_sols.periodic_sin_sin()
+    n = 64
+    x = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    y = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    u = sol.u(X, Y)
+    f = sol.source(X, Y)
+
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [n, n],
+        "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi]},
+        "periodic": True,
+        "boundary_condition": {"kind": "periodic"},
+        "field": {"type": "grid", "backend": "spectral"},
+    }
+    path = tmp_path / "pred.npz"
+    np.savez(path, prediction=u, metadata=metadata, source=f)
+
+    loaded = load_target(path, cli_overrides={}, toml_path=None)
+    result = ph_res_001.check(loaded.field, loaded.spec)
+    assert result.status == "PASS"
+    assert result.recommended_norm == "H-1"
+
+
+def test_ph_res_001_poisson_source_shape_mismatch_skipped(tmp_path):
+    """Source array with wrong shape -> SKIPPED, not crash."""
+    from physics_lint.loader import load_target
+
+    n = 32
+    u = np.zeros((n, n))
+    wrong_source = np.zeros((n + 2, n))  # off-by-a-halo shape mismatch
+
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [n, n],
+        "domain": {"x": [0.0, 2 * np.pi], "y": [0.0, 2 * np.pi]},
+        "periodic": True,
+        "boundary_condition": {"kind": "periodic"},
+        "field": {"type": "grid", "backend": "spectral"},
+    }
+    path = tmp_path / "pred.npz"
+    np.savez(path, prediction=u, metadata=metadata, source=wrong_source)
+
+    loaded = load_target(path, cli_overrides={}, toml_path=None)
+    result = ph_res_001.check(loaded.field, loaded.spec)
+    assert result.status == "SKIPPED"
+    assert "shape" in (result.reason or "").lower()
+
+
 def test_ph_res_001_rejects_non_gridfield():
     import torch
 
