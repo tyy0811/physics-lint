@@ -15,10 +15,11 @@
 #     py3.10-3.12, numpy 1.26/2.0, torch 2.0/2.2/2.5) IS the multi-environment
 #     validator for this file.
 #
-# Current Week-1 calibration source: macOS arm64 (Darwin) / Python 3.11.4 /
-# NumPy 1.26.4 / PyTorch 2.2.2. Second-environment validation is deferred
-# to the 6-job CI matrix; any CI job that trips on a floor boundary should
-# cause a bump commit on the failing entry.
+# Week-2 calibration source: macOS x86_64 / Python 3.11.4 / NumPy 1.26.4 /
+# PyTorch 2.2.2. Second-environment validation is deferred to the 6-job CI
+# matrix; any CI job that trips on a floor boundary should cause a bump
+# commit on the failing entry. Week-2 additions: heat (spectral Bochner-H-1),
+# wave (fd4 Bochner-L2), and conservation rules PH-CON-001/002/003.
 
 schema_version = 1
 
@@ -50,7 +51,7 @@ pde = "poisson"
 grid_shape = [64, 64]
 method = "spectral"
 norm = "H-1"
-value = 1.723e-14
+value = 1.740e-14
 tolerance = 3.0
 analytical_solution = "periodic_sin_sin"
 citation = "Week 1 Day 4 calibration, commit <auto>"
@@ -65,3 +66,82 @@ value = 2.221e-16
 tolerance = 2.0
 analytical_solution = "harmonic_polynomial_square"
 citation = "Week 1 Day 4 calibration, commit <auto>"
+
+# --- Week 2 additions -------------------------------------------------------
+
+[[floor]]
+rule = "PH-RES-001"
+pde = "heat"
+grid_shape = [64, 64, 16]
+method = "spectral"
+norm = "Bochner-H-1"
+value = 2.537e-9
+tolerance = 3.0
+analytical_solution = "periodic_cos_cos"
+citation = "Week 2 Day 3 calibration, commit <auto>"
+
+[[floor]]
+rule = "PH-RES-001"
+pde = "wave"
+grid_shape = [64, 64, 32]
+method = "fd4"
+norm = "Bochner-L2"
+value = 4.381e-2
+tolerance = 2.0
+analytical_solution = "standing_wave_square"
+citation = "Week 2 Day 3 calibration, commit <auto>. Bochner-L2 on hD is a non-variational upper bound per design doc §7.4; value dominated by 2nd-order central-FD truncation of u_tt on a rapidly oscillating standing wave (period sqrt(2), 32 samples over T=0.5)."
+
+[[floor]]
+rule = "PH-CON-001"
+pde = "heat"
+grid_shape = [64, 64, 16]
+method = "spectral"
+norm = "relative"
+value = 6.279e-6
+tolerance = 3.0
+analytical_solution = "periodic_cos_cos"
+citation = "Week 2 Day 3 calibration, commit <auto>. cos*cos has zero analytic mass; the quadrature residual is picked up by the L^1 scale fallback and reported as a small relative drift."
+
+[[floor]]
+rule = "PH-CON-001"
+pde = "heat"
+grid_shape = [64, 64, 32]
+method = "fd4"
+norm = "relative_L2_over_T"
+value = 1.672e-6
+tolerance = 2.0
+analytical_solution = "eigenfunction_decay_square"
+citation = "Week 2 Day 3 calibration, commit <auto>. Rate-consistency branch: dM/dt vs divergence-theorem expected value."
+
+[[floor]]
+rule = "PH-CON-002"
+pde = "wave"
+grid_shape = [64, 64, 32]
+method = "fd4"
+norm = "relative"
+value = 2.731e-3
+tolerance = 2.0
+analytical_solution = "standing_wave_square"
+citation = "Week 2 Day 3 calibration, commit <auto>. Energy drift floor dominated by the 2nd-order gradient stack used to build the density 0.5 (u_t^2 + c^2 |grad u|^2)."
+
+[[floor]]
+rule = "PH-CON-003"
+pde = "heat"
+grid_shape = [64, 64, 16]
+method = "spectral"
+norm = "relative"
+value = 2.221e-16
+tolerance = 3.0
+analytical_solution = "periodic_cos_cos"
+citation = "Week 2 Day 3 calibration, commit <auto>. cos*cos energy is monotonically decaying analytically; max positive dE/dt is zero to machine precision so we record machine epsilon."
+
+[[floor]]
+rule = "PH-CON-003"
+pde = "heat"
+grid_shape = [32, 32, 16]
+method = "fd4"
+norm = "relative"
+value = 2.221e-16
+tolerance = 2.0
+analytical_solution = "eigenfunction_decay_square"
+citation = "Week 2 Day 3 calibration, commit <auto>. Eigenfunction energy decays monotonically; max positive dE/dt is zero to machine precision so we record machine epsilon."

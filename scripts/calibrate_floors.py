@@ -18,10 +18,19 @@ from dataclasses import asdict, dataclass
 
 import numpy as np
 
+from physics_lint.analytical import heat as heat_sols
 from physics_lint.analytical import laplace as laplace_sols
 from physics_lint.analytical import poisson as poisson_sols
+from physics_lint.analytical import wave as wave_sols
 from physics_lint.field import GridField
-from physics_lint.norms import h_minus_one_spectral, l2_grid
+from physics_lint.field.grid import _fd4_second_derivative, _spectral_laplacian
+from physics_lint.norms import (
+    bochner_l2_fallback,
+    bochner_l2_h_minus_one,
+    h_minus_one_spectral,
+    l2_grid,
+    trapezoidal_integral,
+)
 
 
 @dataclass
@@ -93,6 +102,191 @@ def _measure_laplace_spectral_h_minus_one(n: int) -> float:
     return max(value, float(np.finfo(np.float64).eps))
 
 
+def _measure_heat_periodic_spectral_bochner(n: int, nt: int) -> float:
+    """PH-RES-001 floor for heat + periodic + spectral: Bochner-H-1.
+
+    Residual = u_t - kappa * Lap u, where u_t is computed via np.gradient
+    (2nd-order central FD) and Lap u via the spectral backend. The
+    Bochner-H-1 norm drops the DC mode per slice — valid on periodic grids.
+    """
+    kappa = 0.01
+    sol = heat_sols.periodic_cos_cos(kappa=kappa)
+    xg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    yg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (2 * np.pi / n, 2 * np.pi / n)
+    dt = 0.5 / (nt - 1)
+    u_t = np.gradient(u, dt, axis=-1, edge_order=2)
+    residual = np.empty_like(u)
+    for k in range(nt):
+        slice_k = np.take(u, k, axis=-1)
+        lap = _spectral_laplacian(slice_k, h_spatial)
+        residual[..., k] = np.take(u_t, k, axis=-1) - kappa * lap
+    return bochner_l2_h_minus_one(residual, spatial_h=h_spatial, dt=dt)
+
+
+def _measure_heat_con_003_periodic_spectral(n: int, nt: int) -> float:
+    """PH-CON-003 floor for periodic+spectral heat.
+
+    cos(x)cos(y) energy decays as e^(-4 kappa t); the analytical derivative
+    is strictly negative, so the floor is just numerical noise from the
+    endpoint-order central time derivative near t=0 and t=T.
+    """
+    kappa = 0.01
+    sol = heat_sols.periodic_cos_cos(kappa=kappa)
+    xg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    yg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (2 * np.pi / n, 2 * np.pi / n)
+    dt = 0.5 / (nt - 1)
+    energy = np.array(
+        [trapezoidal_integral(np.take(u, k, axis=-1) ** 2, h_spatial) for k in range(nt)]
+    )
+    de_dt = np.gradient(energy, dt, edge_order=2)
+    max_growth = max(0.0, float(np.max(de_dt)))
+    energy_scale = max(float(np.max(energy)), 1e-12)
+    return max_growth / energy_scale
+
+
+def _measure_wave_hd_fd_bochner(n: int, nt: int) -> float:
+    """PH-RES-001 floor for wave + hD + fd4: Bochner-L2 fallback.
+
+    Standing wave eigenfunction on [0,1]^2. Non-periodic so the
+    h_minus_one_spectral path would drop the DC mode and silently hide a
+    constant-in-space residual — the rule falls back to Bochner-L2 and so
+    does this calibration.
+    """
+    c = 1.0
+    sol = wave_sols.standing_wave_square(c=c)
+    xg = np.linspace(0.0, 1.0, n)
+    yg = np.linspace(0.0, 1.0, n)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
+    dt = 0.5 / (nt - 1)
+    u_t = np.gradient(u, dt, axis=-1, edge_order=2)
+    u_tt = np.gradient(u_t, dt, axis=-1, edge_order=2)
+    residual = np.empty_like(u)
+    for k in range(nt):
+        slice_k = np.take(u, k, axis=-1)
+        lap = _fd4_second_derivative(
+            slice_k, axis=0, h=h_spatial[0], periodic=False
+        ) + _fd4_second_derivative(slice_k, axis=1, h=h_spatial[1], periodic=False)
+        residual[..., k] = np.take(u_tt, k, axis=-1) - (c**2) * lap
+    return bochner_l2_fallback(residual, spatial_h=h_spatial, dt=dt)
+
+
+def _measure_heat_con_001_periodic_spectral(n: int, nt: int) -> float:
+    """PH-CON-001 exact-mass floor for periodic+spectral heat.
+
+    Matches the rule: max |M(t) - M(0)| / max(|M(0)|, ||u_0||_1) using
+    trapezoidal_integral for both numerator and scale. The analytical
+    solution cos(x)cos(y) has zero analytic mass, so the reported floor
+    is the residual quadrature error amplified by the e^(-2 kappa t) time
+    dependence.
+    """
+    kappa = 0.01
+    sol = heat_sols.periodic_cos_cos(kappa=kappa)
+    xg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    yg = np.linspace(0.0, 2 * np.pi, n, endpoint=False)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (2 * np.pi / n, 2 * np.pi / n)
+    mass = np.array([trapezoidal_integral(np.take(u, k, axis=-1), h_spatial) for k in range(nt)])
+    m0 = float(mass[0])
+    l1 = float(trapezoidal_integral(np.abs(np.take(u, 0, axis=-1)), h_spatial))
+    scale = max(abs(m0), l1, 1e-12)
+    return float(np.max(np.abs(mass - m0))) / scale
+
+
+def _measure_heat_con_001_hd_fd(n: int, nt: int) -> float:
+    """PH-CON-001 rate-consistency floor for hD+fd heat.
+
+    Uses the eigenfunction decay solution; observed dM/dt compared against
+    the divergence-theorem expected value kappa * integral(lap u), reduced
+    via the relative L^2 over [0, T] as in the rule.
+    """
+    kappa = 0.01
+    sol = heat_sols.eigenfunction_decay_square(kappa=kappa)
+    xg = np.linspace(0.0, 1.0, n)
+    yg = np.linspace(0.0, 1.0, n)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
+    dt = 0.5 / (nt - 1)
+    mass = np.array([trapezoidal_integral(np.take(u, k, axis=-1), h_spatial) for k in range(nt)])
+    dm_dt = np.gradient(mass, dt, edge_order=2)
+    expected = np.zeros(nt)
+    for k in range(nt):
+        slice_k = np.take(u, k, axis=-1)
+        sub = GridField(slice_k, h=h_spatial, periodic=False, backend="fd")
+        lap = sub.laplacian().values()
+        expected[k] = kappa * trapezoidal_integral(lap, h_spatial)
+    err = float(np.sqrt(np.sum((dm_dt - expected) ** 2) * dt))
+    denom = max(float(np.sqrt(np.sum(expected**2) * dt)), 1e-12)
+    return err / denom
+
+
+def _measure_wave_con_002_hd_fd(n: int, nt: int) -> float:
+    """PH-CON-002 floor for wave + hD + fd4: relative energy drift.
+
+    Standing wave eigenfunction on [0,1]^2, energy computed via per-slice
+    gradient squared + u_t squared, integrated via trapezoidal quadrature.
+    """
+    c = 1.0
+    sol = wave_sols.standing_wave_square(c=c)
+    xg = np.linspace(0.0, 1.0, n)
+    yg = np.linspace(0.0, 1.0, n)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
+    dt = 0.5 / (nt - 1)
+    u_t = np.gradient(u, dt, axis=-1, edge_order=2)
+    energies = np.empty(nt)
+    for k in range(nt):
+        slice_k = np.take(u, k, axis=-1)
+        slice_ut = np.take(u_t, k, axis=-1)
+        gx = np.gradient(slice_k, h_spatial[0], axis=0, edge_order=2)
+        gy = np.gradient(slice_k, h_spatial[1], axis=1, edge_order=2)
+        density = 0.5 * (slice_ut**2 + (c**2) * (gx**2 + gy**2))
+        energies[k] = trapezoidal_integral(density, h_spatial)
+    e0 = float(energies[0])
+    denom = max(abs(e0), 1e-12)
+    return float(np.max(np.abs(energies - e0)) / denom)
+
+
+def _measure_heat_con_003_hd_fd(n: int, nt: int) -> float:
+    """PH-CON-003 floor for hD+fd heat: positive dE/dt / max E.
+
+    Eigenfunction decay: energy is strictly decreasing analytically; the
+    floor is whatever positive dE/dt the numerical derivative leaks.
+    """
+    kappa = 0.01
+    sol = heat_sols.eigenfunction_decay_square(kappa=kappa)
+    xg = np.linspace(0.0, 1.0, n)
+    yg = np.linspace(0.0, 1.0, n)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
+    dt = 0.5 / (nt - 1)
+    energy = np.array(
+        [trapezoidal_integral(np.take(u, k, axis=-1) ** 2, h_spatial) for k in range(nt)]
+    )
+    de_dt = np.gradient(energy, dt, edge_order=2)
+    max_growth = max(0.0, float(np.max(de_dt)))
+    energy_scale = max(float(np.max(energy)), 1e-12)
+    return max_growth / energy_scale
+
+
 def _measure_bc_l2_rel_self_check(n: int) -> float:
     """PH-BC-001 floor for boundary L2-rel self-check.
 
@@ -149,6 +343,69 @@ def main() -> None:
             norm="L2-rel",
             measured=_measure_bc_l2_rel_self_check(64),
             analytical_solution="harmonic_polynomial_square",
+        ),
+        FloorEntry(
+            rule="PH-RES-001",
+            pde="heat",
+            grid_shape=(64, 64, 16),
+            method="spectral",
+            norm="Bochner-H-1",
+            measured=_measure_heat_periodic_spectral_bochner(64, 16),
+            analytical_solution="periodic_cos_cos",
+        ),
+        FloorEntry(
+            rule="PH-RES-001",
+            pde="wave",
+            grid_shape=(64, 64, 32),
+            method="fd4",
+            norm="Bochner-L2",
+            measured=_measure_wave_hd_fd_bochner(64, 32),
+            analytical_solution="standing_wave_square",
+        ),
+        FloorEntry(
+            rule="PH-CON-001",
+            pde="heat",
+            grid_shape=(64, 64, 16),
+            method="spectral",
+            norm="relative",
+            measured=_measure_heat_con_001_periodic_spectral(64, 16),
+            analytical_solution="periodic_cos_cos",
+        ),
+        FloorEntry(
+            rule="PH-CON-001",
+            pde="heat",
+            grid_shape=(64, 64, 32),
+            method="fd4",
+            norm="relative_L2_over_T",
+            measured=_measure_heat_con_001_hd_fd(64, 32),
+            analytical_solution="eigenfunction_decay_square",
+        ),
+        FloorEntry(
+            rule="PH-CON-002",
+            pde="wave",
+            grid_shape=(64, 64, 32),
+            method="fd4",
+            norm="relative",
+            measured=_measure_wave_con_002_hd_fd(64, 32),
+            analytical_solution="standing_wave_square",
+        ),
+        FloorEntry(
+            rule="PH-CON-003",
+            pde="heat",
+            grid_shape=(32, 32, 16),
+            method="fd4",
+            norm="relative",
+            measured=_measure_heat_con_003_hd_fd(32, 16),
+            analytical_solution="eigenfunction_decay_square",
+        ),
+        FloorEntry(
+            rule="PH-CON-003",
+            pde="heat",
+            grid_shape=(64, 64, 16),
+            method="spectral",
+            norm="relative",
+            measured=_measure_heat_con_003_periodic_spectral(64, 16),
+            analytical_solution="periodic_cos_cos",
         ),
     ]
 
