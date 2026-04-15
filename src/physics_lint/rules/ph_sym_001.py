@@ -51,9 +51,9 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     max_err = max(errs)
     # Tri-state against a small fixed threshold (symmetry is exact on grid so
     # machine precision is the floor).
-    if max_err < 1e-10:
+    if max_err <= 1e-10:
         status = "PASS"
-    elif max_err < 0.01:
+    elif max_err <= 0.01:
         status = "WARN"
     else:
         status = "FAIL"
@@ -64,9 +64,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=max_err,
-        violation_ratio=max_err / 1e-10 if max_err > 0 else 0.0,
+        violation_ratio=max_err / 0.01,
         mode=None,
-        reason=None,
+        reason=(
+            None
+            if status == "PASS"
+            else f"max C4 equivariance error {max_err:.2e} exceeds "
+            f"{'WARN threshold 1e-10' if status == 'WARN' else 'FAIL threshold 1e-2'}"
+        ),
         refinement_rate=None,
         spatial_map=None,
         recommended_norm="max relative L^2 over k in {1, 2, 3}",
