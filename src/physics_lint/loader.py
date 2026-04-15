@@ -36,25 +36,6 @@ class LoaderError(RuntimeError):
     """Raised when physics-lint cannot load the user's target."""
 
 
-# Week 1 scope is Laplace/Poisson only
-# (docs/plans/2026-04-14-physics-lint-v1-week-1.md line 13:
-# "no time-dependent PDEs"). The DomainSpec pydantic model accepts heat/wave
-# — Week 2 will wire them through GridField's time axis and the Bochner
-# norms — but the Week 1 loader has no code path for a (Nx, Ny, Nt) tensor.
-# Gate here with a clear "Week 2" error instead of crashing in GridField's
-# h-tuple length check.
-_WEEK_2_PDES: frozenset[str] = frozenset({"heat", "wave"})
-
-
-def _assert_week_1_scope(spec: DomainSpec, path: Path) -> None:
-    if spec.pde in _WEEK_2_PDES:
-        raise LoaderError(
-            f"{path}: PDE '{spec.pde}' is time-dependent and lands in Week 2; "
-            "Week 1 supports laplace/poisson on spatial-only grids. "
-            "Remove the time domain and use pde='laplace' or 'poisson' to run today."
-        )
-
-
 @dataclass
 class LoadedTarget:
     spec: DomainSpec
@@ -140,7 +121,6 @@ def _load_adapter(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
-    _assert_week_1_scope(spec, path)
 
     # For Week 1 we materialize the callable onto a GridField via CallableField.
     # Build a sampling grid from the spec. `_build_sampling_grid` imports
@@ -207,13 +187,11 @@ def _load_dump(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
-    _assert_week_1_scope(spec, path)
 
     # Catch mismatched dumps *before* computing h: a wrong grid_shape picks
     # the wrong spacing and the wrong calibrated floor, producing rule
-    # results that look numerical but mean nothing. Week 1 is spatial-only
-    # (heat/wave already gated above), so prediction.shape must match
-    # spec.grid_shape exactly.
+    # results that look numerical but mean nothing. The spatial + time axes
+    # must all line up, so compare the full shape tuple.
     if tuple(prediction.shape) != tuple(spec.grid_shape):
         raise LoaderError(
             f"{path}: prediction shape {tuple(prediction.shape)} does not match "
@@ -234,26 +212,54 @@ def _load_dump(
 
 
 def _compute_h_from_spec(spec: DomainSpec) -> tuple[float, ...]:
-    """Derive uniform grid spacings from domain extents and grid_shape."""
+    """Derive uniform grid spacings for spatial + (optional) time axes.
+
+    Convention: spatial axes first, then — if spec.domain.is_time_dependent
+    — a time axis as the LAST entry. This matches the Week-2 time-last
+    convention throughout the library (Bochner norm, heat/wave rule
+    branches, dump prediction tensors). Non-periodic uses endpoint-inclusive
+    spacing L/(N-1); periodic uses endpoint-exclusive L/N. Time is ALWAYS
+    endpoint-inclusive — spec.periodic refers only to spatial periodicity.
+    """
     lengths = spec.domain.spatial_lengths
-    # endpoint-inclusive for non-periodic, endpoint-exclusive for periodic
     shape = spec.grid_shape
+    ndim_spatial = len(lengths)
+    h_spatial: tuple[float, ...]
     if spec.periodic:
-        return tuple(length / n for length, n in zip(lengths, shape[: len(lengths)], strict=False))
-    return tuple(
-        length / (n - 1) for length, n in zip(lengths, shape[: len(lengths)], strict=False)
-    )
+        h_spatial = tuple(
+            length / n for length, n in zip(lengths, shape[:ndim_spatial], strict=False)
+        )
+    else:
+        h_spatial = tuple(
+            length / (n - 1) for length, n in zip(lengths, shape[:ndim_spatial], strict=False)
+        )
+    if not spec.domain.is_time_dependent:
+        return h_spatial
+    if len(shape) < ndim_spatial + 1:
+        raise LoaderError(
+            f"time-dependent spec requires grid_shape with a time entry after "
+            f"the {ndim_spatial} spatial entries; got grid_shape={tuple(shape)}"
+        )
+    t_lo, t_hi = spec.domain.t  # type: ignore[misc]
+    n_t = shape[ndim_spatial]
+    h_t = (t_hi - t_lo) / (n_t - 1)
+    return (*h_spatial, h_t)
 
 
 def _build_sampling_grid(spec: DomainSpec) -> torch.Tensor:
     import torch
 
     lengths = spec.domain.spatial_lengths
-    shape = spec.grid_shape[: len(lengths)]
-    axes = []
-    for length, n in zip(lengths, shape, strict=False):
+    shape = spec.grid_shape
+    ndim_spatial = len(lengths)
+    axes: list[torch.Tensor] = []
+    for length, n in zip(lengths, shape[:ndim_spatial], strict=False):
         if spec.periodic:
             axes.append(torch.linspace(0.0, length, n + 1)[:-1])
         else:
             axes.append(torch.linspace(0.0, length, n))
+    if spec.domain.is_time_dependent:
+        t_lo, t_hi = spec.domain.t  # type: ignore[misc]
+        n_t = shape[ndim_spatial]
+        axes.append(torch.linspace(t_lo, t_hi, n_t))
     return torch.stack(torch.meshgrid(*axes, indexing="ij"), dim=-1)
