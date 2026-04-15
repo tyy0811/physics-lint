@@ -11,7 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from physics_lint.field import Field
-from physics_lint.norms import trapezoidal_integral
+from physics_lint.norms import integrate_over_domain
 from physics_lint.report import RuleResult
 from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
 from physics_lint.spec import DomainSpec
@@ -52,7 +52,10 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     dt = float(field.h[-1])
 
     energy = np.array(
-        [trapezoidal_integral(np.take(u, k, axis=-1) ** 2, spatial_h) for k in range(nt)]
+        [
+            integrate_over_domain(np.take(u, k, axis=-1) ** 2, spatial_h, periodic=spec.periodic)
+            for k in range(nt)
+        ]
     )
     de_dt = np.gradient(energy, dt, edge_order=2)
     max_growth = float(np.max(de_dt))

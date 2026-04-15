@@ -1,14 +1,26 @@
 """PH-CON-002: Wave energy conservation violation.
 
 E(t) = 0.5 * integral(u_t^2 + c^2 |grad u|^2) is conserved under hD/hN/PER.
+
+Implementation: we evaluate the potential term via integration by parts,
+0.5 * c^2 * integral(|grad u|^2) = -0.5 * c^2 * integral(u * Laplacian u),
+which holds exactly under hD (u=0 on the boundary) and periodic BCs
+(no boundary) — exactly the BC classes for which
+``spec.boundary_condition.conserves_energy`` is true. This dispatches
+the spatial derivative through the field's own backend (spectral on
+periodic grids, 4th-order FD on non-periodic grids) instead of
+``np.gradient`` with endpoint stencils, which corrupted the seam of
+periodic fields in the earlier Week-2 draft (Codex adversarial review,
+Finding 3). The quadrature picks rectangle-vs-trapezoidal to match
+the endpoint convention of the grid.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from physics_lint.field import Field
-from physics_lint.norms import trapezoidal_integral
+from physics_lint.field import Field, GridField
+from physics_lint.norms import integrate_over_domain
 from physics_lint.report import RuleResult
 from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
 from physics_lint.spec import DomainSpec
@@ -55,12 +67,22 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     for k in range(nt):
         slice_k = np.take(u, k, axis=-1)
         slice_ut = np.take(u_t, k, axis=-1)
-        gx = np.gradient(slice_k, spatial_h[0], axis=0, edge_order=2)
-        gy = np.gradient(slice_k, spatial_h[1], axis=1, edge_order=2)
-        kinetic = slice_ut**2
-        gradient_sq = gx**2 + gy**2
-        density = 0.5 * (kinetic + c**2 * gradient_sq)
-        energies[k] = trapezoidal_integral(density, spatial_h)
+        # Spatial Laplacian via the field's own backend so periodic
+        # grids use the FFT path and non-periodic grids use fd4 —
+        # matches how every other Week-2 rule handles periodic seams.
+        sub_field = GridField(
+            slice_k,
+            h=spatial_h,
+            periodic=spec.periodic,
+            backend=field.backend,
+        )
+        lap_k = sub_field.laplacian().values()
+        kinetic_density = 0.5 * slice_ut**2
+        # Potential via IBP: 0.5 c^2 |grad u|^2 integrated
+        # equals -0.5 c^2 u * Laplacian u integrated, on hD/hN/PER.
+        potential_density = -0.5 * (c**2) * slice_k * lap_k
+        density = kinetic_density + potential_density
+        energies[k] = integrate_over_domain(density, spatial_h, periodic=spec.periodic)
 
     e0 = float(energies[0])
     denom = max(abs(e0), 1e-12)

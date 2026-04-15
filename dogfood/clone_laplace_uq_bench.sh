@@ -1,12 +1,24 @@
 #!/usr/bin/env bash
-# Clone the laplace-uq-bench repo under dogfood/laplace-uq-bench and probe
-# the checkpoint layout. Invoked as the first step of the Week-2 dogfood
-# discovery per the V1 Week-2 plan Task 8.
+# Clone the laplace-uq-bench repo at a pinned commit under
+# dogfood/laplace-uq-bench/. Invoked as the first step of the Week-2
+# dogfood discovery per the V1 Week-2 plan Task 8.
 #
-# Exit codes:
-#   0  clone succeeded; at least one checkpoint loaded cleanly
-#   1  no checkpoints found, or all checkpoint loads failed — caller
-#      should invoke fallback D (train 2-3 small surrogates inline)
+# Security posture: this clone is a trust boundary. Fallback D' uses
+# ONLY the repo's pure-numpy LaplaceSolver and boundary sampler
+# (src/diffphys/pde/{laplace,boundary}.py); it never loads PyTorch
+# checkpoints. To keep the threat surface minimal we:
+#
+# 1. Pin to a specific upstream commit SHA and refuse to proceed if
+#    the clone is at a different commit.
+# 2. Do NOT call `torch.load(..., weights_only=False)` on anything in
+#    the tree. Any future probe of an untrusted *.pt file MUST use
+#    `weights_only=True` (and ideally a checksum check on top).
+#
+# Reviewer note (Codex adversarial review, Week 2 Day 5): the previous
+# version of this script called `torch.load(weights_only=False)` on
+# every checkpoint found under the clone, which is arbitrary-code-
+# execution if the repo or any checkpoint path were compromised.
+# Removed.
 
 set -euo pipefail
 
@@ -14,64 +26,35 @@ DOGFOOD_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_URL="https://github.com/tyy0811/laplace-uq-bench.git"
 CLONE_DIR="$DOGFOOD_DIR/laplace-uq-bench"
 
+# Pinned upstream commit. Bumping this value is a conscious security
+# decision — verify the new SHA belongs to the expected history and
+# that only the files we import (src/diffphys/pde/*.py) changed in a
+# way that does not expand the trust surface.
+PINNED_SHA="4c2113a5b51cfca38cbd609be0739ca43757e93f"
+
 if [ ! -d "$CLONE_DIR" ]; then
     echo "Cloning laplace-uq-bench into $CLONE_DIR"
-    git clone --depth 1 "$REPO_URL" "$CLONE_DIR"
+    git clone "$REPO_URL" "$CLONE_DIR"
+    git -C "$CLONE_DIR" checkout --detach "$PINNED_SHA"
 else
-    echo "Repo already cloned at $CLONE_DIR (not pulling; pin to commit)"
+    echo "Repo already cloned at $CLONE_DIR"
 fi
+
+actual_sha="$(git -C "$CLONE_DIR" rev-parse HEAD)"
+if [ "$actual_sha" != "$PINNED_SHA" ]; then
+    echo "ERROR: $CLONE_DIR is at $actual_sha but the pinned SHA is $PINNED_SHA."
+    echo "Either reset the clone or bump PINNED_SHA in this script after review."
+    exit 2
+fi
+echo "Verified HEAD == $PINNED_SHA"
 
 echo
 echo "Repo layout summary:"
 (cd "$CLONE_DIR" && ls -la 2>/dev/null | head -30)
 
 echo
-echo "Searching for checkpoint files (*.pt, *.pth, *.ckpt, *.safetensors):"
-found=0
-while IFS= read -r -d '' ckpt; do
-    rel="${ckpt#$CLONE_DIR/}"
-    echo "  $rel"
-    found=1
-done < <(find "$CLONE_DIR" \( -name "*.pt" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.safetensors" \) -print0 2>/dev/null)
-
-if [ "$found" -eq 0 ]; then
-    echo "  (none)"
-    echo
-    echo "No checkpoint files found — caller should invoke fallback D."
-    exit 1
-fi
-
-echo
-echo "Probing each checkpoint with torch.load(weights_only=False):"
-PY_BIN="${PYTHON:-python}"
-status=0
-while IFS= read -r -d '' ckpt; do
-    rel="${ckpt#$CLONE_DIR/}"
-    "$PY_BIN" - "$ckpt" <<'PY' || status=1
-import sys
-import torch
-
-path = sys.argv[1]
-try:
-    state = torch.load(path, map_location="cpu", weights_only=False)
-except Exception as exc:
-    print(f"  FAIL {path}: {exc}")
-    sys.exit(1)
-if isinstance(state, dict):
-    keys = list(state.keys())
-    print(f"  OK   {path}: dict with {len(keys)} keys ({keys[:5]}...)")
-elif hasattr(state, "state_dict"):
-    print(f"  OK   {path}: module-like object of type {type(state).__name__}")
-else:
-    print(f"  OK?  {path}: unknown type {type(state).__name__}")
-PY
-done < <(find "$CLONE_DIR" \( -name "*.pt" -o -name "*.pth" -o -name "*.ckpt" -o -name "*.safetensors" \) -print0)
-
-if [ "$status" -ne 0 ]; then
-    echo
-    echo "At least one checkpoint failed to load. Caller should invoke fallback D."
-    exit 1
-fi
-
-echo
-echo "All checkpoints probed cleanly."
+echo "Note: this script does NOT probe PyTorch checkpoints. Fallback D'"
+echo "(see dogfood/laplace_uq_bench/README.md) uses only the repo's"
+echo "pure-numpy LaplaceSolver and BC sampler. Loading untrusted .pt"
+echo "files with weights_only=False is prohibited by this script's"
+echo "security posture; see the header comment."

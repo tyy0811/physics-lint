@@ -11,6 +11,14 @@ Design doc §4.4 and §8.1. Branches on BCSpec.conserves_mass:
     dM/dt = kappa * integral(lap u) dx
   via the divergence theorem, and report relative L^2 error over [0, T]
   between observed and expected time derivative. mode='rate-consistency'.
+
+Quadrature note: the mass integral uses ``integrate_over_domain`` so
+endpoint-exclusive periodic grids get the rectangle rule (exact zero
+on smooth zero-mean modes) and endpoint-inclusive non-periodic grids
+get trapezoidal quadrature. Mixing the two conventions bakes in an
+O(1/N) bias that survives the e^{-2 kappa t} decay and shows up as
+spurious 'mass drift' on an exact periodic solution (Week-2 Day-5
+adversarial review, Finding 2).
 """
 
 from __future__ import annotations
@@ -18,7 +26,7 @@ from __future__ import annotations
 import numpy as np
 
 from physics_lint.field import Field, GridField
-from physics_lint.norms import trapezoidal_integral
+from physics_lint.norms import integrate_over_domain
 from physics_lint.report import RuleResult
 from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
 from physics_lint.spec import DomainSpec
@@ -54,7 +62,10 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     dt = float(field.h[-1])
 
     mass_series = np.array(
-        [trapezoidal_integral(np.take(u, k, axis=-1), spatial_h) for k in range(nt)]
+        [
+            integrate_over_domain(np.take(u, k, axis=-1), spatial_h, periodic=spec.periodic)
+            for k in range(nt)
+        ]
     )
 
     method_key = "fd4" if field.backend == "fd" else field.backend
@@ -85,7 +96,9 @@ def _check_exact_mass(
     # spurious non-zero. Use the L^1 norm of u(t=0) as a robust fallback so
     # the relative drift stays meaningful across positive, oscillatory, and
     # zero-mean initial conditions.
-    l1_scale = float(trapezoidal_integral(np.abs(np.take(u, 0, axis=-1)), spatial_h))
+    l1_scale = float(
+        integrate_over_domain(np.abs(np.take(u, 0, axis=-1)), spatial_h, periodic=spec.periodic)
+    )
     scale = max(abs(m0), l1_scale, 1e-12)
     relative_drift = drift_abs / scale
 
@@ -144,7 +157,7 @@ def _check_rate_consistency(
             backend=field.backend,
         )
         lap = sub_field.laplacian().values()
-        expected[k] = kappa * trapezoidal_integral(lap, spatial_h)
+        expected[k] = kappa * integrate_over_domain(lap, spatial_h, periodic=spec.periodic)
 
     err = float(np.sqrt(np.sum((dm_dt - expected) ** 2) * dt))
     scale = max(float(np.sqrt(np.sum(expected**2) * dt)), 1e-12)

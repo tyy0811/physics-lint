@@ -2,6 +2,11 @@
 
 - l2_grid: trapezoidal L^2 on a uniform Cartesian grid (half-weights at edges)
 - trapezoidal_integral: weighted L^1 integral via the same trapezoidal rule
+- integrate_over_domain: picks rectangle (periodic) or trapezoidal
+  (non-periodic) quadrature for conserved-quantity integrals where the
+  endpoint convention matters (PH-CON-*). See Week-2 Day-5 Codex
+  adversarial review for why trapezoidal quadrature on endpoint-
+  exclusive periodic grids corrupts the mass/energy series.
 - h_minus_one_spectral: sqrt(sum_{k != 0} |u_hat|^2 / |k|^2) on periodic grids
 - h_minus_one_fe: (Task 8, conditional on scikit-fem spike)
 - bochner_l2_h_minus_one: Bochner L^2(0,T; H^-1) norm for time-dependent
@@ -45,6 +50,42 @@ def trapezoidal_integral(u: np.ndarray, h: tuple[float, ...]) -> float:
         weights[tuple(slicer_back)] *= 0.5
     cell_volume = float(np.prod(h))
     return float(np.sum(weights * u) * cell_volume)
+
+
+def rectangle_integral(u: np.ndarray, h: tuple[float, ...]) -> float:
+    """Multi-dimensional uniform rectangle rule.
+
+    Every sample gets the same weight ``prod(h)``. This is the correct
+    quadrature for endpoint-exclusive periodic grids (where the loader
+    picks the spacing ``L / N`` and the point at index 0 and index N
+    are identified by periodicity), because a trapezoidal half-weight
+    at the first and last samples subtracts a non-zero fraction of a
+    real interior value and leaves an O(1/N) bias even on smooth
+    functions that integrate analytically to zero.
+    """
+    if len(h) != u.ndim:
+        raise ValueError(f"h length {len(h)} must match u.ndim {u.ndim}")
+    return float(np.sum(u) * float(np.prod(h)))
+
+
+def integrate_over_domain(
+    u: np.ndarray,
+    h: tuple[float, ...],
+    *,
+    periodic: bool,
+) -> float:
+    """Uniform-grid integral, picking the rule appropriate for the BC.
+
+    Periodic grids are endpoint-exclusive (spacing ``L / N``) so we
+    apply the rectangle rule. Non-periodic grids are endpoint-inclusive
+    (spacing ``L / (N - 1)``) so we apply the trapezoidal rule. Used by
+    the conservation rules (PH-CON-001/002/003) where the bias from
+    mixing the two conventions changes the relative drift by orders of
+    magnitude on exact solutions.
+    """
+    if periodic:
+        return rectangle_integral(u, h)
+    return trapezoidal_integral(u, h)
 
 
 def l2_grid(u: np.ndarray, h: float | tuple[float, ...]) -> float:

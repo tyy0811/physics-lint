@@ -28,8 +28,8 @@ from physics_lint.norms import (
     bochner_l2_fallback,
     bochner_l2_h_minus_one,
     h_minus_one_spectral,
+    integrate_over_domain,
     l2_grid,
-    trapezoidal_integral,
 )
 
 
@@ -144,7 +144,10 @@ def _measure_heat_con_003_periodic_spectral(n: int, nt: int) -> float:
     h_spatial = (2 * np.pi / n, 2 * np.pi / n)
     dt = 0.5 / (nt - 1)
     energy = np.array(
-        [trapezoidal_integral(np.take(u, k, axis=-1) ** 2, h_spatial) for k in range(nt)]
+        [
+            integrate_over_domain(np.take(u, k, axis=-1) ** 2, h_spatial, periodic=True)
+            for k in range(nt)
+        ]
     )
     de_dt = np.gradient(energy, dt, edge_order=2)
     max_growth = max(0.0, float(np.max(de_dt)))
@@ -185,10 +188,11 @@ def _measure_heat_con_001_periodic_spectral(n: int, nt: int) -> float:
     """PH-CON-001 exact-mass floor for periodic+spectral heat.
 
     Matches the rule: max |M(t) - M(0)| / max(|M(0)|, ||u_0||_1) using
-    trapezoidal_integral for both numerator and scale. The analytical
-    solution cos(x)cos(y) has zero analytic mass, so the reported floor
-    is the residual quadrature error amplified by the e^(-2 kappa t) time
-    dependence.
+    ``integrate_over_domain(..., periodic=True)`` (rectangle rule) for
+    both numerator and scale. The analytical solution cos(x)cos(y) has
+    zero analytic mass and rectangle quadrature reproduces that to
+    machine precision, so the reported floor is time-derivative noise
+    rather than a quadrature bias.
     """
     kappa = 0.01
     sol = heat_sols.periodic_cos_cos(kappa=kappa)
@@ -198,9 +202,11 @@ def _measure_heat_con_001_periodic_spectral(n: int, nt: int) -> float:
     mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
     u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
     h_spatial = (2 * np.pi / n, 2 * np.pi / n)
-    mass = np.array([trapezoidal_integral(np.take(u, k, axis=-1), h_spatial) for k in range(nt)])
+    mass = np.array(
+        [integrate_over_domain(np.take(u, k, axis=-1), h_spatial, periodic=True) for k in range(nt)]
+    )
     m0 = float(mass[0])
-    l1 = float(trapezoidal_integral(np.abs(np.take(u, 0, axis=-1)), h_spatial))
+    l1 = float(integrate_over_domain(np.abs(np.take(u, 0, axis=-1)), h_spatial, periodic=True))
     scale = max(abs(m0), l1, 1e-12)
     return float(np.max(np.abs(mass - m0))) / scale
 
@@ -221,14 +227,19 @@ def _measure_heat_con_001_hd_fd(n: int, nt: int) -> float:
     u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
     h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
     dt = 0.5 / (nt - 1)
-    mass = np.array([trapezoidal_integral(np.take(u, k, axis=-1), h_spatial) for k in range(nt)])
+    mass = np.array(
+        [
+            integrate_over_domain(np.take(u, k, axis=-1), h_spatial, periodic=False)
+            for k in range(nt)
+        ]
+    )
     dm_dt = np.gradient(mass, dt, edge_order=2)
     expected = np.zeros(nt)
     for k in range(nt):
         slice_k = np.take(u, k, axis=-1)
         sub = GridField(slice_k, h=h_spatial, periodic=False, backend="fd")
         lap = sub.laplacian().values()
-        expected[k] = kappa * trapezoidal_integral(lap, h_spatial)
+        expected[k] = kappa * integrate_over_domain(lap, h_spatial, periodic=False)
     err = float(np.sqrt(np.sum((dm_dt - expected) ** 2) * dt))
     denom = max(float(np.sqrt(np.sum(expected**2) * dt)), 1e-12)
     return err / denom
@@ -237,8 +248,9 @@ def _measure_heat_con_001_hd_fd(n: int, nt: int) -> float:
 def _measure_wave_con_002_hd_fd(n: int, nt: int) -> float:
     """PH-CON-002 floor for wave + hD + fd4: relative energy drift.
 
-    Standing wave eigenfunction on [0,1]^2, energy computed via per-slice
-    gradient squared + u_t squared, integrated via trapezoidal quadrature.
+    Standing wave eigenfunction on [0,1]^2. Matches the rule's IBP-based
+    energy formulation: 0.5 * (u_t^2 - c^2 * u * Laplacian u) integrated
+    via trapezoidal quadrature (endpoint-inclusive for hD).
     """
     c = 1.0
     sol = wave_sols.standing_wave_square(c=c)
@@ -254,10 +266,41 @@ def _measure_wave_con_002_hd_fd(n: int, nt: int) -> float:
     for k in range(nt):
         slice_k = np.take(u, k, axis=-1)
         slice_ut = np.take(u_t, k, axis=-1)
-        gx = np.gradient(slice_k, h_spatial[0], axis=0, edge_order=2)
-        gy = np.gradient(slice_k, h_spatial[1], axis=1, edge_order=2)
-        density = 0.5 * (slice_ut**2 + (c**2) * (gx**2 + gy**2))
-        energies[k] = trapezoidal_integral(density, h_spatial)
+        sub = GridField(slice_k, h=h_spatial, periodic=False, backend="fd")
+        lap = sub.laplacian().values()
+        density = 0.5 * (slice_ut**2) - 0.5 * (c**2) * slice_k * lap
+        energies[k] = integrate_over_domain(density, h_spatial, periodic=False)
+    e0 = float(energies[0])
+    denom = max(abs(e0), 1e-12)
+    return float(np.max(np.abs(energies - e0)) / denom)
+
+
+def _measure_wave_con_002_periodic_spectral(n: int, nt: int) -> float:
+    """PH-CON-002 floor for a periodic traveling wave + spectral.
+
+    Reviewer regression: a correct periodic traveling wave must not show
+    seam drift under PH-CON-002. Uses the IBP identity plus rectangle
+    quadrature end-to-end.
+    """
+    c = 1.0
+    length = 2 * np.pi
+    sol = wave_sols.periodic_traveling(c=c, length=length)
+    xg = np.linspace(0.0, length, n, endpoint=False)
+    yg = np.linspace(0.0, length, n, endpoint=False)
+    tg = np.linspace(0.0, 0.5, nt)
+    mesh_x, mesh_y = np.meshgrid(xg, yg, indexing="ij")
+    u = np.stack([sol.u(mesh_x, mesh_y, ti) for ti in tg], axis=-1)
+    h_spatial = (length / n, length / n)
+    dt = 0.5 / (nt - 1)
+    u_t = np.gradient(u, dt, axis=-1, edge_order=2)
+    energies = np.empty(nt)
+    for k in range(nt):
+        slice_k = np.take(u, k, axis=-1)
+        slice_ut = np.take(u_t, k, axis=-1)
+        sub = GridField(slice_k, h=h_spatial, periodic=True, backend="spectral")
+        lap = sub.laplacian().values()
+        density = 0.5 * (slice_ut**2) - 0.5 * (c**2) * slice_k * lap
+        energies[k] = integrate_over_domain(density, h_spatial, periodic=True)
     e0 = float(energies[0])
     denom = max(abs(e0), 1e-12)
     return float(np.max(np.abs(energies - e0)) / denom)
@@ -279,7 +322,10 @@ def _measure_heat_con_003_hd_fd(n: int, nt: int) -> float:
     h_spatial = (1.0 / (n - 1), 1.0 / (n - 1))
     dt = 0.5 / (nt - 1)
     energy = np.array(
-        [trapezoidal_integral(np.take(u, k, axis=-1) ** 2, h_spatial) for k in range(nt)]
+        [
+            integrate_over_domain(np.take(u, k, axis=-1) ** 2, h_spatial, periodic=False)
+            for k in range(nt)
+        ]
     )
     de_dt = np.gradient(energy, dt, edge_order=2)
     max_growth = max(0.0, float(np.max(de_dt)))
@@ -388,6 +434,15 @@ def main() -> None:
             norm="relative",
             measured=_measure_wave_con_002_hd_fd(64, 32),
             analytical_solution="standing_wave_square",
+        ),
+        FloorEntry(
+            rule="PH-CON-002",
+            pde="wave",
+            grid_shape=(64, 64, 32),
+            method="spectral",
+            norm="relative",
+            measured=_measure_wave_con_002_periodic_spectral(64, 32),
+            analytical_solution="periodic_traveling",
         ),
         FloorEntry(
             rule="PH-CON-003",

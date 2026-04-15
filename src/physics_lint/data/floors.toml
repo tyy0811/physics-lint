@@ -97,10 +97,10 @@ pde = "heat"
 grid_shape = [64, 64, 16]
 method = "spectral"
 norm = "relative"
-value = 6.279e-6
+value = 2.454e-18
 tolerance = 3.0
 analytical_solution = "periodic_cos_cos"
-citation = "Week 2 Day 3 calibration, commit <auto>. cos*cos has zero analytic mass; the quadrature residual is picked up by the L^1 scale fallback and reported as a small relative drift."
+citation = "Week 2 Day 5 calibration (Codex adversarial review fix). cos*cos has zero analytic mass and the rectangle rule on endpoint-exclusive periodic grids reproduces that to machine precision; the previous 6.279e-6 value was an artifact of trapezoidal half-weights on a periodic grid."
 
 [[floor]]
 rule = "PH-CON-001"
@@ -119,10 +119,21 @@ pde = "wave"
 grid_shape = [64, 64, 32]
 method = "fd4"
 norm = "relative"
-value = 2.731e-3
+value = 2.254e-3
 tolerance = 2.0
 analytical_solution = "standing_wave_square"
-citation = "Week 2 Day 3 calibration, commit <auto>. Energy drift floor dominated by the 2nd-order gradient stack used to build the density 0.5 (u_t^2 + c^2 |grad u|^2)."
+citation = "Week 2 Day 5 calibration (Codex adversarial review fix). Energy uses the IBP identity 0.5 (u_t^2 - c^2 u * Laplacian u) so the spatial derivative flows through the field's own backend instead of np.gradient, and quadrature matches the endpoint convention of the grid."
+
+[[floor]]
+rule = "PH-CON-002"
+pde = "wave"
+grid_shape = [64, 64, 32]
+method = "spectral"
+norm = "relative"
+value = 1.301e-4
+tolerance = 3.0
+analytical_solution = "periodic_traveling"
+citation = "Week 2 Day 5 calibration (Codex adversarial review fix). Regression for Finding 3: periodic traveling wave energy is now computed via spectral Laplacian + rectangle quadrature and no longer accumulates seam drift."
 
 [[floor]]
 rule = "PH-CON-003"
