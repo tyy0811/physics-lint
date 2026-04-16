@@ -8,8 +8,11 @@ Builds two tiny CNNs:
   the baseline approximates the continuous inverse Laplacian, which
   *does* commute with rotations. At the 500-step training budget the
   baseline reaches its **architectural equivariance floor** (~5e-3 C4
-  error, WARN on PH-SYM-001) — the best this architecture can do
-  without explicit rotation-equivariance constraints.
+  error). Under the calibrated PH-SYM-001 floor (2.895e-16, three-env
+  calibrated), both baseline and broken outputs classify as FAIL — the
+  3x3 CNN limit is ~14 orders above the analytical floor. The release
+  criterion measures the *raw-value ratio* (broken / baseline > 2x),
+  not the per-model classification.
 
 - **broken**: same 2-layer conv architecture plus two additional input
   channels carrying absolute ``(x, y)`` positional embeddings. The absolute
@@ -172,10 +175,13 @@ def run_criterion_4_validation(n_training_steps: int = 500, seed: int = 42) -> d
     rhs_broken_train = torch.cat([rhs_train, pos_batch], dim=1)
 
     # Training budget: 500 steps reaches the architectural equivariance floor
-    # (~4.75e-3 C4 error, WARN on PH-SYM-001). Loss plateaus at step ~100,
-    # but C4 error improves until ~500 (structural floor of 3x3 kernels not
-    # commuting with rot90). 500 is past the loss knee, well into WARN band,
-    # and keeps CI under 15s. See RUNLOG.md criterion-4 investigation table.
+    # (~4.75e-3 C4 error). Under the calibrated PH-SYM-001 floor (2.895e-16)
+    # this classifies as FAIL — the 3x3 CNN architectural limit is ~14 orders
+    # above the analytical floor. The release criterion checks the raw-value
+    # ratio (broken / baseline > 2x), not the per-model classification.
+    # Loss plateaus at step ~100, but C4 error improves until ~500 (structural
+    # floor of 3x3 kernels not commuting with rot90). 500 is past the loss
+    # knee. See RUNLOG.md criterion-4 investigation table.
     _train(baseline, (rhs_train, u_train), n_training_steps, lr=1e-2)
     _train(broken, (rhs_broken_train, u_train), n_training_steps, lr=1e-2)
 
