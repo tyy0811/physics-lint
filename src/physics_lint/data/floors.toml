@@ -174,7 +174,7 @@ method = "rot90"
 norm = "max-rel-L2"
 value = 2.895e-16
 tolerance = 2.0
-analytical_solution = "radial_x2_y2_centered"
+analytical_solution = "harmonic_r_squared_centered"
 citation = "Week 3 three-env calibration (local macOS x86, GHA macOS arm64, GHA Ubuntu x86_64). rot90 is an exact index permutation; value is ULP noise, bitwise identical across platforms."
 
 [[floor]]
@@ -185,7 +185,7 @@ method = "flip"
 norm = "max-rel-L2"
 value = 2.090e-16
 tolerance = 2.0
-analytical_solution = "radial_x2_y2_centered"
+analytical_solution = "harmonic_r_squared_centered"
 citation = "Week 3 three-env calibration. np.flip is an exact index permutation; value is ULP noise, bitwise identical across platforms."
 
 [[floor]]
@@ -196,7 +196,7 @@ method = "autograd_jvp"
 norm = "per-point-L2"
 value = 2.221e-16
 tolerance = 3.0
-analytical_solution = "radial_x2_y2_centered"
+analytical_solution = "harmonic_r_squared_centered"
 citation = "Week 3 three-env calibration. Lie derivative of r^2 is algebraically zero (d(x^2+y^2)/dtheta = 2x(-y)+2y(x) = 0); forward-mode AD preserves this exactly across all tested platforms. Floor is machine epsilon per PH-CON-003 precedent."
 
 # PH-SYM-004: V1 structural stub (rule emits SKIPPED); floor deferred to V1.1.

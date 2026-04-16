@@ -9,9 +9,34 @@ Convention: one entry per verification gate, newest first, with enough
 detail that `git checkout <sha>` reproduces the state. SHAs recorded here
 are the commit that *was verified*, not the commit that added the entry.
 
-## Week-3 Task 8 — floor-based reclassification of criterion 4 — 2026-04-15
+## Week-3 Task 8 — SYM floor calibration + criterion-4 reclassification — 2026-04-16
 
-- SHA: (this commit)
+### Three-environment floor measurement
+
+Environments:
+- Env 1: local macOS x86_64 / Python 3.11.4 / NumPy 1.26.4 / PyTorch 2.2.2
+- Env 2: GHA macOS arm64 / Python 3.11.9 / NumPy 2.4.4 / PyTorch 2.11.0
+- Env 3: GHA Ubuntu x86_64 / Python 3.11.15 / NumPy 2.4.4 / PyTorch 2.11.0+cu130
+
+All measurements on CPU (even the cu130 wheel — no `.cuda()` in measurement
+script). SYM-003's floor is validated for CPU backends only; if V2 adds GPU
+inference, SYM-003 needs re-calibration on CUDA.
+
+Grid-scaling check (confirms floor is ULP-noise-limited, not grid-dependent):
+
+| Rule    |   32x32    |   64x64    |  128x128   | Max (floor) |
+|---------|------------|------------|------------|-------------|
+| SYM-001 | 1.410e-16  | 2.895e-16  | 1.555e-16  | 2.895e-16   |
+| SYM-002 | 1.012e-16  | 2.090e-16  | 1.122e-16  | 2.090e-16   |
+| SYM-003 | 0.0        | 0.0        | 0.0        | eps=2.221e-16 |
+
+Values bitwise identical across all three environments. SYM-003 exactly 0.0
+by algebraic cancellation (Lie derivative of r^2 is 2x(-y)+2y(x)=0);
+machine epsilon recorded as floor per PH-CON-003 precedent.
+
+### Criterion-4 reclassification under calibrated floor
+
+- SHA: 71520b6
 - Criterion-4 baseline C4 error: 9.999e-03 (unchanged from a890cb9)
 - PH-SYM-001 floor: 2.895e-16 (three-env calibrated)
 - Baseline violation_ratio: 9.999e-03 / 2.895e-16 = ~3.45e13 → **FAIL**
