@@ -60,6 +60,12 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             f"got grid center offset {center_offset:.3e} "
             f"(grid max |coord| = {grid_max:.3e})"
         )
+    # Square-domain gate — SO(2) rotation maps points between axes, so
+    # the spatial extents must be equal. A rectangular domain would have
+    # boundary-edge points rotated outside the domain.
+    lx, ly = spec.domain.spatial_lengths[:2]
+    if abs(lx - ly) / max(lx, ly) > 1e-6:
+        return _skip(f"SO(2) LEE requires a square domain; got spatial extents {lx} x {ly}")
 
     def rotated_model(theta_param: torch.Tensor) -> torch.Tensor:
         c = torch.cos(theta_param)

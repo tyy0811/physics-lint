@@ -151,11 +151,11 @@ class DomainSpec(BaseModel):
 
     @model_validator(mode="after")
     def symmetries_compatible_with_domain(self) -> DomainSpec:
-        if any(s in self.symmetries.declared for s in ("D4", "C4")):
+        if any(s in self.symmetries.declared for s in ("D4", "C4", "SO2")):
             lx, ly = self.domain.spatial_lengths[:2]
             if abs(lx - ly) / max(lx, ly) > 1e-6:
                 warnings.warn(
-                    f"D4/C4 symmetry declared but domain is not square "
+                    f"D4/C4/SO2 symmetry declared but domain is not square "
                     f"({lx} x {ly}); symmetry rules may produce artifacts",
                     stacklevel=2,
                 )
