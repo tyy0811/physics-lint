@@ -22,8 +22,9 @@ boundary DOFs to 0 as a hard Dirichlet condition on the projection, so
 elements that touch the domain boundary carry a residual that reflects
 the operator artifact rather than any property of the input field. This
 rule excludes boundary-touching elements **structurally** (not via a
-docstring caveat): the interior mask removes every element that owns at
-least one boundary facet (``mesh.boundary_facets()``) before ``max_elem`` and
+docstring caveat): the interior mask removes every element that contains at
+least one boundary DOF (via ``basis.element_dofs`` intersected with
+``basis.get_dofs().flatten()``) before ``max_elem`` and
 ``mean_elem`` are computed. Downstream callers therefore never see a
 value derived from a zero-pinned boundary element. V1.1 may add coverage
 of the boundary strip if ``MeshField`` grows a non-zero-trace Laplacian
@@ -72,8 +73,8 @@ _HOTSPOT_RATIO_WARN = 10.0
 # factor covers the composition of FE assembly + elemental integration
 # + per-element mean reduction. For the Week-3 test cases:
 #
-#   refine=3 (98 interior)  -> tol ~ 2.2e-11  | constant residual ~ 1e-26 (SKIP)
-#   refine=4 (450 interior) -> tol ~ 1.0e-10  | smooth sin*sin mean ~ 0.22 (PASS)
+#   refine=3 (72 interior)  -> tol ~ 1.6e-11  | constant residual ~ 1e-26 (SKIP)
+#   refine=4 (392 interior) -> tol ~ 8.7e-11  | smooth sin*sin mean ~ 0.22 (PASS)
 #
 # The formula scales correctly for much larger meshes without changing
 # the threshold for realistic conservation residuals (which are O(1)
@@ -110,16 +111,19 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     elem_res = residual_sq.elemental(basis, lap=basis.interpolate(lap_dofs))
     elem_res = np.asarray(elem_res)
 
-    # Structural interior-element mask. Use scikit-fem's documented
-    # ``mesh.boundary_facets()`` public API (stable across skfem >= 10)
-    # instead of the lower-level ``mesh.f2t[1] == -1`` sentinel. Each
-    # boundary facet is adjacent to exactly one element (the second row
-    # of ``f2t`` holds ``-1`` for boundary facets), so the boundary-element
-    # set is ``unique(f2t[0, boundary_facet_indices])``.
-    boundary_facet_indices = mesh.boundary_facets()
-    boundary_element_indices = np.unique(mesh.f2t[0, boundary_facet_indices])
-    interior_element_mask = np.ones(mesh.nelements, dtype=bool)
-    interior_element_mask[boundary_element_indices] = False
+    # Structural interior-element mask (DOF-aware). An element is "interior"
+    # iff NONE of its DOFs are boundary DOFs. For P2 elements, boundary DOFs
+    # include edge-midpoint DOFs on boundary edges — these belong to elements
+    # that share only a vertex (not a facet) with the boundary. The facet-only
+    # mask (mesh.boundary_facets()) misses these; the DOF-aware mask catches
+    # them. On MeshTri().refined(4) with ElementTriP2: facet mask gives 450
+    # interior, DOF-aware mask gives 392 (58 leaked elements excluded).
+    boundary_dof_set = set(basis.get_dofs().flatten())
+    elem_dofs = basis.element_dofs  # shape (n_dofs_per_elem, n_elements)
+    has_boundary_dof = np.array(
+        [bool(boundary_dof_set & set(elem_dofs[:, e])) for e in range(mesh.nelements)]
+    )
+    interior_element_mask = ~has_boundary_dof
     n_interior = int(interior_element_mask.sum())
 
     if n_interior == 0:
