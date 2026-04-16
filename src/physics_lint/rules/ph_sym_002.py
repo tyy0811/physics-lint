@@ -12,7 +12,7 @@ import numpy as np
 
 from physics_lint.field import Field
 from physics_lint.report import RuleResult
-from physics_lint.rules._helpers import ensure_grid_field
+from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
 from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
@@ -42,12 +42,11 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         errs.append(equivariance_error_np(np.flip(u, axis=1), u))
     max_err = max(errs)
 
-    if max_err <= 1e-10:
-        status = "PASS"
-    elif max_err <= 0.01:
-        status = "WARN"
-    else:
-        status = "FAIL"
+    floor = _load_floor(
+        rule=__rule_id__, pde=spec.pde, grid_shape=spec.grid_shape, method="flip", norm="max-rel-L2"
+    )
+    ratio = max_err / floor.value if floor.value > 0 else float("inf")
+    status = _tristate(ratio, pass_=floor.tolerance * 10, fail_=floor.tolerance * 100)
 
     return RuleResult(
         rule_id=__rule_id__,
@@ -55,14 +54,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=max_err,
-        # TODO(task-8): switch to _load_floor per invariant 2. See SYM-001.
-        violation_ratio=max_err / 0.01,
+        violation_ratio=ratio,
         mode=None,
         reason=(
             None
             if status == "PASS"
-            else f"max reflection equivariance error {max_err:.2e} exceeds "
-            f"{'WARN threshold 1e-10' if status == 'WARN' else 'FAIL threshold 1e-2'}"
+            else f"max reflection equivariance error {max_err:.2e} "
+            f"(ratio {ratio:.1f}x floor {floor.value:.2e}; "
+            f"{'WARN' if status == 'WARN' else 'FAIL'})"
         ),
         refinement_rate=None,
         spatial_map=None,

@@ -9,6 +9,22 @@ Convention: one entry per verification gate, newest first, with enough
 detail that `git checkout <sha>` reproduces the state. SHAs recorded here
 are the commit that *was verified*, not the commit that added the entry.
 
+## Week-3 Task 8 — floor-based reclassification of criterion 4 — 2026-04-15
+
+- SHA: (this commit)
+- Criterion-4 baseline C4 error: 9.999e-03 (unchanged from a890cb9)
+- PH-SYM-001 floor: 2.895e-16 (three-env calibrated)
+- Baseline violation_ratio: 9.999e-03 / 2.895e-16 = ~3.45e13 → **FAIL**
+- Previous classification under hardcoded 0.01 threshold: WARN boundary
+- New classification under calibrated floor: FAIL (correctly identifies
+  the 3x3 CNN architectural limit as a genuine equivariance failure ~14
+  orders of magnitude above the analytical floor)
+- Criterion-4 raw-value ratio: 7.11x (unchanged, still > 2.0)
+- The raw-value ratio is the release-gate metric; the violation_ratio
+  reclassification is the honest measurement that invariant 2 requires.
+
+---
+
 ## Criterion 4 training-budget investigation — 2026-04-15
 
 **Context.** Task 4's broken-CNN toy for release criterion 4 originally used

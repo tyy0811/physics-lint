@@ -23,6 +23,13 @@
 
 schema_version = 1
 
+# The `method` field names the specific numerical operation used by the rule.
+# For floor-bearing rules, this distinguishes different backends or algorithms
+# that produce different noise floors: "fd4" (4th-order FD), "spectral" (FFT),
+# "fe_cholesky" (sparse FE Riesz), "rot90" / "flip" (index permutations),
+# "autograd_jvp" (forward-mode autodiff). Adding a new rule backend requires
+# a new `method` value and a new floor entry.
+
 [[floor]]
 rule = "PH-RES-001"
 pde = "laplace"
@@ -156,3 +163,42 @@ value = 2.221e-16
 tolerance = 2.0
 analytical_solution = "eigenfunction_decay_square"
 citation = "Week 2 Day 3 calibration, commit <auto>. Eigenfunction energy decays monotonically; max positive dE/dt is zero to machine precision so we record machine epsilon."
+
+# --- Week 3 additions -------------------------------------------------------
+
+[[floor]]
+rule = "PH-SYM-001"
+pde = "laplace"
+grid_shape = [64, 64]
+method = "rot90"
+norm = "max-rel-L2"
+value = 2.895e-16
+tolerance = 2.0
+analytical_solution = "radial_x2_y2_centered"
+citation = "Week 3 three-env calibration (local macOS x86, GHA macOS arm64, GHA Ubuntu x86_64). rot90 is an exact index permutation; value is ULP noise, bitwise identical across platforms."
+
+[[floor]]
+rule = "PH-SYM-002"
+pde = "laplace"
+grid_shape = [64, 64]
+method = "flip"
+norm = "max-rel-L2"
+value = 2.090e-16
+tolerance = 2.0
+analytical_solution = "radial_x2_y2_centered"
+citation = "Week 3 three-env calibration. np.flip is an exact index permutation; value is ULP noise, bitwise identical across platforms."
+
+[[floor]]
+rule = "PH-SYM-003"
+pde = "laplace"
+grid_shape = [64, 64]
+method = "autograd_jvp"
+norm = "per-point-L2"
+value = 2.221e-16
+tolerance = 3.0
+analytical_solution = "radial_x2_y2_centered"
+citation = "Week 3 three-env calibration. Lie derivative of r^2 is algebraically zero (d(x^2+y^2)/dtheta = 2x(-y)+2y(x) = 0); forward-mode AD preserves this exactly across all tested platforms. Floor is machine epsilon per PH-CON-003 precedent."
+
+# PH-SYM-004: V1 structural stub (rule emits SKIPPED); floor deferred to V1.1.
+# PH-CON-004: dimensionless max/mean ratio; no calibrated floor needed.
+# PH-NUM-001: V1 structural stub (rule emits PASS with stub reason); floor deferred to V1.1.

@@ -12,7 +12,7 @@ import numpy as np
 
 from physics_lint.field import Field
 from physics_lint.report import RuleResult
-from physics_lint.rules._helpers import ensure_grid_field
+from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
 from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
@@ -49,14 +49,16 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
 
     errs = [equivariance_error_np(np.rot90(u, k=k), u) for k in (1, 2, 3)]
     max_err = max(errs)
-    # Tri-state against a small fixed threshold (symmetry is exact on grid so
-    # machine precision is the floor).
-    if max_err <= 1e-10:
-        status = "PASS"
-    elif max_err <= 0.01:
-        status = "WARN"
-    else:
-        status = "FAIL"
+
+    floor = _load_floor(
+        rule=__rule_id__,
+        pde=spec.pde,
+        grid_shape=spec.grid_shape,
+        method="rot90",
+        norm="max-rel-L2",
+    )
+    ratio = max_err / floor.value if floor.value > 0 else float("inf")
+    status = _tristate(ratio, pass_=floor.tolerance * 10, fail_=floor.tolerance * 100)
 
     return RuleResult(
         rule_id=__rule_id__,
@@ -64,17 +66,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=max_err,
-        # TODO(task-8): violation_ratio is currently raw / FAIL_threshold for
-        # consistency across SYM rules. Task 8 will add floors.toml entries and
-        # switch to _load_floor + _tristate per invariant 2 (raw / floor.value).
-        # See Week-3 catalog audit for the gap characterization.
-        violation_ratio=max_err / 0.01,
+        violation_ratio=ratio,
         mode=None,
         reason=(
             None
             if status == "PASS"
-            else f"max C4 equivariance error {max_err:.2e} exceeds "
-            f"{'WARN threshold 1e-10' if status == 'WARN' else 'FAIL threshold 1e-2'}"
+            else f"max C4 equivariance error {max_err:.2e} "
+            f"(ratio {ratio:.1f}x floor {floor.value:.2e}; "
+            f"{'WARN' if status == 'WARN' else 'FAIL'})"
         ),
         refinement_rate=None,
         spatial_map=None,

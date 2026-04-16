@@ -20,6 +20,7 @@ import torch
 
 from physics_lint.field import CallableField, Field
 from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import _load_floor, _tristate
 from physics_lint.rules._symmetry_helpers import is_symmetry_declared
 from physics_lint.spec import DomainSpec
 
@@ -81,12 +82,15 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
 
     lie_norm = float(torch.norm(lie_deriv).item() / max(float(lie_deriv.numel()), 1.0) ** 0.5)
 
-    if lie_norm <= 1e-6:
-        status = "PASS"
-    elif lie_norm <= 0.05:
-        status = "WARN"
-    else:
-        status = "FAIL"
+    floor = _load_floor(
+        rule=__rule_id__,
+        pde=spec.pde,
+        grid_shape=spec.grid_shape,
+        method="autograd_jvp",
+        norm="per-point-L2",
+    )
+    ratio = lie_norm / floor.value if floor.value > 0 else float("inf")
+    status = _tristate(ratio, pass_=floor.tolerance * 10, fail_=floor.tolerance * 100)
 
     return RuleResult(
         rule_id=__rule_id__,
@@ -94,14 +98,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=lie_norm,
-        # TODO(task-8): switch to _load_floor per invariant 2. See SYM-001.
-        violation_ratio=lie_norm / 0.05,
+        violation_ratio=ratio,
         mode=None,
         reason=(
             None
             if status == "PASS"
-            else f"SO(2) Lie derivative norm {lie_norm:.2e} exceeds "
-            f"{'WARN threshold 1e-6' if status == 'WARN' else 'FAIL threshold 5e-2'}"
+            else f"SO(2) Lie derivative norm {lie_norm:.2e} "
+            f"(ratio {ratio:.1f}x floor {floor.value:.2e}; "
+            f"{'WARN' if status == 'WARN' else 'FAIL'})"
         ),
         refinement_rate=None,
         spatial_map=None,
