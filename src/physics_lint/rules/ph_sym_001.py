@@ -64,6 +64,10 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=max_err,
+        # TODO(task-8): violation_ratio is currently raw / FAIL_threshold for
+        # consistency across SYM rules. Task 8 will add floors.toml entries and
+        # switch to _load_floor + _tristate per invariant 2 (raw / floor.value).
+        # See Week-3 catalog audit for the gap characterization.
         violation_ratio=max_err / 0.01,
         mode=None,
         reason=(

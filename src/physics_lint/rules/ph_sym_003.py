@@ -94,6 +94,7 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         severity=__default_severity__,
         status=status,
         raw_value=lie_norm,
+        # TODO(task-8): switch to _load_floor per invariant 2. See SYM-001.
         violation_ratio=lie_norm / 0.05,
         mode=None,
         reason=(
