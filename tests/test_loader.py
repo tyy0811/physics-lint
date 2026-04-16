@@ -202,6 +202,47 @@ def test_load_target_with_toml_path(tmp_path: Path):
     assert loaded.spec.pde == "laplace"
 
 
+def test_load_adapter_rejects_mesh_field_type(tmp_path: Path):
+    """field.type = 'mesh' must raise LoaderError, not silently produce a CallableField."""
+    adapter = tmp_path / "mesh_adapter.py"
+    adapter.write_text(
+        "import torch\n"
+        "def load_model():\n"
+        "    return lambda x: x[..., 0:1]\n"
+        "def domain_spec():\n"
+        "    return {\n"
+        '        "pde": "poisson",\n'
+        '        "grid_shape": [16, 16],\n'
+        '        "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},\n'
+        '        "periodic": False,\n'
+        '        "boundary_condition": {"kind": "dirichlet_homogeneous"},\n'
+        '        "field": {"type": "mesh", "backend": "fd", "adapter_path": "'
+        + str(adapter)
+        + '"},\n'
+        "    }\n"
+    )
+    with pytest.raises(LoaderError, match=r"field\.type = 'mesh' is not supported"):
+        load_target(adapter, cli_overrides={}, toml_path=None)
+
+
+def test_load_dump_rejects_mesh_field_type(tmp_path: Path):
+    """field.type = 'mesh' in dump metadata must raise LoaderError."""
+    import numpy as np
+
+    dump_path = tmp_path / "mesh_dump.npz"
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [16, 16],
+        "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+        "periodic": False,
+        "boundary_condition": "dirichlet_homogeneous",
+        "field": {"type": "mesh", "backend": "fd"},
+    }
+    np.savez(dump_path, prediction=np.zeros((16, 16)), metadata=metadata)
+    with pytest.raises(LoaderError, match=r"field\.type = 'mesh' is not supported"):
+        load_target(dump_path, cli_overrides={}, toml_path=None)
+
+
 def test_build_sampling_grid_periodic_path(tmp_path: Path):
     # Build an adapter spec with periodic=True to exercise the periodic
     # branch of _compute_h_from_spec and _build_sampling_grid.

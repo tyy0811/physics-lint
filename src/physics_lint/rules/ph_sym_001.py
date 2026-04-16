@@ -1,0 +1,83 @@
+"""PH-SYM-001: C4 rotation equivariance violation.
+
+**V1 scope:** square grids only (``field.shape[0] == field.shape[1]``).
+Non-square C4 requires bilinear interpolation and is deferred to V2.
+``np.rot90`` is exact on square grids with no tolerance fudge, which
+is why this rule's PASS threshold is tight (1e-10).
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from physics_lint.field import Field
+from physics_lint.report import RuleResult
+from physics_lint.rules._helpers import _load_floor, _tristate, ensure_grid_field
+from physics_lint.rules._symmetry_helpers import equivariance_error_np, is_symmetry_declared
+from physics_lint.spec import DomainSpec
+
+__rule_id__ = "PH-SYM-001"
+__rule_name__ = "C4 rotation equivariance violation"
+__default_severity__ = "warning"
+__input_modes__ = frozenset({"adapter", "dump"})
+
+_DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-SYM-001"
+
+
+def check(field: Field, spec: DomainSpec) -> RuleResult:
+    if not is_symmetry_declared(spec.symmetries, "C4"):
+        return RuleResult(
+            rule_id=__rule_id__,
+            rule_name=__rule_name__,
+            severity=__default_severity__,
+            status="SKIPPED",
+            raw_value=None,
+            violation_ratio=None,
+            mode=None,
+            reason="C4 not declared in SymmetrySpec",
+            refinement_rate=None,
+            spatial_map=None,
+            recommended_norm="",
+            citation="",
+            doc_url=_DOC_URL,
+        )
+    field = ensure_grid_field(field, spec)
+
+    u = field.values()
+    if u.ndim != 2 or u.shape[0] != u.shape[1]:
+        raise ValueError(f"PH-SYM-001 requires a square 2D field; got shape {u.shape}")
+
+    errs = [equivariance_error_np(np.rot90(u, k=k), u) for k in (1, 2, 3)]
+    max_err = max(errs)
+
+    floor = _load_floor(
+        rule=__rule_id__,
+        pde=spec.pde,
+        grid_shape=spec.grid_shape,
+        method="rot90",
+        norm="max-rel-L2",
+    )
+    ratio = max_err / floor.value if floor.value > 0 else float("inf")
+    status = _tristate(ratio, pass_=floor.tolerance * 10, fail_=floor.tolerance * 100)
+
+    return RuleResult(
+        rule_id=__rule_id__,
+        rule_name=__rule_name__,
+        severity=__default_severity__,
+        status=status,
+        raw_value=max_err,
+        violation_ratio=ratio,
+        mode=None,
+        reason=(
+            None
+            if status == "PASS"
+            else f"max C4 equivariance error {max_err:.2e} "
+            f"(ratio {ratio:.1f}x floor {floor.value:.2e}; "
+            f"{'WARN' if status == 'WARN' else 'FAIL'})"
+        ),
+        refinement_rate=None,
+        spatial_map=None,
+        recommended_norm="max relative L^2 over k in {1, 2, 3}",
+        citation="Helwig et al. 2023; design doc §9.4",
+        doc_url=_DOC_URL,
+    )

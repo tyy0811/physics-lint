@@ -132,6 +132,17 @@ def _load_adapter(
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
 
+    if spec.field.type == "mesh":
+        raise LoaderError(
+            "field.type = 'mesh' is not supported by the loader in V1. "
+            "MeshField requires a scikit-fem Basis + DOF vector that the "
+            "loader cannot construct from an adapter module or dump file. "
+            "Construct MeshField directly via "
+            "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
+            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "planned loader integration."
+        )
+
     # For Week 1 we materialize the callable onto a GridField via CallableField.
     # Build a sampling grid from the spec. `_build_sampling_grid` imports
     # torch inline so dump-only use never pays the module-level import cost.
@@ -197,6 +208,17 @@ def _load_dump(
 
     merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
     spec = DomainSpec.model_validate(merged)
+
+    if spec.field.type == "mesh":
+        raise LoaderError(
+            "field.type = 'mesh' is not supported by the loader in V1. "
+            "MeshField requires a scikit-fem Basis + DOF vector that the "
+            "loader cannot construct from an adapter module or dump file. "
+            "Construct MeshField directly via "
+            "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
+            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "planned loader integration."
+        )
 
     # Plumb optional runtime-injected attributes: Poisson source term and
     # heat/wave initial condition. Rules read these via
@@ -270,15 +292,15 @@ def _compute_h_from_spec(spec: DomainSpec) -> tuple[float, ...]:
 def _build_sampling_grid(spec: DomainSpec) -> torch.Tensor:
     import torch
 
-    lengths = spec.domain.spatial_lengths
+    bounds = spec.domain.spatial_bounds
     shape = spec.grid_shape
-    ndim_spatial = len(lengths)
+    ndim_spatial = len(bounds)
     axes: list[torch.Tensor] = []
-    for length, n in zip(lengths, shape[:ndim_spatial], strict=False):
+    for (lo, hi), n in zip(bounds, shape[:ndim_spatial], strict=False):
         if spec.periodic:
-            axes.append(torch.linspace(0.0, length, n + 1)[:-1])
+            axes.append(torch.linspace(lo, hi, n + 1)[:-1])
         else:
-            axes.append(torch.linspace(0.0, length, n))
+            axes.append(torch.linspace(lo, hi, n))
     if spec.domain.is_time_dependent:
         t_lo, t_hi = spec.domain.t  # type: ignore[misc]
         n_t = shape[ndim_spatial]

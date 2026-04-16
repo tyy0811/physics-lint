@@ -95,26 +95,54 @@ def _load_floor(
 ) -> Floor:
     """Load a floor entry from floors.toml, falling back to shipped defaults.
 
-    Task 14 populates physics_lint/data/floors.toml with calibrated values;
-    the shipped-default fallback is exercised in CI and in the Week 1 test
-    suite so rules never raise KeyError on first install.
+    Match priority: exact match on all five fields > wildcard match (entries
+    with ``pde = "*"`` or ``grid_shape = "*"`` match any value in that field)
+    > shipped-default dict > global 1e-5 default. Wildcard entries are used
+    by PDE-agnostic rules (PH-SYM-*) whose floors depend on the transform
+    operation, not the PDE.
     """
     if _FLOORS_PATH.is_file():
         with open(_FLOORS_PATH, "rb") as f:
             data = tomllib.load(f)
+
+        # Two-pass floor matching: exact match wins, wildcard match second.
+        exact_match: Floor | None = None
+        wildcard_match: Floor | None = None
+
         for entry in data.get("floor", []):
             if (
-                entry.get("rule") == rule
-                and entry.get("pde") == pde
-                and tuple(entry.get("grid_shape", ())) == tuple(grid_shape)
-                and entry.get("method") == method
-                and entry.get("norm") == norm
+                entry.get("rule") != rule
+                or entry.get("method") != method
+                or entry.get("norm") != norm
             ):
-                return Floor(
+                continue
+
+            entry_pde = entry.get("pde", "")
+            entry_gs = entry.get("grid_shape", ())
+
+            pde_exact = entry_pde == pde
+            pde_wild = entry_pde == "*"
+            gs_exact = (tuple(entry_gs) == tuple(grid_shape)) if entry_gs != "*" else False
+            gs_wild = entry_gs == "*"
+
+            if pde_exact and gs_exact:
+                exact_match = Floor(
                     value=float(entry["value"]),
                     tolerance=float(entry.get("tolerance", _TOLERANCE_DEFAULTS.get(method, 2.0))),
                     source="calibrated",
                 )
+                break  # exact match is highest priority
+            if (pde_exact or pde_wild) and (gs_exact or gs_wild) and wildcard_match is None:
+                wildcard_match = Floor(
+                    value=float(entry["value"]),
+                    tolerance=float(entry.get("tolerance", _TOLERANCE_DEFAULTS.get(method, 2.0))),
+                    source="calibrated",
+                )
+
+        if exact_match is not None:
+            return exact_match
+        if wildcard_match is not None:
+            return wildcard_match
 
     default = _SHIPPED_DEFAULTS.get((rule, pde, method, norm))
     if default is None:

@@ -7,4 +7,12 @@ from physics_lint.field._base import Field
 from physics_lint.field.callable import CallableField
 from physics_lint.field.grid import GridField
 
-__all__ = ["CallableField", "Field", "GridField"]
+try:
+    from physics_lint.field.mesh import MeshField
+
+    _HAS_MESH = True
+except ImportError:
+    _HAS_MESH = False
+    MeshField = None  # type: ignore[assignment,misc]
+
+__all__ = ["CallableField", "Field", "GridField", "MeshField"]
