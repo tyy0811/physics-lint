@@ -23,7 +23,7 @@ elements that touch the domain boundary carry a residual that reflects
 the operator artifact rather than any property of the input field. This
 rule excludes boundary-touching elements **structurally** (not via a
 docstring caveat): the interior mask removes every element that owns at
-least one boundary facet (``mesh.f2t[1] == -1``) before ``max_elem`` and
+least one boundary facet (``mesh.boundary_facets()``) before ``max_elem`` and
 ``mean_elem`` are computed. Downstream callers therefore never see a
 value derived from a zero-pinned boundary element. V1.1 may add coverage
 of the boundary strip if ``MeshField`` grows a non-zero-trace Laplacian
@@ -60,10 +60,24 @@ _RECOMMENDED_NORM = "max elemental residual sq / mean, interior elements only"
 
 # WARN threshold on the dimensionless max/mean ratio. See module docstring.
 _HOTSPOT_RATIO_WARN = 10.0
-# Below this absolute mean, the residual is numerically zero and the
-# ratio is meaningless (constant-ish input). Prefer SKIP over a spurious
-# WARN driven by roundoff.
-_MEAN_ELEM_ZERO_TOL = 1e-20
+# Note on the numerical-zero guard for mean_elem.
+#
+# A constant-ish input produces interior elemental residuals dominated
+# by float64 summation noise, so the max/mean ratio is meaningless. We
+# SKIP rather than WARN spuriously. The tolerance must be scale-aware:
+# on a mesh with many interior elements, accumulated summation noise
+# grows roughly linearly with n_interior. We use
+#   mean_elem_tol = eps * n_interior * 1e3
+# where ``eps = np.finfo(np.float64).eps ≈ 2.22e-16`` and the 1e3 safety
+# factor covers the composition of FE assembly + elemental integration
+# + per-element mean reduction. For the Week-3 test cases:
+#
+#   refine=3 (98 interior)  -> tol ~ 2.2e-11  | constant residual ~ 1e-26 (SKIP)
+#   refine=4 (450 interior) -> tol ~ 1.0e-10  | smooth sin*sin mean ~ 0.22 (PASS)
+#
+# The formula scales correctly for much larger meshes without changing
+# the threshold for realistic conservation residuals (which are O(1)
+# or larger on a non-trivial field).
 
 
 def check(field: Field, spec: DomainSpec) -> RuleResult:
@@ -96,12 +110,14 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     elem_res = residual_sq.elemental(basis, lap=basis.interpolate(lap_dofs))
     elem_res = np.asarray(elem_res)
 
-    # Structural interior-element mask. A boundary facet has f2t[1] == -1
-    # in skfem; the element owning that facet is a boundary-touching
-    # element and its residual is contaminated by the zero-trace artifact.
-    f2t = np.asarray(mesh.f2t)
-    boundary_facet_mask = f2t[1] == -1
-    boundary_element_indices = np.unique(f2t[0, boundary_facet_mask])
+    # Structural interior-element mask. Use scikit-fem's documented
+    # ``mesh.boundary_facets()`` public API (stable across skfem >= 10)
+    # instead of the lower-level ``mesh.f2t[1] == -1`` sentinel. Each
+    # boundary facet is adjacent to exactly one element (the second row
+    # of ``f2t`` holds ``-1`` for boundary facets), so the boundary-element
+    # set is ``unique(f2t[0, boundary_facet_indices])``.
+    boundary_facet_indices = mesh.boundary_facets()
+    boundary_element_indices = np.unique(mesh.f2t[0, boundary_facet_indices])
     interior_element_mask = np.ones(mesh.nelements, dtype=bool)
     interior_element_mask[boundary_element_indices] = False
     n_interior = int(interior_element_mask.sum())
@@ -112,14 +128,17 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             "this mesh (try refining)"
         )
 
+    mean_elem_tol = float(np.finfo(np.float64).eps * n_interior * 1e3)
+
     interior_res = elem_res[interior_element_mask]
     max_elem = float(np.max(interior_res))
     mean_elem = float(np.mean(interior_res))
 
-    if mean_elem < _MEAN_ELEM_ZERO_TOL:
+    if mean_elem < mean_elem_tol:
         return _skipped(
             f"PH-CON-004: per-element residual is numerically zero "
-            f"(mean={mean_elem:.2e} over {n_interior} interior elements); "
+            f"(mean={mean_elem:.2e} below scale-aware tolerance "
+            f"{mean_elem_tol:.2e} over {n_interior} interior elements); "
             f"hotspot detection not meaningful for an essentially constant field"
         )
 
