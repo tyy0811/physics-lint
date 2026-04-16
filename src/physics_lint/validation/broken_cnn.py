@@ -2,10 +2,14 @@
 
 Builds two tiny CNNs:
 
-- **baseline**: plain 2-layer conv taking only the RHS. C4-equivariant
-  by architecture alone — convolutions are translation-equivariant and
-  the absence of absolute-coordinate input prevents the network from
-  distinguishing rotated inputs.
+- **baseline**: plain 2-layer conv taking only the RHS. Not exactly
+  C4-equivariant (a generic learned 3x3 kernel does not commute with
+  ``np.rot90``), but once trained on a rotational Poisson MMS problem
+  the baseline approximates the continuous inverse Laplacian, which
+  *does* commute with rotations. At the 500-step training budget the
+  baseline reaches its **architectural equivariance floor** (~5e-3 C4
+  error, WARN on PH-SYM-001) — the best this architecture can do
+  without explicit rotation-equivariance constraints.
 
 - **broken**: same 2-layer conv architecture plus two additional input
   channels carrying absolute ``(x, y)`` positional embeddings. The absolute
@@ -111,7 +115,7 @@ def _measure_c4_error(model: nn.Module, rhs_test: torch.Tensor) -> float:
     return float(result.raw_value or 0.0)
 
 
-def run_criterion_4_validation(n_training_steps: int = 200, seed: int = 42) -> dict:
+def run_criterion_4_validation(n_training_steps: int = 500, seed: int = 42) -> dict:
     """Train baseline + broken CNNs, measure PH-SYM-001 on each.
 
     Both models are fresh random-init instances seeded by ``seed`` and
@@ -128,13 +132,25 @@ def run_criterion_4_validation(n_training_steps: int = 200, seed: int = 42) -> d
     baseline's output stays dominated by its random-init 3x3 kernel
     and is NOT rotation-invariant despite the input being C4-symmetric.
     We normalize ``rhs`` by its batch std so the model sees O(1)
-    inputs; with ``lr=1e-2`` the baseline then converges in 200 steps
-    to a good Poisson-solver approximation, which IS approximately
-    rotation-equivariant (the continuous inverse Laplacian commutes
-    with rotations). The broken model, with positional-embedding
-    channels, cannot learn a rotation-equivariant mapping no matter
-    how well it fits the loss — that is the property release criterion
-    4 measures.
+    inputs; with ``lr=1e-2`` the baseline then converges to a good
+    Poisson-solver approximation. The loss plateaus at step ~100, but
+    the C4 equivariance error continues improving until ~500 steps as
+    the learned kernel approaches the rotation-equivariant analytical
+    Poisson inverse. See the training-budget investigation table in
+    ``RUNLOG.md`` for the full loss + C4-error + PH-SYM-001 status
+    curve at 200/500/1000/2000 steps.
+
+    The baseline's **structural equivariance floor** is ~4.75e-3 C4
+    error (WARN on PH-SYM-001, never PASS). This is inherent to the
+    3x3 kernel architecture — a generic learned 3x3 kernel does not
+    commute with ``np.rot90``, so even perfectly trained it can only
+    approximate C4 equivariance, not achieve it to machine precision
+    (Helwig et al. 2023 discuss this explicitly). The 500-step default
+    puts the baseline past the loss knee and well into the WARN band.
+
+    The broken model, with positional-embedding channels, cannot learn
+    a rotation-equivariant mapping no matter how well it fits the loss
+    — that is the property release criterion 4 measures.
     """
     torch.manual_seed(seed)
     rng = np.random.default_rng(seed)
@@ -155,6 +171,11 @@ def run_criterion_4_validation(n_training_steps: int = 200, seed: int = 42) -> d
     pos_batch = pos.unsqueeze(0).expand(rhs_train.shape[0], -1, -1, -1)
     rhs_broken_train = torch.cat([rhs_train, pos_batch], dim=1)
 
+    # Training budget: 500 steps reaches the architectural equivariance floor
+    # (~4.75e-3 C4 error, WARN on PH-SYM-001). Loss plateaus at step ~100,
+    # but C4 error improves until ~500 (structural floor of 3x3 kernels not
+    # commuting with rot90). 500 is past the loss knee, well into WARN band,
+    # and keeps CI under 15s. See RUNLOG.md criterion-4 investigation table.
     _train(baseline, (rhs_train, u_train), n_training_steps, lr=1e-2)
     _train(broken, (rhs_broken_train, u_train), n_training_steps, lr=1e-2)
 
