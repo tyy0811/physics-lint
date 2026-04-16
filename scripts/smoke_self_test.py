@@ -23,6 +23,8 @@ What we cover:
     PH-SYM-002 on axis-symmetric field -> PASS
     PH-SYM-003 on radial CallableField -> PASS
     PH-SYM-001 on asymmetric field -> FAIL
+    PH-SYM-003 dump-mode SKIP (GridField to adapter-only rule)
+    PH-SYM-001 on non-laplace PDE (wildcard floor cross-check)
     PH-SYM-004 on periodic field -> SKIPPED (V1 stub)
 
 Exit 0 on success, 1 if any rule produced an unexpected status.
@@ -388,6 +390,33 @@ def main() -> int:
     field, spec = _sym_so2_callable_case()
     r = ph_sym_003.check(field, spec)
     _record(failures, "sym SO2", "PH-SYM-003", r.status, r.reason, ok)
+
+    # SYM-003 dump-mode SKIP (adapter-only rule with GridField input)
+    field_dump, spec_dump = _sym_c4_case()  # reuse the C4 case; it's a GridField
+    spec_dump_so2 = DomainSpec.model_validate(
+        {
+            **spec_dump.model_dump(),
+            "symmetries": {"declared": ["SO2"]},
+        }
+    )
+    r = ph_sym_003.check(field_dump, spec_dump_so2)
+    _record(failures, "sym SO2 dump", "PH-SYM-003", r.status, r.reason, ok)
+
+    # SYM-001 on non-laplace PDE — wildcard floor should fire, same classification as laplace
+    field_poisson, _ = _sym_c4_case()
+    spec_poisson = DomainSpec.model_validate(
+        {
+            "pde": "poisson",
+            "grid_shape": [64, 64],
+            "domain": {"x": [-0.5, 0.5], "y": [-0.5, 0.5]},
+            "periodic": False,
+            "boundary_condition": {"kind": "dirichlet"},
+            "symmetries": {"declared": ["C4"]},
+            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
+        }
+    )
+    r = ph_sym_001.check(field_poisson, spec_poisson)
+    _record(failures, "sym C4 poisson", "PH-SYM-001", r.status, r.reason, ok)
 
     field, spec = _sym_periodic_case()
     r = ph_sym_004.check(field, spec)

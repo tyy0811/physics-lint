@@ -44,6 +44,8 @@ machine epsilon recorded as floor per PH-CON-003 precedent.
 - New classification under calibrated floor: FAIL (correctly identifies
   the 3x3 CNN architectural limit as a genuine equivariance failure ~14
   orders of magnitude above the analytical floor)
+- After wildcard floor fix (this commit): criterion-4 at 32x32 poisson now
+  correctly hits the calibrated floor via pde='*' + grid_shape='*' match.
 - Criterion-4 raw-value ratio: 7.11x (unchanged, still > 2.0)
 - The raw-value ratio is the release-gate metric; the violation_ratio
   reclassification is the honest measurement that invariant 2 requires.
