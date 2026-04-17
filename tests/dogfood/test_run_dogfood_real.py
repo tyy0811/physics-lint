@@ -13,6 +13,7 @@ from dogfood.run_dogfood_real import (
     check_binary_axis,
     check_ordinal_axis,
     compute_verdict,
+    format_report,
     load_predictions,
 )
 
@@ -260,3 +261,109 @@ class TestAggregateOverProblems:
         assert per_model_score["PH-RES-001"] < 1e-2
         assert per_model_score["PH-BC-001"] == pytest.approx(0.0, abs=1e-10)
         assert per_model_score["PH-POS-002"] < 1e-5
+
+
+class TestFormatReport:
+    def _sample_inputs(self):
+        """Pre-assembled axis_results + physlint_scores + provenance for the
+        happy path where rankings match and DDPM reproduced cleanly."""
+        physlint_scores = {
+            "unet_regressor": {
+                "PH-RES-001": 20.5,
+                "PH-BC-001": 0.007,
+                "PH-POS-002": 0.0,
+            },
+            "fno": {
+                "PH-RES-001": 24.6,
+                "PH-BC-001": 0.19,
+                "PH-POS-002": 0.04,
+            },
+            "ddpm": {
+                "PH-RES-001": 4.3,
+                "PH-BC-001": 0.001,
+                "PH-POS-002": 1e-12,
+            },
+        }
+        axis_results = [
+            {
+                "axis": "pde_residual",
+                "mode": "ordinal",
+                "upstream": ["ddpm", "unet_regressor", "fno"],
+                "physlint": ["ddpm", "unet_regressor", "fno"],
+                "match": True,
+            },
+            {
+                "axis": "bc_err",
+                "mode": "ordinal",
+                "upstream": ["ddpm", "unet_regressor", "fno"],
+                "physlint": ["ddpm", "unet_regressor", "fno"],
+                "match": True,
+            },
+            {
+                "axis": "max_viol",
+                "mode": "binary",
+                "expected_violators": {"fno"},
+                "physlint_violators": {"fno"},
+                "match": True,
+            },
+        ]
+        return physlint_scores, axis_results
+
+    def test_report_includes_verdict(self):
+        physlint_scores, axis_results = self._sample_inputs()
+        out = format_report(
+            verdict="PASS (scoped)",
+            axis_results=axis_results,
+            physlint_scores=physlint_scores,
+            ddpm_config="configs/ddpm_phase2.yaml",
+            ddpm_reproduced=4.22,
+            upstream_ddpm=4.22,
+            n_samples=300,
+            floor_status="calibrated",
+            diffphys_sha="4c2113a",
+        )
+        assert "PASS (scoped)" in out
+        assert "PH-RES-001" in out
+        assert "PH-BC-001" in out
+        assert "PH-POS-002" in out
+
+    def test_report_includes_reproduction_provenance(self):
+        physlint_scores, axis_results = self._sample_inputs()
+        out = format_report(
+            verdict="PASS (scoped)",
+            axis_results=axis_results,
+            physlint_scores=physlint_scores,
+            ddpm_config="configs/ddpm_improved.yaml",
+            ddpm_reproduced=4.20,
+            upstream_ddpm=4.22,
+            n_samples=300,
+            floor_status="calibrated",
+            diffphys_sha="4c2113a",
+        )
+        assert "configs/ddpm_improved.yaml" in out
+        assert "4.20" in out
+        assert "4.22" in out
+        assert "4c2113a" in out
+
+    def test_report_surfaces_threshold_mismatch_when_universal_violation(self):
+        physlint_scores, axis_results = self._sample_inputs()
+        # Rewrite the max_viol axis to show universal violation.
+        axis_results[2] = {
+            "axis": "max_viol",
+            "mode": "binary",
+            "expected_violators": {"fno"},
+            "physlint_violators": {"unet_regressor", "fno", "ddpm"},
+            "match": False,
+        }
+        out = format_report(
+            verdict="PASS (scoped, MIXED)",
+            axis_results=axis_results,
+            physlint_scores=physlint_scores,
+            ddpm_config="configs/ddpm_phase2.yaml",
+            ddpm_reproduced=4.22,
+            upstream_ddpm=4.22,
+            n_samples=300,
+            floor_status="calibrated",
+            diffphys_sha="4c2113a",
+        )
+        assert "threshold" in out.lower()
