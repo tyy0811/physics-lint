@@ -1,17 +1,10 @@
 """Shared fixtures for dogfood tests."""
 
-from __future__ import annotations
-
 import numpy as np
 import pytest
 
-from physics_lint.spec import (
-    BCSpec,
-    DomainSpec,
-    FieldSourceSpec,
-    GridDomain,
-    SymmetrySpec,
-)
+from physics_lint import DomainSpec
+from physics_lint.spec import BCSpec, FieldSourceSpec, GridDomain, SymmetrySpec
 
 
 @pytest.fixture
