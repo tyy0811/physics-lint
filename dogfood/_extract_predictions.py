@@ -54,9 +54,19 @@ def main() -> int:
     from diffphys.model.trainer import _build_ddpm, build_model, load_config
 
     cfg = load_config(args.config)
-    model = build_model(cfg["model"]).to(args.device)
+    inner_model = build_model(cfg["model"]).to(args.device)
     ckpt = torch.load(args.checkpoint, map_location=args.device)
-    model.load_state_dict(ckpt["model_state_dict"])
+
+    if args.model_name == "ddpm":
+        # Checkpoint was saved from the DDPM wrapper (DDPM.__init__ sets
+        # self.model = inner_model), so state_dict keys are prefixed
+        # "model.". Wrap first, then load — loading into the bare
+        # ConditionalUNet fails with "Missing/Unexpected key" errors.
+        model = _build_ddpm(inner_model, cfg["ddpm"]).to(args.device)
+        model.load_state_dict(ckpt["model_state_dict"])
+    else:
+        model = inner_model
+        model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 
     ds = LaplacePDEDataset(args.test_npz)
@@ -72,9 +82,8 @@ def main() -> int:
         # Use upstream's helper — handles sample+mean aggregation and the
         # (K, B, 1, H, W) → (N, H, W) shape dance. Verified at plan-writing
         # time: src/diffphys/evaluation/evaluate_uq.py:98-118.
-        ddpm = _build_ddpm(model, cfg["ddpm"])
         mean_pred, _std, truth_np = collect_generative_predictions(
-            ddpm,
+            model,
             loader,
             args.device,
             n_samples=args.n_samples,
