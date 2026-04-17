@@ -358,12 +358,16 @@ def main() -> int:
     diffphys_root = (
         Path(os.environ.get("DIFFPHYS_ROOT", Path.home() / "Desktop/diffusion-physics"))
         .expanduser()
-        .resolve()
+        .absolute()
     )
+    # .absolute() — not .resolve() — because .venv-diffphys/bin/python is a
+    # symlink to the base interpreter. Following it bypasses venv discovery
+    # (pyvenv.cfg lookup needs argv[0] inside the venv) and silently runs
+    # the subprocess in the wrong environment.
     diffphys_python = (
         Path(os.environ.get("DIFFPHYS_PYTHON", diffphys_root / ".venv-diffphys/bin/python"))
         .expanduser()
-        .resolve()
+        .absolute()
     )
     ddpm_config = os.environ.get("DDPM_CONFIG_REL", "configs/ddpm_phase2.yaml")
     ddpm_reproduced = float(os.environ.get("DDPM_REPRODUCED", "0.0"))
@@ -376,6 +380,19 @@ def main() -> int:
             file=sys.stderr,
         )
         return 2
+
+    # Guard against silent wrong-env bug: $DIFFPHYS_PYTHON must point into a
+    # virtualenv (parent dir contains pyvenv.cfg). Otherwise the subprocess
+    # runs in the base interpreter with whatever site-packages happens to be
+    # on $PATH, tainting results without warning.
+    if not (diffphys_python.parent.parent / "pyvenv.cfg").exists():
+        print(
+            f"FATAL: DIFFPHYS_PYTHON={diffphys_python} is not inside a venv "
+            f"(expected pyvenv.cfg at {diffphys_python.parent.parent}). "
+            "Refusing to run subprocess in an unpinned environment.",
+            file=sys.stderr,
+        )
+        return 3
 
     diffphys_sha = subprocess.check_output(
         ["git", "-C", str(diffphys_root), "rev-parse", "--short", "HEAD"],

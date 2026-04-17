@@ -367,3 +367,36 @@ class TestFormatReport:
             diffphys_sha="4c2113a",
         )
         assert "threshold" in out.lower()
+
+
+class TestMainVenvGuard:
+    """Defensive checks in main() entrypoint."""
+
+    def test_main_exits_with_code_3_when_diffphys_python_not_in_venv(
+        self, tmp_path, monkeypatch, capsys
+    ):
+        """If DIFFPHYS_PYTHON points to a bare interpreter (no pyvenv.cfg at
+        parent.parent), main() must refuse to spawn the subprocess.
+
+        Regression guard: Path.resolve() on a venv python symlink follows
+        into the base interpreter, silently running extraction in the wrong
+        environment. Caught during Phase 3 execution.
+        """
+        from dogfood.run_dogfood_real import main
+
+        # Create a fake python path with no pyvenv.cfg upstream.
+        fake_python_parent = tmp_path / "bin"
+        fake_python_parent.mkdir()
+        fake_python = fake_python_parent / "python"
+        fake_python.touch()
+        # tmp_path has no pyvenv.cfg → guard should trip.
+
+        monkeypatch.setenv("DIFFPHYS_ROOT", str(tmp_path))
+        monkeypatch.setenv("DIFFPHYS_PYTHON", str(fake_python))
+        monkeypatch.setenv("DDPM_REPRODUCED", "4.22")
+        # Avoid the git rev-parse call downstream — guard fires before it.
+
+        rc = main()
+        assert rc == 3
+        captured = capsys.readouterr()
+        assert "not inside a venv" in captured.err
