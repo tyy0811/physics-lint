@@ -5,6 +5,8 @@ See docs/superpowers/specs/2026-04-17-week-2.5-dogfood-a1-design.md.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from physics_lint.field import GridField
@@ -125,6 +127,45 @@ def check_binary_axis(
         "physlint_violators": physlint_violators,
         "match": physlint_violators == set(expected_violators),
     }
+
+
+def load_predictions(npz_path: Path) -> tuple[np.ndarray, np.ndarray]:
+    """Load predictions and truth from a .npz dumped by _extract_predictions.py.
+
+    Returns:
+        (predictions, truth) each shaped (N, 64, 64) float32.
+    """
+    data = np.load(npz_path)
+    predictions = data["predictions"].astype(np.float32)
+    truth = data["truth"].astype(np.float32)
+    return predictions, truth
+
+
+def aggregate_over_problems(
+    *,
+    predictions: np.ndarray,
+    truth: np.ndarray,
+    spec: DomainSpec,
+) -> dict[str, float]:
+    """Apply the three rules per problem and return per-rule mean raw_value.
+
+    SKIPPED rules contribute NaN; the mean treats NaN as missing (nanmean).
+    Ranking downstream breaks ties deterministically by model-name sort.
+    """
+    assert predictions.shape == truth.shape
+    assert predictions.shape[1:] == (64, 64)
+
+    per_problem = []
+    for i in range(predictions.shape[0]):
+        scores = apply_rules_to_prediction(
+            prediction=predictions[i],
+            truth=truth[i],
+            spec=spec,
+        )
+        per_problem.append(scores)
+
+    rule_ids = ["PH-RES-001", "PH-BC-001", "PH-POS-002"]
+    return {rid: float(np.nanmean([p[rid] for p in per_problem])) for rid in rule_ids}
 
 
 def compute_verdict(*, sanity_match: bool, real_axis_matches: list[bool]) -> str:

@@ -3,14 +3,17 @@
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 
 from dogfood.run_dogfood_real import (
+    aggregate_over_problems,
     apply_rules_to_prediction,
     build_a1_spec,
     check_binary_axis,
     check_ordinal_axis,
     compute_verdict,
+    load_predictions,
 )
 
 
@@ -232,3 +235,28 @@ class TestExtractPredictionsArgparse:
         assert "--model-name" in result.stdout
         assert "--checkpoint" in result.stdout
         assert "--max-samples" in result.stdout
+
+
+class TestLoadPredictions:
+    def test_shape_and_dtype(self, tiny_predictions_npz):
+        predictions, truth = load_predictions(tiny_predictions_npz)
+        assert predictions.shape == (4, 64, 64)
+        assert truth.shape == (4, 64, 64)
+        assert predictions.dtype == np.float32
+        assert truth.dtype == np.float32
+
+
+class TestAggregateOverProblems:
+    def test_aggregates_mean_across_problems(self, a1_spec, tiny_predictions_npz):
+        predictions, truth = load_predictions(tiny_predictions_npz)
+        per_model_score = aggregate_over_problems(
+            predictions=predictions,
+            truth=truth,
+            spec=a1_spec,
+        )
+        assert set(per_model_score.keys()) == {"PH-RES-001", "PH-BC-001", "PH-POS-002"}
+        # All four copies of linear harmonic → mean residual sits at the
+        # float32 FD stencil floor (~1.3e-3). Tolerance matches Task 3.
+        assert per_model_score["PH-RES-001"] < 1e-2
+        assert per_model_score["PH-BC-001"] == pytest.approx(0.0, abs=1e-10)
+        assert per_model_score["PH-POS-002"] < 1e-5

@@ -1,5 +1,7 @@
 """Shared fixtures for dogfood tests."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -44,3 +46,15 @@ def linear_field() -> np.ndarray:
     y = np.linspace(0.0, 1.0, n)
     xx, yy = np.meshgrid(x, y, indexing="ij")
     return (xx + yy).astype(np.float32)
+
+
+@pytest.fixture
+def tiny_predictions_npz(tmp_path, linear_field) -> Path:
+    """Write a 4-problem .npz with the linear harmonic field as both pred
+    and truth. apply_rules_to_prediction on each produces at-floor residuals;
+    the aggregator can consume as a sanity integration test."""
+    out = tmp_path / "tiny.npz"
+    predictions = np.stack([linear_field] * 4, axis=0)
+    truth = np.stack([linear_field] * 4, axis=0)
+    np.savez_compressed(out, predictions=predictions, truth=truth)
+    return out
