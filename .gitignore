@@ -24,6 +24,9 @@ env/
 
 # Docs
 docs/_build/
+docs/sphinx/_build/
+# Auto-generated rule pages (created by conf.py builder-inited hook)
+docs/sphinx/rules/
 
 # Local-only design and planning notes (kept out of the public repo)
 docs/design/
