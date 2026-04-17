@@ -41,10 +41,14 @@ def to_sarif(report: PhysicsLintReport, category: str = "physics-lint") -> dict[
 
     from physics_lint.rules._registry import list_rules as _list_rules
 
-    try:
-        registry_entries = _list_rules()
-    except Exception:
-        registry_entries = []
+    # No try/except here: registry listing failures should propagate. If
+    # the rule registry is broken, we do NOT want to ship SARIF with a
+    # silently empty driver.rules metadata block — that's a
+    # silent-correctness-failure pattern. Same class as the Codex review
+    # finding on the PASS-as-result bug: loud failure beats a false-green
+    # signal. (The registry is deterministic; if _list_rules raises, the
+    # install is broken and the user needs to know.)
+    registry_entries = _list_rules()
 
     descriptors = [
         {

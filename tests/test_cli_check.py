@@ -135,6 +135,41 @@ bc_line = 58
         assert res["properties"]["location_mode"] == "source-mapped"
 
 
+def test_cli_check_signature_skipped_rules_surface_in_summary(tmp_path):
+    """Rules that need extra kwargs (PH-BC-001 boundary_target, PH-POS-002
+    boundary_values, PH-NUM-002 refined_field) must emit a SKIPPED RuleResult
+    visible in the text summary — not silently disappear. Guards the
+    silent-correctness-failure pattern on the CLI dispatch."""
+    dump = _write_good_dump(tmp_path / "pred.npz")
+    result = runner.invoke(app, ["check", str(dump), "--format", "text"])
+    # At least one of the three known-limitation rules is present in the
+    # registry; the one whose kwargs cannot be derived should appear with
+    # the ⊘ SKIPPED glyph and a reason mentioning "requires".
+    assert "⊘" in result.stdout, result.stdout
+    assert "PH-BC-001" in result.stdout
+    # The reason text must explain WHY (what kwarg is missing), not just
+    # that the rule didn't run.
+    assert "requires" in result.stdout.lower()
+
+
+def test_cli_check_signature_skipped_rules_in_json(tmp_path):
+    """JSON output must also surface signature-skipped rules."""
+    import json
+
+    dump = _write_good_dump(tmp_path / "pred.npz")
+    result = runner.invoke(app, ["check", str(dump), "--format", "json"])
+    parsed = json.loads(result.stdout)
+    skipped_ids = {r["rule_id"] for r in parsed["rules"] if r["status"] == "SKIPPED"}
+    # PH-BC-001 requires boundary_target — always in the skip set from CLI
+    assert "PH-BC-001" in skipped_ids
+    for r in parsed["rules"]:
+        if r["rule_id"] == "PH-BC-001":
+            assert r["status"] == "SKIPPED"
+            assert r["reason"] is not None
+            assert "requires" in r["reason"].lower()
+            break
+
+
 def test_cli_check_does_not_swallow_rule_internal_type_error(tmp_path, monkeypatch):
     """Regression: catching TypeError blanket-hid rule-internal bugs and
     produced false-green exits. Signature-based skip must let internal

@@ -87,3 +87,27 @@ dump_path = "pred.npz"
     assert result.exit_code == 0
     assert "laplace" in result.stdout
     assert "adapter domain_spec() not applied" in result.stdout
+
+
+def test_cli_config_show_missing_dump_path_uses_unset_sentinel(tmp_path: Path):
+    """Regression: when user TOML omits dump_path, config show used to inject
+    '(placeholder)' into the model dump — a string that could be mistaken
+    for a real config value. Now displays '<unset>' with an advisory."""
+    cfg = tmp_path / "pyproject.toml"
+    cfg.write_text("""
+[tool.physics-lint]
+pde = "laplace"
+grid_shape = [64, 64]
+domain = { x = [0.0, 1.0], y = [0.0, 1.0] }
+periodic = false
+boundary_condition = "dirichlet"
+
+[tool.physics-lint.field]
+type = "grid"
+backend = "fd"
+""")
+    result = runner.invoke(app, ["config", "show", "--config", str(cfg)])
+    assert result.exit_code == 0
+    assert "<unset>" in result.stdout
+    assert "(placeholder)" not in result.stdout
+    assert '"<unset>"' in result.stdout or "unset" in result.stdout.lower()

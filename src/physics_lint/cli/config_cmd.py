@@ -93,12 +93,17 @@ def show_cmd(
     try:
         raw = load_spec_from_toml(config)
         merged = merge_into_spec(raw, adapter_spec=None, cli_overrides={})
-        merged.setdefault("field", {}).setdefault("dump_path", "(placeholder)")
+        # dump_path is required by DomainSpec but users running `config show`
+        # without a target have no path to offer. Display as "<unset>" so it
+        # reads as a sentinel rather than a literal user-facing value the
+        # user might try to edit.
+        merged.setdefault("field", {}).setdefault("dump_path", "<unset>")
         spec = DomainSpec.model_validate(merged)
     except Exception as e:
         typer.echo(f"config invalid: {e}", err=True)
         raise typer.Exit(code=2) from e
 
     typer.echo("(adapter domain_spec() not applied; partial view)")
+    typer.echo('(dump_path shown as "<unset>" when not provided in TOML)')
     typer.echo("")
     typer.echo(spec.model_dump_json(indent=2))

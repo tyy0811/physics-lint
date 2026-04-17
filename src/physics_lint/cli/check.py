@@ -36,6 +36,34 @@ def _extra_required_params(check_fn) -> list[str]:
     return extras
 
 
+def _skipped_for_missing_kwargs(entry, extras: list[str]) -> RuleResult:
+    """Emit a SKIPPED RuleResult for a rule the CLI can't invoke.
+
+    Visible in text summary (⊘ glyph), JSON dump, and SARIF
+    toolExecutionNotifications. Prevents the silent-correctness-failure
+    pattern where a user runs `physics-lint check model.pt`, sees green,
+    and doesn't realize 3/N rules never fired.
+
+    V1 limitation; V1.1 auto-extraction tracked in docs/backlog/v1.1.md.
+    """
+    joined = ", ".join(extras)
+    return RuleResult(
+        rule_id=entry.rule_id,
+        rule_name=entry.rule_name,
+        severity=entry.default_severity,
+        status="SKIPPED",
+        raw_value=None,
+        violation_ratio=None,
+        mode=None,
+        reason=f"requires {joined} (CLI V1 limitation; V1.1 auto-extracts)",
+        refinement_rate=None,
+        spatial_map=None,
+        recommended_norm="",
+        citation="",
+        doc_url="",
+    )
+
+
 def check_cmd(
     target: Path = typer.Argument(..., help="Adapter .py or dump .npz/.npy"),
     config: Optional[Path] = typer.Option(None, "--config", help="Path to pyproject.toml"),
@@ -63,7 +91,9 @@ def check_cmd(
             # (boundary_target, boundary_values, refined_field) are skipped.
             # V1.1 adds auto-extraction. Detect by signature rather than
             # catching TypeError — that way rule-internal TypeErrors still
-            # propagate and fail loudly.
+            # propagate and fail loudly. Emit a SKIPPED RuleResult so the
+            # skip is visible in the summary, not silently absent.
+            results.append(_skipped_for_missing_kwargs(entry, extras))
             if verbose:
                 typer.echo(f"  (skipping {entry.rule_id}: needs kwargs {extras})", err=True)
             continue
