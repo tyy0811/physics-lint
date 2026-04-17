@@ -368,6 +368,7 @@ def main() -> int:
     ddpm_config = os.environ.get("DDPM_CONFIG_REL", "configs/ddpm_phase2.yaml")
     ddpm_reproduced = float(os.environ.get("DDPM_REPRODUCED", "0.0"))
     n_samples = int(os.environ.get("N_SAMPLES", "300"))
+    n_samples_ddpm = int(os.environ.get("N_SAMPLES_DDPM", "5"))
 
     if ddpm_reproduced == 0.0:
         print(
@@ -388,6 +389,7 @@ def main() -> int:
         ddpm_config=ddpm_config,
         ddpm_reproduced=ddpm_reproduced,
         n_samples=n_samples,
+        n_samples_ddpm=n_samples_ddpm,
     )
 
     spec = build_a1_spec()
