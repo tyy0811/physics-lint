@@ -1,0 +1,61 @@
+name: physics-lint
+
+# Canonical dogfood workflow. Physics-lint runs against the three real-ML
+# laplace-uq-bench surrogates committed to dogfood/laplace_uq_bench/ and
+# emits per-surrogate SARIF to the Security tab. See Week 4 plan Task 4
+# for scope (3 surrogates from Week 2½; 6-surrogate expansion is v1.1 per
+# docs/backlog/v1.1.md).
+#
+# The README hero image (docs/figures/sarif-hero.png) is the FNO PH-BC-001
+# alert rendered in the Security tab from this workflow's first successful
+# run against a PR — captured manually per Task 4 Step 4.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'   # Monday 06:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # v1.0 scope: 3 surrogates from Week 2½ real-ML dogfood.
+        # Ensemble / DPS / OT-CFM / improved-DDPM / flow-matching deferred
+        # to v1.1 — see docs/backlog/v1.1.md.
+        model:
+          - { name: unet-regressor, path: dogfood/laplace_uq_bench/unet_regressor_pred.npz }
+          - { name: fno,            path: dogfood/laplace_uq_bench/fno_pred.npz }
+          - { name: ddpm,           path: dogfood/laplace_uq_bench/ddpm_pred.npz }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install physics-lint
+        run: pip install -e .
+
+      - name: Run physics-lint on ${{ matrix.model.name }}
+        id: lint
+        run: |
+          physics-lint check ${{ matrix.model.path }} \
+              --config pyproject.toml \
+              --category physics-lint-${{ matrix.model.name }} \
+              --format sarif \
+              --output physics-lint-${{ matrix.model.name }}.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: physics-lint-${{ matrix.model.name }}.sarif
+          category: physics-lint-${{ matrix.model.name }}

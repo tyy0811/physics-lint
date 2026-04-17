@@ -1,0 +1,7 @@
+- id: physics-lint
+  name: physics-lint
+  entry: physics-lint check
+  language: python
+  types_or: [python, binary]
+  files: '^(models|adapters|dogfood)/.*\.(py|npz|npy)$'
+  pass_filenames: true
