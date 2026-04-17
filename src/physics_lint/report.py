@@ -129,6 +129,11 @@ class PhysicsLintReport:
 
         return json.dumps(self.to_dict(), indent=2, default=str)
 
+    def to_sarif(self, category: str = "physics-lint") -> dict[str, Any]:
+        from physics_lint.sarif import to_sarif
+
+        return to_sarif(self, category=category)
+
     def plot(self, figsize: tuple[float, float] = (10, 6)) -> Any:
         """Matplotlib bar chart of violation_ratio per rule, coloured by status."""
         import matplotlib.pyplot as plt
