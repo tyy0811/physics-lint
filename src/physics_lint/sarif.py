@@ -1,11 +1,16 @@
 """SARIF 2.1.0 emission for PhysicsLintReport.
 
 Per design doc §13. Key discipline points:
-1. SKIPPED rules go into run.invocations[0].toolExecutionNotifications
+1. Only WARN and FAIL rules emit run.results entries. PASS rules do NOT
+   — SARIF results are findings, and GitHub code scanning treats every
+   result as an alert regardless of the SARIF `level` field (an error-
+   severity rule's PASS would surface as an `error` alert). PASS is
+   visible in text/JSON output; in SARIF it is the absence of a result.
+2. SKIPPED rules go into run.invocations[0].toolExecutionNotifications
    (level: note), NOT into run.results. Prevents Security-tab noise.
-2. category parameter propagates to run.automationDetails.id AND should
+3. category parameter propagates to run.automationDetails.id AND should
    match the workflow's category: input on codeql-action/upload-sarif.
-3. Artifact-only is the default location mode; source-mapped triggers when
+4. Artifact-only is the default location mode; source-mapped triggers when
    report.metadata['sarif_source'] carries a source_file + line info.
 """
 
@@ -59,6 +64,10 @@ def to_sarif(report: PhysicsLintReport, category: str = "physics-lint") -> dict[
     for r in report.rules:
         if r.status == "SKIPPED":
             notifications.append(_skipped_notification(r))
+            continue
+        if r.status == "PASS":
+            # PASS rules do not emit SARIF results — see module docstring.
+            # GitHub code scanning treats every result as an alert.
             continue
         results.append(_result_object(r, target_path, sarif_source if source_mapped else None))
 

@@ -2,8 +2,10 @@
 
 Design doc §11. _STATUS_RANK is module-level (not inline) so overall_status
 and any future sort/filter operations share one source of truth. SKIPPED
-has rank 0 (same as PASS) — a skipped rule never moves overall status,
-and status_counts always reports all four keys with explicit zeros.
+rules are excluded from overall_status computation — a skipped rule carries
+zero information and must not move the aggregate status in either direction,
+regardless of rule ordering. status_counts always reports all four keys
+with explicit zeros.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ import numpy as np
 Status = Literal["PASS", "WARN", "FAIL", "SKIPPED"]
 Severity = Literal["error", "warning", "info"]
 
-_STATUS_RANK: dict[Status, int] = {"SKIPPED": 0, "PASS": 0, "WARN": 1, "FAIL": 2}
+_STATUS_RANK: dict[Status, int] = {"PASS": 0, "WARN": 1, "FAIL": 2}
 _STATUS_ORDER: tuple[Status, ...] = ("PASS", "WARN", "FAIL", "SKIPPED")
 
 
@@ -47,9 +49,13 @@ class PhysicsLintReport:
 
     @property
     def overall_status(self) -> Status:
-        if not self.rules:
+        # SKIPPED rules are excluded from the aggregate — they carry zero
+        # information about whether the model is correct. If every rule
+        # skipped (or the report is empty), the aggregate is PASS.
+        non_skipped = [r for r in self.rules if r.status != "SKIPPED"]
+        if not non_skipped:
             return "PASS"
-        return max(self.rules, key=lambda r: _STATUS_RANK[r.status]).status
+        return max(non_skipped, key=lambda r: _STATUS_RANK[r.status]).status
 
     @property
     def status_counts(self) -> dict[Status, int]:

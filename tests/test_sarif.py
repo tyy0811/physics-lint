@@ -43,14 +43,14 @@ def test_sarif_minimal_schema():
 
 def test_sarif_skipped_goes_to_notifications_not_results():
     rules = [
-        _rr("PH-RES-001", "PASS", raw_value=1e-6),
+        _rr("PH-RES-001", "FAIL", raw_value=1.0, violation_ratio=1000),
         _rr("PH-RES-002", "SKIPPED", severity="warning", reason="dump mode"),
         _rr("PH-SYM-003", "SKIPPED", severity="warning", reason="dump mode"),
     ]
     sarif = _base_report(rules=rules).to_sarif(category="physics-lint-fno")
     run = sarif["runs"][0]
     result_ids = {r["ruleId"] for r in run["results"]}
-    # PASS goes into results; SKIPPED does NOT
+    # FAIL emits a result; SKIPPED does not.
     assert "PH-RES-001" in result_ids
     assert "PH-RES-002" not in result_ids
     assert "PH-SYM-003" not in result_ids
@@ -61,6 +61,21 @@ def test_sarif_skipped_goes_to_notifications_not_results():
     assert "PH-SYM-003" in notif_rule_ids
     for n in notifications:
         assert n["level"] == "note"
+
+
+def test_sarif_pass_does_not_emit_result():
+    """Regression: SARIF results are findings. GitHub code scanning treats
+    every result as an alert regardless of level. A PASS on an error-severity
+    rule must NOT emit a SARIF result — it would render as an error alert."""
+    rules = [
+        _rr("PH-RES-001", "PASS", severity="error", raw_value=1e-8),
+        _rr("PH-BC-001", "PASS", severity="error", raw_value=1e-7),
+    ]
+    sarif = _base_report(rules=rules).to_sarif()
+    run = sarif["runs"][0]
+    assert run["results"] == []
+    # invocation must still exist; executionSuccessful must be True
+    assert run["invocations"][0]["executionSuccessful"] is True
 
 
 def test_sarif_category_propagates():

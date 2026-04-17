@@ -16,20 +16,14 @@ def self_test_cmd(
     """Run the analytical battery against the full rule set.
 
     Release criterion 1: exit 0 iff every rule hits its calibrated floor
-    within tolerance on every analytical input.
+    within tolerance on every analytical input. Delegates to
+    physics_lint.selftest which lives in the installable package so
+    this subcommand works from a wheel install as well as a repo clone.
     """
-    import subprocess
-    import sys
+    from physics_lint.selftest import run
 
-    script = Path(__file__).parent.parent.parent.parent / "scripts" / "smoke_self_test.py"
-    if not script.is_file():
-        typer.echo(f"self-test script not found: {script}", err=True)
-        raise typer.Exit(code=2)
-    cmd = [sys.executable, str(script)]
-    result = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    typer.echo(result.stdout)
-    if result.stderr:
-        typer.echo(result.stderr, err=True)
+    code, text = run(verbose=verbose)
+    typer.echo(text, nl=False)
     if write_report is not None:
-        write_report.write_text(result.stdout)
-    raise typer.Exit(code=result.returncode)
+        write_report.write_text(text)
+    raise typer.Exit(code=code)

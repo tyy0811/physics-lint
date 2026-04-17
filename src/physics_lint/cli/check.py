@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 from pathlib import Path
 from typing import Optional
@@ -11,6 +12,28 @@ import typer
 from physics_lint.loader import LoaderError, load_target
 from physics_lint.report import PhysicsLintReport, RuleResult
 from physics_lint.rules import _registry
+
+
+def _extra_required_params(check_fn) -> list[str]:
+    """Return required keyword-only parameters of check_fn beyond (field, spec).
+
+    Used to skip rules that need kwargs we can't provide from the CLI
+    (boundary_target, boundary_values, refined_field) without swallowing
+    TypeErrors raised from inside the rule body.
+    """
+    try:
+        sig = inspect.signature(check_fn)
+    except (TypeError, ValueError):
+        return []
+    extras: list[str] = []
+    for name, param in sig.parameters.items():
+        if name in ("field", "spec"):
+            continue
+        if param.kind in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD):
+            continue
+        if param.default is inspect.Parameter.empty:
+            extras.append(name)
+    return extras
 
 
 def check_cmd(
@@ -34,20 +57,36 @@ def check_cmd(
     results: list[RuleResult] = []
     for entry in entries:
         check_fn = _registry.load_check(entry)
-        try:
-            result = check_fn(loaded.field, loaded.spec)
-        except TypeError:
+        extras = _extra_required_params(check_fn)
+        if extras:
+            # Known V1 limitation: rules taking extra required kwargs
+            # (boundary_target, boundary_values, refined_field) are skipped.
+            # V1.1 adds auto-extraction. Detect by signature rather than
+            # catching TypeError — that way rule-internal TypeErrors still
+            # propagate and fail loudly.
             if verbose:
-                typer.echo(f"  (skipping {entry.rule_id}: needs extra kwargs)", err=True)
+                typer.echo(f"  (skipping {entry.rule_id}: needs kwargs {extras})", err=True)
             continue
+        result = check_fn(loaded.field, loaded.spec)
         if result is not None:
             results.append(result)
+
+    metadata: dict[str, object] = {"target_path": str(target)}
+    # Plumb [tool.physics-lint.sarif] into SARIF metadata so source-mapped
+    # emission activates from the CLI.
+    if loaded.spec.sarif is not None and loaded.spec.sarif.source_file:
+        metadata["sarif_source"] = {
+            "source_file": loaded.spec.sarif.source_file,
+            "pde_line": loaded.spec.sarif.pde_line,
+            "bc_line": loaded.spec.sarif.bc_line,
+            "symmetry_line": loaded.spec.sarif.symmetry_line,
+        }
 
     report = PhysicsLintReport(
         pde=loaded.spec.pde,
         grid_shape=loaded.spec.grid_shape,
         rules=results,
-        metadata={"target_path": str(target)},
+        metadata=metadata,
     )
 
     if format == "text":

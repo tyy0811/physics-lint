@@ -46,6 +46,28 @@ def test_cli_config_init_pde_heat_uncomments_diffusivity():
         raise AssertionError("diffusivity not uncommented in heat template")
 
 
+def test_cli_self_test_delegates_to_package_module(monkeypatch):
+    """Regression: self-test used to resolve scripts/smoke_self_test.py by
+    walking out of the package tree, which fails from an installed wheel
+    because scripts/ is not packaged. The CLI must delegate to
+    physics_lint.selftest.run (a package module)."""
+    from physics_lint.selftest import run as real_run
+
+    call_log: list[bool] = []
+
+    def _fake_run(*, verbose: bool = False) -> tuple[int, str]:
+        call_log.append(verbose)
+        return 0, "PASS\n"
+
+    monkeypatch.setattr("physics_lint.selftest.run", _fake_run)
+    result = runner.invoke(app, ["self-test"])
+    assert result.exit_code == 0
+    assert "PASS" in result.stdout
+    assert call_log == [False]
+    # Sanity: restore and confirm the real entry point is importable
+    assert callable(real_run)
+
+
 def test_cli_config_show_without_target(tmp_path: Path):
     cfg = tmp_path / "pyproject.toml"
     cfg.write_text("""

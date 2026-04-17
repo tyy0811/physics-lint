@@ -88,3 +88,82 @@ def test_cli_check_disable_rule(tmp_path):
     assert result.exit_code == 0
     # PH-RES-003 should not appear in the output at all
     assert "PH-RES-003" not in result.stdout
+
+
+def test_cli_check_sarif_config_produces_source_mapped(tmp_path):
+    """[tool.physics-lint.sarif] must reach SARIF output as source-mapped."""
+    import json
+
+    dump = _write_good_dump(tmp_path / "pred.npz")
+    cfg = tmp_path / "pyproject.toml"
+    cfg.write_text("""
+[tool.physics-lint]
+pde = "laplace"
+grid_shape = [32, 32]
+domain = { x = [0.0, 1.0], y = [0.0, 1.0] }
+periodic = false
+boundary_condition = "dirichlet"
+
+[tool.physics-lint.field]
+type = "grid"
+backend = "fd"
+
+[tool.physics-lint.sarif]
+source_file = "train_model.py"
+pde_line = 42
+bc_line = 58
+""")
+    result = runner.invoke(
+        app,
+        [
+            "check",
+            str(dump),
+            "--config",
+            str(cfg),
+            "--format",
+            "sarif",
+            "--category",
+            "physics-lint-cli-src-mapped",
+        ],
+    )
+    # Exit may be 0 or 1 depending on rule outcomes on this synthetic field;
+    # the contract is that any emitted result (if any) is source-mapped.
+    parsed = json.loads(result.stdout)
+    for res in parsed["runs"][0]["results"]:
+        loc = res["locations"][0]["physicalLocation"]
+        assert loc["artifactLocation"]["uri"] == "train_model.py"
+        assert res["properties"]["location_mode"] == "source-mapped"
+
+
+def test_cli_check_does_not_swallow_rule_internal_type_error(tmp_path, monkeypatch):
+    """Regression: catching TypeError blanket-hid rule-internal bugs and
+    produced false-green exits. Signature-based skip must let internal
+    TypeErrors propagate (the CLI reports it as a crash, not a silent skip)."""
+    from physics_lint.rules import _registry
+
+    real_load_check = _registry.load_check
+
+    def _fake_load_check(entry):
+        if entry.rule_id != "PH-RES-001":
+            return real_load_check(entry)
+
+        def broken_check(field, spec):
+            # Simulate a rule-internal bug: an int.__add__ with a str.
+            # Raises TypeError inside the rule body, unrelated to missing kwargs.
+            return 1 + "two"  # type: ignore[operator]
+
+        return broken_check
+
+    monkeypatch.setattr(_registry, "load_check", _fake_load_check)
+
+    dump = _write_good_dump(tmp_path / "pred.npz")
+    result = runner.invoke(app, ["check", str(dump), "--format", "text"])
+    # The rule must not be silently skipped. Either the CLI crashes
+    # (exception bubbled up — exit_code != 0, exception stored on result),
+    # or it reports an error path. What must NOT happen: exit 0 with
+    # PH-RES-001 absent from the report.
+    silent_skip = result.exit_code == 0 and "PH-RES-001" not in result.stdout
+    assert not silent_skip, (
+        f"Rule-internal TypeError was silently swallowed. "
+        f"exit={result.exit_code}, stdout preview: {result.stdout[:300]!r}"
+    )
