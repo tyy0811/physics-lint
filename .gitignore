@@ -40,4 +40,9 @@ worktrees/
 # Reproducible from dogfood/clone_laplace_uq_bench.sh + generate_dumps.py.
 dogfood/laplace-uq-bench/
 dogfood/laplace_uq_bench/*.npz
+# Exception: the 3 real-ML surrogate dumps are committed so the CI dogfood
+# workflow (.github/workflows/physics-lint.yml) runs on a clean checkout.
+!dogfood/laplace_uq_bench/unet_regressor_pred.npz
+!dogfood/laplace_uq_bench/fno_pred.npz
+!dogfood/laplace_uq_bench/ddpm_pred.npz
 dogfood/results/

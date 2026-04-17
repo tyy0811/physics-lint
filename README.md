@@ -171,7 +171,7 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 
 `physics-lint rules list` shows this table (<50 ms via lazy registry). `physics-lint rules show PH-RES-001` prints the full per-rule docs including derivation and citation.
 
-**Design-doc future surface (v1.1).** Three additional rules from the design doc — `PH-VAR-001` (L² residual on second-order strong form), `PH-NUM-003` (non-C² activation scan), `PH-NUM-004` (configured BC vs model training BC) — are specified in [`docs/design/2026-04-14-physics-lint-v1.md`](docs/design/2026-04-14-physics-lint-v1.md) but deferred to v1.1 along with the `[tool.physics-lint.rules]` per-rule override surface. See [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+**Design-doc future surface (v1.1).** Three additional rules — `PH-VAR-001` (L² residual on second-order strong form), `PH-NUM-003` (non-C² activation scan), `PH-NUM-004` (configured BC vs model training BC) — are deferred to v1.1 along with the `[tool.physics-lint.rules]` per-rule override surface. See [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
 ## Supported PDEs and models
 
@@ -188,7 +188,7 @@ Domains: 2D and 3D structured Cartesian grids. Optional unstructured meshes via 
 
 **v1.0 model coverage:** any PyTorch model loadable via a small adapter file (`torch.nn.Module` or any `Callable[[Tensor], Tensor]`). Iterative samplers and non-PyTorch frameworks use the secondary *dump mode*: save the model's prediction as `pred.npz` with metadata, and physics-lint runs against the tensor directly. JAX, TensorFlow, and NumPy users are supported this way.
 
-**Explicitly out of scope for v1.0:** Navier-Stokes, MHD, compressible flow, AMR, GPU kernels, JAX backend, symbolic PDE definitions, auto-fix. See [§19 of the design doc](docs/design/2026-04-14-physics-lint-v1.md#19-non-goals-for-v1) for the full non-goals list.
+**Explicitly out of scope for v1.0:** Navier-Stokes, MHD, compressible flow, AMR, GPU kernels, JAX backend, symbolic PDE definitions, auto-fix.
 
 ## How it works
 
@@ -319,7 +319,7 @@ permissions:
 
 ## Development
 
-Design doc: [`docs/design/2026-04-14-physics-lint-v1.md`](docs/design/2026-04-14-physics-lint-v1.md). Implementation plans in [`docs/plans/`](docs/plans/). Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.1 backlog in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.1 backlog in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
 **Stack:** Python 3.10+, hatchling, pydantic 2.0+, typer, ruff, pytest + hypothesis, Sphinx + MyST + furo. Apache-2.0 license. Six-job CI matrix (Linux × Python 3.10/3.11/3.12 × NumPy 1.26/2.0 × PyTorch 2.0/2.2/2.5 + macOS arm64). 85% coverage gate.
 
@@ -358,8 +358,6 @@ The rule catalog is grounded in:
 - Gustafsson & McBain (2020), *scikit-fem: A Python package for finite element assembly*, JOSS 5(52).
 - Trefethen (2000), *Spectral Methods in MATLAB*, SIAM.
 - Fornberg (1988), *Generation of finite difference formulas on arbitrarily spaced grids*, Math. Comp. 51(184).
-
-Full reference list in [§22 of the design doc](docs/design/2026-04-14-physics-lint-v1.md#22-references).
 
 ## License
 

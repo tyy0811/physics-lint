@@ -21,7 +21,6 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
-    "sphinx.ext.intersphinx",
 ]
 
 myst_enable_extensions = [
@@ -42,13 +41,6 @@ source_suffix = {".md": "markdown", ".rst": "restructuredtext"}
 html_theme = "furo"
 html_title = f"physics-lint {version}"
 html_static_path: list[str] = []
-
-intersphinx_mapping = {
-    "python": ("https://docs.python.org/3", None),
-    "numpy": ("https://numpy.org/doc/stable/", None),
-    "torch": ("https://pytorch.org/docs/stable/", None),
-    "pydantic": ("https://docs.pydantic.dev/latest/", None),
-}
 
 
 def generate_rule_pages(app):
