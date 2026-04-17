@@ -6,9 +6,13 @@ name: physics-lint
 # for scope (3 surrogates from Week 2½; 6-surrogate expansion is v1.1 per
 # docs/backlog/v1.1.md).
 #
-# The README hero image (docs/figures/sarif-hero.png) is the FNO PH-BC-001
+# The README hero image (docs/figures/sarif-hero.png) is the FNO PH-POS-002
 # alert rendered in the Security tab from this workflow's first successful
-# run against a PR — captured manually per Task 4 Step 4.
+# run against a PR — captured manually per Task 4 Step 4. (Pivoted from
+# PH-BC-001 during the 2026-04-17 interpretation pass: on homogeneous-
+# Dirichlet samples, PH-BC-001's relative-mode ratio is threshold-
+# unreliable; PH-POS-002 discriminates FNO uniquely and cleanly. See
+# README §"v1.0 known limitations" and docs/backlog/v1.1.md.)
 
 on:
   push:

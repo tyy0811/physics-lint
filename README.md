@@ -15,16 +15,18 @@ physics-lint mechanically checks these properties against calibrated analytical 
 ## Hero: physics-lint in CI
 
 <!--
-TODO (Week 4 Task 4 Step 4 — user handoff): capture the FNO PH-BC-001
+TODO (Week 4 Task 4 Step 4 — user handoff): capture the FNO PH-POS-002
 alert in the Security tab from this repo's own first CI run and save to
-docs/figures/sarif-hero.png. Until captured, the image below renders as
-a broken link. See docs/plans/2026-05-05-physics-lint-v1-week-4.md
-§"README framing commitment" for context.
+docs/figures/sarif-hero.png. Capture both the alert-list view and the
+alert-detail view as insurance; ship whichever reads cleaner. Until
+captured, the image below renders as a broken link. See
+docs/plans/2026-05-05-physics-lint-v1-week-4.md §"README framing
+commitment" for context.
 -->
 
-![physics-lint FNO PH-BC-001 alert rendered in the GitHub Security tab](docs/figures/sarif-hero.png)
+![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](docs/figures/sarif-hero.png)
 
-*Above: the FNO `PH-BC-001` alert surfaced in physics-lint's own repository Security tab. The screenshot is from running physics-lint against the `fno` surrogate in [`tyy0811/laplace-uq-bench`](https://github.com/tyy0811/laplace-uq-bench) — FNO's Dirichlet-boundary error is ~150× the DDPM baseline, and `PH-BC-001` catches the violation as a code-scanning alert with rule documentation links and persistent state.*
+*Above: the FNO `PH-POS-002` alert surfaced in physics-lint's own repository Security tab. The screenshot is from running physics-lint against three trained surrogates from [`tyy0811/laplace-uq-bench`](https://github.com/tyy0811/laplace-uq-bench) — `unet_regressor`, `fno`, `ddpm`. All three failed at least one physics check on the sample; FNO is the most severely flagged because it **uniquely violates the maximum principle** (interior extremum exceeds boundary extrema by 0.078 in a Dirichlet-homogeneous problem), while UNet and DDPM respect the principle cleanly. `PH-POS-002` catches the violation as a code-scanning alert with a physically interpretable message and rule documentation links.*
 
 ```yaml
 # .github/workflows/physics-lint.yml
@@ -143,6 +145,18 @@ physics-lint v1.0 is validated against three trained surrogates from [`github.co
 Full results in [`dogfood/dogfood_real_results.md`](dogfood/dogfood_real_results.md). Methodology notes and reinterpretation rationale in [`docs/tradeoffs.md`](docs/tradeoffs.md).
 
 **v1.1 roadmap.** Expanding to 6 surrogates (adding ensemble, DPS, OT-CFM, improved DDPM, flow-matching), restoring byte-identical sanity-axis comparison via a metrics-compatibility shim, and producing an out-of-distribution "MSE misses what physics catches" scatter figure are tracked in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+
+## v1.0 known limitations
+
+**`PH-BC-001` and `PH-RES-001` in relative mode are rank-ordering reliable but absolute-threshold unreliable on homogeneous-Dirichlet samples** (where the boundary target is identically zero). Both rules divide the raw error by `avg|boundary_target|` (for `PH-BC-001`) or `avg|target|` (for `PH-RES-001`) and apply a floor at machine epsilon (~2.2e-16) when the denominator underflows. On homogeneous-Dirichlet problems the floor dominates, producing `ratio` values of ~1e13–1e14 that trip the relative-mode FAIL threshold for *any* non-zero raw error.
+
+**What this means in practice:**
+
+- The *ranking* across models stays correct — FNO > UNet > DDPM on `PH-BC-001` raw error, matching the laplace-uq-bench `bc_err` table. The dogfood 3-axis ranking agreement (above) is unaffected.
+- The *verdict* (`PASS`/`FAIL`) on such samples should not be trusted as an absolute signal. On the v1.0 CI dogfood workflow (sample 0 of `tyy0811/laplace-uq-bench` is homogeneous-Dirichlet), all three surrogates report `PH-BC-001` and `PH-RES-001` FAIL; only the raw magnitudes discriminate.
+- Users running CI with `continue-on-error: false` who want to block PRs on *real* BC violations on homogeneous-Dirichlet samples should prefer `PH-BC-001` in `mode = "absolute"` (per-rule override). The per-rule override surface is v1.1 (`docs/backlog/v1.1.md`); until then, use the workflow to surface alerts informatively and gate on other rules.
+
+**Resolution path.** v1.1 regularizes the relative-mode denominator with `max(avg|ref|, absolute_floor)` where `absolute_floor` is a calibrated per-problem-class floor (not machine epsilon), making the ratio meaningful on homogeneous-Dirichlet problems. Tracked in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
 ## Rule catalog (v1.0)
 
