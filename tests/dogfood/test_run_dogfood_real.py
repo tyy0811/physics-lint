@@ -7,6 +7,7 @@ from dogfood.run_dogfood_real import (
     build_a1_spec,
     check_binary_axis,
     check_ordinal_axis,
+    compute_verdict,
 )
 
 
@@ -168,3 +169,42 @@ class TestCheckBinaryAxis:
         )
         assert result["match"] is False
         assert result["physlint_violators"] == {"unet_regressor", "fno", "ddpm"}
+
+
+class TestComputeVerdict:
+    def test_pass_scoped_when_sanity_and_both_real_axes_match(self):
+        result = compute_verdict(
+            sanity_match=True,
+            real_axis_matches=[True, True],
+        )
+        assert result == "PASS (scoped)"
+
+    def test_pass_mixed_when_sanity_and_one_real_axis_matches(self):
+        result = compute_verdict(
+            sanity_match=True,
+            real_axis_matches=[True, False],
+        )
+        assert result == "PASS (scoped, MIXED)"
+
+    def test_fail_when_sanity_passes_but_both_real_axes_fail(self):
+        result = compute_verdict(
+            sanity_match=True,
+            real_axis_matches=[False, False],
+        )
+        assert result == "FAIL"
+
+    def test_bug_when_sanity_axis_fails(self):
+        """L2-vs-L2 sanity disagreement is a bug, not a deferral."""
+        result = compute_verdict(
+            sanity_match=False,
+            real_axis_matches=[True, True],
+        )
+        assert result == "BUG"
+
+    def test_bug_verdict_even_if_real_axes_pass(self):
+        """A sanity-axis failure always produces BUG regardless of real axes."""
+        result = compute_verdict(
+            sanity_match=False,
+            real_axis_matches=[False, False],
+        )
+        assert result == "BUG"

@@ -125,3 +125,20 @@ def check_binary_axis(
         "physlint_violators": physlint_violators,
         "match": physlint_violators == set(expected_violators),
     }
+
+
+def compute_verdict(*, sanity_match: bool, real_axis_matches: list[bool]) -> str:
+    """Four-way Criterion 3 verdict per §7 of the design doc.
+
+    Ordering of branches matters: sanity failure dominates (BUG) even if
+    real axes match, because L2-vs-L2 disagreement indicates a discretization
+    bug to fix, not a Criterion 3 deferral.
+    """
+    if not sanity_match:
+        return "BUG"
+    real_passes = sum(1 for m in real_axis_matches if m)
+    if real_passes == len(real_axis_matches):
+        return "PASS (scoped)"
+    if real_passes >= 1:
+        return "PASS (scoped, MIXED)"
+    return "FAIL"
