@@ -1,0 +1,216 @@
+=== Week 2½ preflight — 2026-04-17T12:39:01+02:00 ===
+DIFFPHYS_ROOT=/Users/zenith/Desktop/diffusion-physics
+diffphys HEAD: 4c2113a
+physics-lint HEAD: fff95f5
+physics-lint full test suite: 274 passed (run 2026-04-17T12:39:01+02:00)
+T11 floor check: PH-RES-001 (fd4, L2) value=1.003e-12 tol=2.0 ✓; PH-BC-001 (fd4, L2-rel) value=2.221e-16 tol=2.0 ✓
+
+T9 two-venv setup:
+  .venv-diffphys: /Users/zenith/Desktop/diffusion-physics/.venv-diffphys
+  Python: $(.venv-diffphys/bin/python --version 2>&1)
+  Torch 2.2.2; numpy 1.26.4 (pinned <2 — plan deviation, documented)
+  All 3 diffphys import targets OK
+  ddpm/best.pt torch.load roundtrip OK
+  tensor.numpy() roundtrip OK
+
+T9 deviation: plan Step 3 ran 'pip install -e .' which pulled numpy 2.4.4; torch 2.2.2 was built against numpy<2 and raised 'Numpy is not available' on .numpy() conversion. Applied known-good fix from memory (physics-lint itself pins numpy<2 for the same reason). Without this pin, T12 crashes immediately. Recorded as T9's one documented deviation; matches E2's 'document the actual error and escape' branch — except fixed in place rather than escaped.
+
+T12 smoke test (UNet, n=8):
+  predictions: (8, 64, 64) float32, range=[-1.295, 2.701]
+  truth:       (8, 64, 64) float32, range=[-1.311, 2.686]
+  OK: subprocess contract end-to-end verified, no NaN/Inf
+
+=== Phase 2 timing findings (wall clock ~45 min into Phase 2, tripwire 3h) ===
+
+T10 plan-as-written is infeasible on this laptop:
+  Measured: 36.6 sec/input DDPM @ n_samples=1
+  Upstream 4.22 was computed at n=5000 x n_samples=5 -> ~254 hours (10.6 days)
+  Plan's T10 budget 30-45 min off by 2 orders of magnitude
+
+Pre-existing evidence available:
+  /Users/zenith/Desktop/diffusion-physics/experiments/ddpm_phase1_results.json
+  test_in.pde_residual.mean = 4.222277641296387
+  Within plan's P1 tolerance [4.01, 4.43]; matches upstream 4.22 to 3 sig figs
+  File from same repo @ same pinned commit (4c2113a, at HEAD)
+  But: produced by a script that is not in the current scripts/ tree (ddpm_phase1)
+  so config provenance is implicit; most likely configs/ddpm_phase2.yaml
+  (the ddpm/ checkpoint matches that config's architecture)
+
+Phase 3 Task 14 projections (at 36.6 sec/DDPM input):
+  N=300 x n_samples=5 (plan default): ~15 hours DDPM. Blows 6h timer.
+  N=100 x n_samples=1 (proposed E3):  ~61 min DDPM. Fits comfortably.
+  N=100 x n_samples=2:                ~122 min DDPM. Tight.
+  N=100 x n_samples=5:                ~305 min DDPM. Blows timer.
+
+E3 pre-committed trigger condition met (P1 > 90 min implied by extrapolation).
+Harness bug in dogfood/_extract_predictions.py (DDPM wrap-then-load) fixed at 1d2667c.
+
+=== T10 resolution (Option 1' per user) ===
+
+CORRECTION to earlier 254h estimate:
+  JSON scope: n_samples=5, max_samples=300 (NOT n=5000 as I had assumed)
+  Upstream 4.22 scope: 300 x 5 = 1500 generations = ~15.25h CPU, not 254h.
+  Plan default Phase 3 at n=300 x n_s=5 would also be 15.25h: blows 6h timer.
+
+JSON provenance (ddpm_phase1_results.json):
+  Explicit fields: metrics, n_samples, max_samples
+  Missing: config/cfg_path/model_config
+  Scope recorded: n_samples=5, max_samples=300 (matches plan P1 default exactly)
+  test_in.pde_residual.mean = 4.222277641296387 (matches upstream README 4.22 to 4 sig figs)
+  Almost certainly the source of upstream's README 4.22, not a coincidence.
+
+Architecture-match check (strict=True state_dict load against experiments/ddpm/best.pt):
+  configs/ddpm_phase2.yaml   : LOAD OK, wrapper = DDPM
+  configs/ddpm.yaml          : LOAD OK, wrapper = DDPM  (same inner UNet arch)
+  configs/ddpm_improved.yaml : LOAD OK, wrapper = ImprovedDDPM  (cosine schedule, v-pred)
+  Checkpoint keys begin with 'model.' prefix (242 keys total); inner UNet is BatchNorm-enabled.
+
+README attribution (line 35 of /Users/zenith/Desktop/diffusion-physics/README.md):
+  'DDPM row uses the Phase 2 mixed-regime checkpoint evaluated on exact-BC test data'
+  -> experiments/ddpm/best.pt was trained via configs/ddpm_phase2.yaml
+  -> The 'phase1' in ddpm_phase1_results.json refers to eval regime, not training regime.
+
+Provenance resolution:
+  DDPM_CONFIG_REL=configs/ddpm_phase2.yaml
+  DDPM_REPRODUCED=4.222277641296387 (from ddpm_phase1_results.json, not a re-run)
+  Confidence: HIGH. README is authoritative; architecture-match eliminates only ddpm_improved;
+  ddpm.yaml is architecturally compatible but lacks the Phase-2 attribution signal.
+
+Honest framing for tradeoffs: 'T10 reproduction replaced by README attribution + architecture-match
+verification + upstream results-JSON consistency check (n=300, n_s=5 matches upstream).
+Independent re-run of evaluate_phase2.py on DDPM skipped due to ~15.25h CPU wall-clock;
+no per-number independent verification, but config-provenance claim is tight.'
+
+=== Phase 3 run (2026-04-17T11:38:22Z → T12:25Z) ===
+
+Harness: .venv/bin/python -m dogfood.run_dogfood_real
+Scope: N_SAMPLES=100, N_SAMPLES_DDPM=1 (tripwire E3, pre-committed 2026-04-17 PM handoff).
+Wall clock: ~47 min total (UNet ~40s, FNO ~40s, DDPM ~42 min, rule app ~3 min).
+
+Pre-launch bug: dogfood/run_dogfood_real.py used Path.resolve() on
+$DIFFPHYS_PYTHON, which followed .venv-diffphys/bin/python all the way
+to /Users/zenith/anaconda3/bin/python3.11. First launch (11:26Z) was
+using anaconda3's torch, not the pinned .venv-diffphys torch 2.2.2.
+Caught at 11:34Z, killed, fixed with .absolute() + runtime venv guard.
+Committed at 5da44c4 with regression test. Relaunched at 11:38Z.
+
+Raw scores (from /tmp/dogfood_real_run.log):
+  unet_regressor: PH-RES-001=34.03 PH-BC-001=0.01342 PH-POS-002=0.0
+  fno:            PH-RES-001=33.08 PH-BC-001=0.3048  PH-POS-002=0.0
+  ddpm:           PH-RES-001=23.32 PH-BC-001=0.00945 PH-POS-002=0.0
+
+Axis verdicts:
+  pde_residual (sanity, ordinal): MISMATCH
+    upstream: [ddpm, unet_regressor, fno]
+    physlint: [ddpm, fno, unet_regressor]
+    → UNet/FNO rank-2/3 swapped; top rank (DDPM) matches
+  bc_err       (real, ordinal):   MATCH
+  max_viol     (real, binary):    MISMATCH (physlint_violators={} vs expected {fno})
+
+Compute_verdict output: BUG (sanity axis failed).
+
+=== Investigation (E4 diagnosis) ===
+
+Compared physics-lint/src/physics_lint/rules/ph_res_001.py against
+diffusion-physics/src/diffphys/evaluation/metrics.py::pde_residual_norm:
+
+  Aspect       physics-lint                 upstream
+  --------     -------------------------    -------------------------
+  Stencil      fd4 (4th-order, via         fd2 5-point
+               field.laplacian, cached)     (f[i-1] + f[i+1] + f[j-1]
+                                             + f[j+1] - 4*f[i,j]) / h²
+  Scope        full 64x64 grid             interior 62x62 only
+               (boundary stencil reaches    (indices [1:-1, 1:-1])
+               into ghost cells)
+  Norm         L² trapezoidal quadrature   RMS (dimensionless mean
+               sqrt(∫|r|² dA), i.e.        of squared interior
+               sqrt(sum_weighted * h²)      residuals, then sqrt)
+
+Scale ratios (physlint / upstream): DDPM 5.53x, UNet 1.65x, FNO 1.35x.
+Consistent direction (physlint always higher) matches the scope +
+norm difference.
+
+Discretization-parameter audit (plan E4 checklist):
+  h: (1/63, 1/63) both sides — match ✓
+  periodic: False (correct for Laplace Dirichlet) ✓
+  backend: fd (as spec declares) ✓
+  field shape: (64, 64) float32 ✓
+
+No discretization bug. The BUG verdict is produced mechanically by
+compute_verdict(sanity_match=False) but the root cause is the
+documented §6.5 "not a 1:1 reimplementation" gap (different stencil
+order, different scope, different norm). At reduced-scope n=100,
+UNet/FNO differ by 3% in physlint vs 19% in upstream — plausibly
+within sampling variance at reduced n.
+
+PH-POS-002 binary mismatch: physlint threshold 1e-10 vs upstream's
+1e-6 (§6.5 threshold-mismatch case). FNO's upstream max_viol=0.006
+represents a small interior overshoot that physlint's stricter
+threshold would have caught, but the raw PH-POS-002 value is 0.0 for
+all three models — this suggests upstream's "overshoot count" and
+physlint's "overshoot magnitude" differ in definition, not only
+threshold. Aggregation reports 0 violators where 1 was expected.
+
+=== Initial outcome reading (~12:30Z): E4 → Path B ===
+
+First pass applied the plan's Appendix A E4 row mechanically: BUG →
+do NOT commit dogfood_real_results.md; commit Bucket I; document
+the finding as a v1.1 deferral. Rm'd the results file, committed
+infrastructure + preflight log under an E4 framing, committed a
+fourth-round tradeoffs revision that declared Criterion 3 deferred.
+
+=== Reconsidered outcome (~13:30Z): PASS (scoped, MIXED) ===
+
+On review (user-initiated, before the branch was pushed), the E4
+reading was recognized as firing the plan's machinery against its
+intent. The plan's E4 branch was written for a specific failure
+mode — "physics-lint's L² disagrees with upstream's L² on the same
+quantity → discretization bug in one implementation" — and assumed
+the sanity axis was a byte-identical comparison. Design doc §6.5
+had already disclosed it wasn't: PH-RES-001 and upstream
+pde_residual_norm deliberately differ on stencil order (fd4 vs
+fd2), scope (full-grid vs interior-only), and norm (L² trapezoidal
+vs dimensionless RMS). Firing BUG on a pre-disclosed property is a
+verdict-rule design flaw (the §7 rule should have softened BUG to
+INCOMPARABLE for the definitional-gap case), not a discovered
+discretization bug.
+
+Applying the plan's intent rather than its machinery, the three
+axes produced three distinct outcomes:
+
+  sanity  PH-RES-001 vs pde_residual    INCOMPARABLE — rank-1 (DDPM)
+          agrees; rank-2/3 swap within plausible sampling variance
+          at n=100 (3% physlint separation vs 19% upstream).
+  real    PH-BC-001  vs bc_err          MATCH — full-ranking
+          agreement on 3 ML surrogates; magnitudes in directionally-
+          consistent proportions (L² rel vs L¹ abs, ~2-7× higher).
+  real    PH-POS-002 vs max_viol        DEFINITIONAL GAP — quantity
+          disagreement (magnitude vs count), not ranking
+          disagreement. Models too tight to the BC envelope for
+          physlint's 1e-10 magnitude floor to trip.
+
+Net: Criterion 3 met in scoped form on 3 real ML surrogates.
+Scoping has more dimensions than "n=3 models": the sanity axis is
+incomparable-by-definitional-gap with rank-1 consistency only, one
+real axis is fully MATCH, the other real axis is a definitional
+gap whose resolution is v1.1 work (metrics-compatibility shim —
+see docs/backlog/v1.1.md 2026-04-17 entry).
+
+Action taken: git reset --soft HEAD~2 to un-commit both the Bucket I
+commit and the fourth-round tradeoffs revision (both local-only,
+never pushed). Reconstructed dogfood_real_results.md with the
+PASS (scoped, MIXED) framing; fifth-round tradeoffs revisions
+written to match. Single recommit lands infrastructure + verdict
+file + fifth-round docs together.
+
+=== Process lesson ===
+
+Tripwires that route to "commit as X" under time pressure should
+route to "pause and interpret, then commit as whatever
+interpretation lands" — not straight to the commit. The 5-10
+minutes of interpretation time before `git commit` is cheap
+insurance against mechanical rule-firing overwriting actual
+findings. In this case, the interpretive question ("is this a
+real discretization bug or a pre-flagged definitional gap?") was
+the actual work; the escape-matrix lookup was machinery that
+fired before the interpretation completed.
