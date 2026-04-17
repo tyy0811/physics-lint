@@ -1,5 +1,8 @@
 """Tests for dogfood/run_dogfood_real.py pure functions."""
 
+import subprocess
+import sys
+
 import pytest
 
 from dogfood.run_dogfood_real import (
@@ -208,3 +211,24 @@ class TestComputeVerdict:
             real_axis_matches=[False, False],
         )
         assert result == "BUG"
+
+
+class TestExtractPredictionsArgparse:
+    def test_help_does_not_require_diffphys(self):
+        """--help must work without importing diffphys, since this script
+        is called from an env where diffphys may or may not be importable
+        depending on venv state at plan-time vs runtime."""
+        # Use the same python running the tests — not the diffphys venv —
+        # because the argparse surface is separate from the import path.
+        # If argparse requires diffphys at import time, this raises
+        # ImportError here.
+        result = subprocess.run(
+            [sys.executable, "dogfood/_extract_predictions.py", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        assert result.returncode == 0
+        assert "--model-name" in result.stdout
+        assert "--checkpoint" in result.stdout
+        assert "--max-samples" in result.stdout
