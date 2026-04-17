@@ -26,11 +26,13 @@ class TestBuildA1Spec:
 
     def test_field_source_uses_dummy_path(self):
         """FieldSourceSpec's exactly-one-source validator needs a non-None
-        adapter_path or dump_path. Rules we use don't read this; dummy is fine."""
+        adapter_path or dump_path. Rules we use don't read this; the string
+        'unused' is a deliberate sentinel (assertion pins it to catch
+        accidental drift, not just any non-None value)."""
         spec = build_a1_spec()
         assert spec.field.type == "grid"
         assert spec.field.backend == "fd"
-        assert spec.field.dump_path is not None
+        assert spec.field.dump_path == "unused"
 
 
 class TestApplyRulesToPrediction:

@@ -3,12 +3,19 @@
 See docs/superpowers/specs/2026-04-17-week-2.5-dogfood-a1-design.md.
 """
 
+from __future__ import annotations
+
 import numpy as np
 
-from physics_lint import DomainSpec
 from physics_lint.field import GridField
 from physics_lint.rules import ph_bc_001, ph_pos_002, ph_res_001
-from physics_lint.spec import BCSpec, FieldSourceSpec, GridDomain, SymmetrySpec
+from physics_lint.spec import (
+    BCSpec,
+    DomainSpec,
+    FieldSourceSpec,
+    GridDomain,
+    SymmetrySpec,
+)
 
 # Grid spacing: 64-point endpoint-inclusive unit grid → h = 1/63.
 # Matches upstream metrics.py:17. Do NOT change — any other h breaks
@@ -36,7 +43,7 @@ def apply_rules_to_prediction(
     *,
     prediction: np.ndarray,
     truth: np.ndarray,
-    spec,
+    spec: DomainSpec,
 ) -> dict[str, float]:
     """Run PH-RES-001, PH-BC-001, PH-POS-002 on one (64, 64) prediction.
 
