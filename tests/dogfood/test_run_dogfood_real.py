@@ -2,7 +2,12 @@
 
 import pytest
 
-from dogfood.run_dogfood_real import apply_rules_to_prediction, build_a1_spec
+from dogfood.run_dogfood_real import (
+    apply_rules_to_prediction,
+    build_a1_spec,
+    check_binary_axis,
+    check_ordinal_axis,
+)
 
 
 class TestBuildA1Spec:
@@ -78,3 +83,88 @@ class TestApplyRulesToPrediction:
             spec=a1_spec,
         )
         assert set(scores.keys()) == {"PH-RES-001", "PH-BC-001", "PH-POS-002"}
+
+
+class TestCheckOrdinalAxis:
+    def test_match_when_rankings_agree(self):
+        result = check_ordinal_axis(
+            axis_name="pde_residual",
+            upstream_ranking=["ddpm", "unet_regressor", "fno"],
+            physlint_scores={
+                "unet_regressor": {"PH-RES-001": 20.5},
+                "fno": {"PH-RES-001": 24.5},
+                "ddpm": {"PH-RES-001": 4.2},
+            },
+            rule_id="PH-RES-001",
+        )
+        assert result["match"] is True
+        assert result["mode"] == "ordinal"
+        assert result["physlint"] == ["ddpm", "unet_regressor", "fno"]
+
+    def test_mismatch_when_pair_inverts(self):
+        """If physics-lint ranks UNet < FNO by smaller numerical margin and
+        an L2/L1 norm difference flips them, the axis match fails."""
+        result = check_ordinal_axis(
+            axis_name="pde_residual",
+            upstream_ranking=["ddpm", "unet_regressor", "fno"],
+            physlint_scores={
+                "unet_regressor": {"PH-RES-001": 25.0},  # inverted with fno
+                "fno": {"PH-RES-001": 20.0},
+                "ddpm": {"PH-RES-001": 4.2},
+            },
+            rule_id="PH-RES-001",
+        )
+        assert result["match"] is False
+        assert result["physlint"] == ["ddpm", "fno", "unet_regressor"]
+
+    def test_returns_metadata_for_report(self):
+        result = check_ordinal_axis(
+            axis_name="bc_err",
+            upstream_ranking=["ddpm", "unet_regressor", "fno"],
+            physlint_scores={
+                "unet_regressor": {"PH-BC-001": 0.007},
+                "fno": {"PH-BC-001": 0.2},
+                "ddpm": {"PH-BC-001": 0.001},
+            },
+            rule_id="PH-BC-001",
+        )
+        assert result["axis"] == "bc_err"
+        assert result["upstream"] == ["ddpm", "unet_regressor", "fno"]
+
+
+class TestCheckBinaryAxis:
+    def test_fno_only_violator_matches_expected(self):
+        """Upstream has {FNO} violating; physics-lint also has {FNO} above
+        threshold. Match is True."""
+        result = check_binary_axis(
+            axis_name="max_viol",
+            expected_violators={"fno"},
+            physlint_scores={
+                "unet_regressor": {"PH-POS-002": 0.0},
+                "fno": {"PH-POS-002": 0.05},
+                "ddpm": {"PH-POS-002": 1e-12},
+            },
+            rule_id="PH-POS-002",
+            threshold=1e-10,
+        )
+        assert result["match"] is True
+        assert result["physlint_violators"] == {"fno"}
+        assert result["mode"] == "binary"
+
+    def test_universal_violation_case_surfaces_as_mismatch(self):
+        """Threshold-mismatch edge case from §6.5: physics-lint 1e-10 is
+        stricter than upstream 1e-6, so all three models might register
+        as violators. This should report NO match."""
+        result = check_binary_axis(
+            axis_name="max_viol",
+            expected_violators={"fno"},
+            physlint_scores={
+                "unet_regressor": {"PH-POS-002": 3e-10},
+                "fno": {"PH-POS-002": 0.05},
+                "ddpm": {"PH-POS-002": 2e-10},
+            },
+            rule_id="PH-POS-002",
+            threshold=1e-10,
+        )
+        assert result["match"] is False
+        assert result["physlint_violators"] == {"unet_regressor", "fno", "ddpm"}

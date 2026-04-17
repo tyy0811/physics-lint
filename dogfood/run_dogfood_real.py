@@ -74,3 +74,54 @@ def apply_rules_to_prediction(
         "PH-BC-001": _raw(bc_result),
         "PH-POS-002": _raw(pos_result),
     }
+
+
+def check_ordinal_axis(
+    *,
+    axis_name: str,
+    upstream_ranking: list[str],
+    physlint_scores: dict[str, dict[str, float]],
+    rule_id: str,
+) -> dict:
+    """Ordinal ranking match between upstream ranking and physics-lint scores.
+
+    Sorts models by physics-lint raw_value ascending (smallest = best per
+    upstream's convention on these three metrics) and compares to upstream's
+    ranking.
+    """
+    physlint_ranking = sorted(
+        physlint_scores.keys(),
+        key=lambda m: physlint_scores[m][rule_id],
+    )
+    return {
+        "axis": axis_name,
+        "mode": "ordinal",
+        "upstream": list(upstream_ranking),
+        "physlint": physlint_ranking,
+        "match": physlint_ranking == list(upstream_ranking),
+    }
+
+
+def check_binary_axis(
+    *,
+    axis_name: str,
+    expected_violators: set[str],
+    physlint_scores: dict[str, dict[str, float]],
+    rule_id: str,
+    threshold: float,
+) -> dict:
+    """Binary-mode check: which models have raw_value > threshold?
+
+    Used for PH-POS-002 where upstream's max_viol splits into {FNO violates,
+    others don't}. Under the threshold-mismatch edge case (§6.5), physics-lint
+    may report universal violation — this returns match=False and lets the
+    caller record the finding in the report.
+    """
+    physlint_violators = {m for m, s in physlint_scores.items() if s[rule_id] > threshold}
+    return {
+        "axis": axis_name,
+        "mode": "binary",
+        "expected_violators": set(expected_violators),
+        "physlint_violators": physlint_violators,
+        "match": physlint_violators == set(expected_violators),
+    }
