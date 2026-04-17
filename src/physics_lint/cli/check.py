@@ -5,11 +5,12 @@ from __future__ import annotations
 import inspect
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
+import numpy as np
 import typer
 
-from physics_lint.loader import LoaderError, load_target
+from physics_lint.loader import LoadedTarget, LoaderError, load_target
 from physics_lint.report import PhysicsLintReport, RuleResult
 from physics_lint.rules import _registry
 
@@ -34,6 +35,36 @@ def _extra_required_params(check_fn) -> list[str]:
         if param.default is inspect.Parameter.empty:
             extras.append(name)
     return extras
+
+
+def _autoextract_kwargs(
+    extras: list[str], loaded: LoadedTarget
+) -> tuple[dict[str, Any], list[str]]:
+    """Fill rule kwargs the CLI knows how to derive, return (filled, remaining).
+
+    V1.0 scope covers two kwargs:
+    - `boundary_target` (PH-BC-001): from `loaded.boundary_target` if the
+      dump shipped it; else zeros on the boundary when BC is
+      `dirichlet_homogeneous`; else remains in `remaining`.
+    - `boundary_values` (PH-POS-002): same sources as `boundary_target`.
+
+    `refined_field` and any other kwargs stay in `remaining` — they need
+    loader/adapter contract extensions tracked in docs/backlog/v1.1.md.
+    """
+    filled: dict[str, Any] = {}
+    remaining: list[str] = []
+    bc_kind = loaded.spec.boundary_condition.kind
+    for name in extras:
+        if name in ("boundary_target", "boundary_values"):
+            if loaded.boundary_target is not None:
+                filled[name] = loaded.boundary_target
+            elif bc_kind == "dirichlet_homogeneous":
+                filled[name] = np.zeros_like(loaded.field.values_on_boundary())
+            else:
+                remaining.append(name)
+        else:
+            remaining.append(name)
+    return filled, remaining
 
 
 def _skipped_for_missing_kwargs(entry, extras: list[str]) -> RuleResult:
@@ -86,18 +117,26 @@ def check_cmd(
     for entry in entries:
         check_fn = _registry.load_check(entry)
         extras = _extra_required_params(check_fn)
+        auto_kwargs: dict[str, Any] = {}
         if extras:
-            # Known V1 limitation: rules taking extra required kwargs
-            # (boundary_target, boundary_values, refined_field) are skipped.
-            # V1.1 adds auto-extraction. Detect by signature rather than
-            # catching TypeError — that way rule-internal TypeErrors still
-            # propagate and fail loudly. Emit a SKIPPED RuleResult so the
-            # skip is visible in the summary, not silently absent.
-            results.append(_skipped_for_missing_kwargs(entry, extras))
-            if verbose:
-                typer.echo(f"  (skipping {entry.rule_id}: needs kwargs {extras})", err=True)
-            continue
-        result = check_fn(loaded.field, loaded.spec)
+            # V1.0 auto-extraction: fill boundary_target / boundary_values
+            # from the loader's shipped BC data or from dirichlet_homogeneous
+            # zeros. Anything we can't fill (refined_field, non-homogeneous
+            # dirichlet without shipped BC) stays in `remaining` and the rule
+            # is skipped cleanly. We detect by signature rather than catching
+            # TypeError — rule-internal TypeErrors still propagate.
+            auto_kwargs, remaining = _autoextract_kwargs(extras, loaded)
+            if remaining:
+                # Emit a SKIPPED RuleResult so the skip is visible in the
+                # summary, not silently absent.
+                results.append(_skipped_for_missing_kwargs(entry, remaining))
+                if verbose:
+                    typer.echo(
+                        f"  (skipping {entry.rule_id}: needs kwargs {remaining})",
+                        err=True,
+                    )
+                continue
+        result = check_fn(loaded.field, loaded.spec, **auto_kwargs)
         if result is not None:
             results.append(result)
 

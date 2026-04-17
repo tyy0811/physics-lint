@@ -10,7 +10,6 @@ import typer
 
 def self_test_cmd(
     verbose: bool = typer.Option(False, "--verbose"),
-    rule: Optional[str] = typer.Option(None, "--rule", help="Run a single rule"),
     write_report: Optional[Path] = typer.Option(None, "--write-report"),
 ) -> None:
     """Run the analytical battery against the full rule set.
@@ -19,6 +18,10 @@ def self_test_cmd(
     within tolerance on every analytical input. Delegates to
     physics_lint.selftest which lives in the installable package so
     this subcommand works from a wheel install as well as a repo clone.
+
+    Note: a `--rule <id>` single-rule invocation is tracked in
+    docs/backlog/v1.1.md and is intentionally not exposed in v1.0 — the
+    Week 4 selftest module runs the full battery or nothing.
     """
     from physics_lint.selftest import run
 

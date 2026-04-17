@@ -146,7 +146,7 @@ Full results in [`dogfood/dogfood_real_results.md`](dogfood/dogfood_real_results
 
 ## Rule catalog (v1.0)
 
-Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documented input-mode compatibility, and a doc page with math justification and citation.
+Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documented input-mode compatibility, and a doc page with math justification and citation. v1.0 ships **18 rules**.
 
 | Rule ID | Name | Severity | Input modes |
 |---------|------|----------|-------------|
@@ -165,14 +165,13 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 | `PH-SYM-002` | Reflection equivariance violation | warning | adapter + dump |
 | `PH-SYM-003` | SO(2) Lie derivative equivariance violation | warning | adapter only |
 | `PH-SYM-004` | Translation equivariance violation (periodic-only in v1) | warning | adapter + dump |
-| `PH-VAR-001` | L² residual on second-order strong-form formulation | info | adapter + dump |
 | `PH-VAR-002` | Hyperbolic norm-equivalence conjectural | info | adapter + dump |
 | `PH-NUM-001` | Quadrature convergence warning (mesh) | warning | adapter + dump |
 | `PH-NUM-002` | Refinement convergence rate below expected | warning | adapter + dump |
-| `PH-NUM-003` | Non-$C^2$ activation scan | warning | adapter only |
-| `PH-NUM-004` | Configured BC inconsistent with model training BC | warning | adapter + dump |
 
 `physics-lint rules list` shows this table (<50 ms via lazy registry). `physics-lint rules show PH-RES-001` prints the full per-rule docs including derivation and citation.
+
+**Design-doc future surface (v1.1).** Three additional rules from the design doc — `PH-VAR-001` (L² residual on second-order strong form), `PH-NUM-003` (non-C² activation scan), `PH-NUM-004` (configured BC vs model training BC) — are specified in [`docs/design/2026-04-14-physics-lint-v1.md`](docs/design/2026-04-14-physics-lint-v1.md) but deferred to v1.1 along with the `[tool.physics-lint.rules]` per-rule override surface. See [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
 ## Supported PDEs and models
 
@@ -281,12 +280,6 @@ adapter = "./physics_lint_adapter.py"
 type = "callable"
 backend = "auto"
 
-[tool.physics-lint.rules]
-"PH-RES-001" = { tol_pass = 10.0, tol_fail = 100.0 }
-"PH-BC-001"  = { abs_threshold = 1e-10, abs_tol_fail = 1e-3 }
-"PH-SYM-003" = { enabled = false }
-"PH-CON-003" = { severity = "error" }
-
 [tool.physics-lint.sarif]
 source_file = "train_heat_fno.py"
 pde_line = 42
@@ -294,6 +287,8 @@ bc_line = 58
 ```
 
 `physics-lint config init --pde heat` emits a heat-specific commented template. `physics-lint config show --config pyproject.toml` validates your config and pretty-prints the resolved spec (no target required).
+
+**Design-doc future surface.** `[tool.physics-lint.rules]` per-rule overrides (`tol_pass`, `abs_threshold`, `enabled`, `severity`) are specified in the design doc but not wired through the CLI in v1.0. Disable individual rules at run time via `--disable PH-SYM-003`. The full override surface lands in v1.1 per [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
 ## CLI reference
 

@@ -135,6 +135,94 @@ bc_line = 58
         assert res["properties"]["location_mode"] == "source-mapped"
 
 
+def _write_dirichlet_homogeneous_dump(path: Path) -> Path:
+    """Dump with dirichlet_homogeneous BC; prediction has non-zero boundary
+    so PH-BC-001 auto-extracts zeros and fires FAIL."""
+    N = 32  # noqa: N806
+    x = np.linspace(0.0, 1.0, N)
+    y = np.linspace(0.0, 1.0, N)
+    X, Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    # sin(pi*x)sin(pi*y) vanishes on the boundary (dirichlet_homogeneous).
+    # Add a bump to make the boundary non-zero so PH-BC-001 FAILs.
+    target = np.sin(np.pi * X) * np.sin(np.pi * Y)
+    bump = 0.02 * np.exp(-((X - 0.5) ** 2 + (Y - 0.5) ** 2) / (2 * 0.3**2))
+    pred = target + bump
+    np.savez(
+        path,
+        prediction=pred,
+        metadata={
+            "pde": "laplace",
+            "grid_shape": [N, N],
+            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+            "periodic": False,
+            "boundary_condition": "dirichlet_homogeneous",
+            "field": {"type": "grid", "backend": "fd"},
+        },
+    )
+    return path
+
+
+def test_cli_check_dirichlet_homogeneous_auto_extracts_boundary_target(tmp_path):
+    """Regression: on a dirichlet_homogeneous dump, PH-BC-001 must auto-
+    extract boundary_target = zeros and RUN (not SKIP). The Task 4 workflow
+    + README hero depend on this path — without it, SARIF never contains a
+    PH-BC-001 result and the Security-tab screenshot cannot be captured."""
+    import json
+
+    dump = _write_dirichlet_homogeneous_dump(tmp_path / "dh_pred.npz")
+    result = runner.invoke(app, ["check", str(dump), "--format", "json"])
+    parsed = json.loads(result.stdout)
+    rule_map = {r["rule_id"]: r for r in parsed["rules"]}
+    assert "PH-BC-001" in rule_map
+    # PH-BC-001 must NOT be SKIPPED on a dirichlet_homogeneous dump
+    assert rule_map["PH-BC-001"]["status"] != "SKIPPED", (
+        f"PH-BC-001 skipped unexpectedly: {rule_map['PH-BC-001']}"
+    )
+    # The bump leaks ~3.6e-3 onto the boundary; PH-BC-001 absolute mode
+    # FAILs against a 1e-3 default threshold.
+    assert rule_map["PH-BC-001"]["status"] == "FAIL"
+
+
+def test_cli_check_boundary_target_from_dump(tmp_path):
+    """Regression: dumps that ship a `boundary_target` array (Task 4's
+    make_ci_dumps.py convention) get it plumbed through the loader and
+    used by PH-BC-001 auto-extraction."""
+    import json
+
+    N = 32  # noqa: N806
+    x = np.linspace(0.0, 1.0, N)
+    y = np.linspace(0.0, 1.0, N)
+    X, _Y = np.meshgrid(x, y, indexing="ij")  # noqa: N806
+    # Prediction matches a linear BC (boundary value = X on the boundary)
+    pred = X.copy()
+    # boundary_target is the TRUE BC (also X on the boundary) — so PH-BC-001
+    # should PASS because the prediction matches the true BC.
+    from physics_lint.field import GridField
+
+    temp_field = GridField(pred, h=(1 / (N - 1), 1 / (N - 1)), periodic=False)
+    true_boundary = temp_field.values_on_boundary()
+    path = tmp_path / "shipped_bt.npz"
+    np.savez(
+        path,
+        prediction=pred,
+        boundary_target=true_boundary,
+        metadata={
+            "pde": "laplace",
+            "grid_shape": [N, N],
+            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+            "periodic": False,
+            "boundary_condition": "dirichlet",  # generic, not homogeneous
+            "field": {"type": "grid", "backend": "fd"},
+        },
+    )
+    result = runner.invoke(app, ["check", str(path), "--format", "json"])
+    parsed = json.loads(result.stdout)
+    rule_map = {r["rule_id"]: r for r in parsed["rules"]}
+    # Even for non-homogeneous dirichlet, PH-BC-001 runs because the dump
+    # shipped boundary_target.
+    assert rule_map["PH-BC-001"]["status"] != "SKIPPED"
+
+
 def test_cli_check_signature_skipped_rules_surface_in_summary(tmp_path):
     """Rules that need extra kwargs (PH-BC-001 boundary_target, PH-POS-002
     boundary_values, PH-NUM-002 refined_field) must emit a SKIPPED RuleResult
