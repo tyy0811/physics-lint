@@ -24,7 +24,7 @@ __input_modes__ = frozenset({"adapter", "dump"})
 _DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-CON-003"
 _CITATION = "classical parabolic energy estimate"
 
-_MIN_TIME_STEPS_FOR_GRADIENT = 3
+_MIN_TIME_STEPS_FOR_RATIO = 2
 
 
 def check(field: Field, spec: DomainSpec) -> RuleResult:
@@ -42,10 +42,10 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     if u.ndim < 3:
         return _skip(f"PH-CON-003 requires a time-dependent field (values shape={u.shape})")
     nt = u.shape[-1]
-    if nt < _MIN_TIME_STEPS_FOR_GRADIENT:
+    if nt < _MIN_TIME_STEPS_FOR_RATIO:
         return _skip(
-            f"PH-CON-003 needs at least {_MIN_TIME_STEPS_FOR_GRADIENT} time "
-            f"samples for a 2nd-order central time derivative; got nt={nt}."
+            f"PH-CON-003 needs at least {_MIN_TIME_STEPS_FOR_RATIO} time "
+            f"samples to form a forward-difference dE/dt; got nt={nt}."
         )
 
     spatial_h = tuple(float(h) for h in field.h[:-1])
@@ -57,7 +57,16 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
             for k in range(nt)
         ]
     )
-    de_dt = np.gradient(energy, dt, edge_order=2)
+    # Forward differences of adjacent E(t) slices. Previously used
+    # np.gradient(energy, dt, edge_order=2), but the 2nd-order backward-
+    # quadratic extrapolation at the last sample cannot track exponential
+    # decay whose range exceeds ~50x over the measurement window, and
+    # produces a spurious positive dE/dt at the endpoint on strictly
+    # dissipative analytical solutions (e.g. sin*sin eigenmode at kappa=1,
+    # dt=0.05, 5 samples). Forward differences touch only adjacent samples
+    # and have no such endpoint pathology; dE/dt here is sampled at nt-1
+    # interior step boundaries rather than at every timestep.
+    de_dt = np.diff(energy) / dt
     max_growth = float(np.max(de_dt))
     energy_scale = max(float(np.max(energy)), 1e-12)
     violation = max(0.0, max_growth) / energy_scale
