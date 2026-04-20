@@ -13,7 +13,14 @@ Consumed by per-rule CITATION.md files that cite textbooks.
 
 ## Evans theorem-number verification (2026-04-20 tightening pass)
 
-Source: Evans PDF mirrored at `https://wms.mat.agh.edu.pl/~lusapa/pl/Evans.pdf` (AGH Kraków math department). The PDF is image-only (no OCR layer), so verification was done by rendering relevant pages to PNG via `pymupdf` and visually inspecting each page through Claude's multimodal vision at DPI 140. Page numbers below refer to **book pages**, not PDF pages. Book-to-PDF offset = 15 (PDF page = book page + 15).
+Source: Evans PDF mirrored at `https://wms.mat.agh.edu.pl/~lusapa/pl/Evans.pdf` (AGH Kraków math department). The PDF's text layer was empty on the pages sampled during this pass (`pymupdf.Document[pg].get_text()` returned 0 bytes on pages 5, 50, 150, 300), so verification was done by rendering relevant pages to PNG via `pymupdf` at DPI 140 and visually inspecting each page through Claude's multimodal vision rather than relying on parsed text. This does not prove the entire file lacks any OCR layer — only that the pages actually inspected here behaved as image-only.
+
+Page numbers below refer to **book pages** (the page number printed on each page), not PDF file pages. Offset:
+
+- pymupdf's `doc[pg]` uses a **0-indexed** page counter: 0-indexed PDF page number = book page + 15. This is the numbering used by the rendering scripts in this session (`pix = doc[pg].get_pixmap(...)`).
+- A **1-indexed** PDF viewer (Preview, Acrobat): 1-indexed PDF page number = book page + 16.
+
+Example verifications: book p. 27 (§2.2.3 Theorem 4) = 0-indexed pymupdf page 42 = 1-indexed PDF page 43. Book p. 55 (§2.3.3 Theorem 4) = 0-indexed pymupdf page 70 = 1-indexed PDF page 71.
 
 ### ✅ §2.2.3 Theorem 4 — Strong maximum principle for harmonic (book p. 27)
 
