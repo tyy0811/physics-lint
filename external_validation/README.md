@@ -9,20 +9,25 @@ design rationale and anchor-selection methodology.
 | Rule        | Anchor type                        | Harness                              | Citation                                                        |
 |-------------|------------------------------------|--------------------------------------|-----------------------------------------------------------------|
 | PH-POS-002  | Classical theory reproduction       | `PH-POS-002/test_anchor.py`          | Evans §2.2.3 Theorem 4 — see `PH-POS-002/CITATION.md`           |
-| PH-CON-003  | Classical theory reproduction       | `PH-CON-003/test_anchor.py`          | Evans §7.1.2 energy-estimate theorem† — see `PH-CON-003/CITATION.md` |
-| PH-SYM-001  | Synthetic + literature calibration  | `PH-SYM-001/test_anchor.py`          | Helwig 2023, Table 3 — see `PH-SYM-001/CITATION.md`              |
-| PH-SYM-002  | Synthetic + literature calibration  | `PH-SYM-002/test_anchor.py`          | Helwig 2023, Table 1 — see `PH-SYM-002/CITATION.md`              |
+| PH-CON-003  | Classical theory reproduction       | `PH-CON-003/test_anchor.py`          | Evans §7.1.2 Theorem 2 — see `PH-CON-003/CITATION.md`           |
+| PH-SYM-001  | Synthetic + literature calibration  | `PH-SYM-001/test_anchor.py`          | Helwig 2023, Table 3 — see `PH-SYM-001/CITATION.md`             |
+| PH-SYM-002  | Synthetic + literature calibration  | `PH-SYM-002/test_anchor.py`          | Helwig 2023, Table 1 — see `PH-SYM-002/CITATION.md`             |
 | PH-RES-001  | Convergence + norm-equivalence      | `PH-RES-001/test_anchor.py`          | Fornberg 1988 + Bachmayr-Dahmen-Oster 2025 — see `PH-RES-001/CITATION.md` |
-| PH-POS-001  | Classical theory reproduction       | `PH-POS-001/test_anchor.py`          | Evans §2.2.4 (Poisson positivity)† + §2.3.3 (heat weak max principle)† — see `PH-POS-001/CITATION.md` |
+| PH-POS-001  | Classical theory reproduction       | `PH-POS-001/test_anchor.py`          | Evans §2.2.3 Theorem 4 Positivity corollary + §2.3.3 Theorem 4 — see `PH-POS-001/CITATION.md` |
 
-**Confidence tiers.** Citations without a dagger are pinned at theorem-number
-precision and verified against authoritative web sources (Princeton lecture
-notes, Stanford handouts, AMS catalog, peer-reviewed preprints). Citations
-marked `†` are verified at **section-level concept** but not at the exact
-theorem number inside that section — see `_harness/TEXTBOOK_AVAILABILITY.md`
-for the verification record and `docs/backlog/v1.1.md` for the tightening
-entry (requires a local copy of Evans to close). Tier-A release ships with
-this mix honestly documented rather than delaying on theorem-number precision.
+**Citation verification.** All Tier-A Evans citations are verified at
+theorem-number precision against the Evans 2nd-ed. 2010 text (AGH Kraków
+mirror; visually inspected via pymupdf → PNG → Claude vision during the
+2026-04-20 Task 0 Step 17 tightening pass). Direct theorem quotes and
+page numbers are recorded in `_harness/TEXTBOOK_AVAILABILITY.md`.
+
+Two theorem-number corrections from the Rev 1.6 design spec were uncovered
+during this pass and applied to the per-rule CITATION.md files: the spec's
+"§2.2.4 Theorem 13 (positivity)" is actually Symmetry of Green's function in
+Evans (positivity is a corollary of §2.2.3 Theorem 4), and the spec's
+"§2.3.3 Theorem 8 (heat max principle)" is actually §2.3.3 Theorem 4 (Evans
+restarts theorem numbering per section). See TEXTBOOK_AVAILABILITY.md for
+direct quotes confirming both corrections.
 
 ## Tier B (v1.1 roadmap)
 
