@@ -8,12 +8,21 @@ design rationale and anchor-selection methodology.
 
 | Rule        | Anchor type                        | Harness                              | Citation                                                        |
 |-------------|------------------------------------|--------------------------------------|-----------------------------------------------------------------|
-| PH-POS-002  | Classical theory reproduction       | `PH-POS-002/test_anchor.py`          | Evans §2.2.3 Thm 4 — see `PH-POS-002/CITATION.md`                |
-| PH-CON-003  | Classical theory reproduction       | `PH-CON-003/test_anchor.py`          | Evans §7.1.2 Thm 2 — see `PH-CON-003/CITATION.md`                |
+| PH-POS-002  | Classical theory reproduction       | `PH-POS-002/test_anchor.py`          | Evans §2.2.3 Theorem 4 — see `PH-POS-002/CITATION.md`           |
+| PH-CON-003  | Classical theory reproduction       | `PH-CON-003/test_anchor.py`          | Evans §7.1.2 energy-estimate theorem† — see `PH-CON-003/CITATION.md` |
 | PH-SYM-001  | Synthetic + literature calibration  | `PH-SYM-001/test_anchor.py`          | Helwig 2023, Table 3 — see `PH-SYM-001/CITATION.md`              |
 | PH-SYM-002  | Synthetic + literature calibration  | `PH-SYM-002/test_anchor.py`          | Helwig 2023, Table 1 — see `PH-SYM-002/CITATION.md`              |
 | PH-RES-001  | Convergence + norm-equivalence      | `PH-RES-001/test_anchor.py`          | Fornberg 1988 + Bachmayr-Dahmen-Oster 2025 — see `PH-RES-001/CITATION.md` |
-| PH-POS-001  | Classical theory reproduction       | `PH-POS-001/test_anchor.py`          | Evans §2.2.4 Thm 13, §2.3.3 Thm 8 — see `PH-POS-001/CITATION.md` |
+| PH-POS-001  | Classical theory reproduction       | `PH-POS-001/test_anchor.py`          | Evans §2.2.4 (Poisson positivity)† + §2.3.3 (heat weak max principle)† — see `PH-POS-001/CITATION.md` |
+
+**Confidence tiers.** Citations without a dagger are pinned at theorem-number
+precision and verified against authoritative web sources (Princeton lecture
+notes, Stanford handouts, AMS catalog, peer-reviewed preprints). Citations
+marked `†` are verified at **section-level concept** but not at the exact
+theorem number inside that section — see `_harness/TEXTBOOK_AVAILABILITY.md`
+for the verification record and `docs/backlog/v1.1.md` for the tightening
+entry (requires a local copy of Evans to close). Tier-A release ships with
+this mix honestly documented rather than delaying on theorem-number precision.
 
 ## Tier B (v1.1 roadmap)
 
