@@ -14,12 +14,13 @@ N = 64
 H = 1.0 / (N - 1)
 TIMESTEPS = np.array([0.0, 0.05, 0.1, 0.15, 0.2])
 DT = float(TIMESTEPS[1] - TIMESTEPS[0])
-KAPPA = 0.1  # See CITATION.md "Pinned value". kappa=1.0 makes energies decay
-# 2700x over the measurement window, breaking the rule's
-# np.gradient(..., edge_order=2) endpoint extrapolation even
-# though the analytical eigenmode is strictly dissipative.
+KAPPA = 1.0  # Evans Section 7.1.2 Theorem 2 reproduction: diffusivity=1 gives
+# the textbook eigenmode decay exp(-2 pi^2 t) sin(pi x) sin(pi y),
+# and per-step energy ratio exp(-4 pi^2 Delta_t) approximately
+# equals 0.1389 for Delta_t=0.05. The rule's forward-difference
+# dE/dt primitive handles this decay cleanly (no endpoint artifact).
 EPS_QUAD = 1e-4
-EXPECTED_RATIO = math.exp(-4.0 * KAPPA * math.pi**2 * DT)  # approx 0.820869
+EXPECTED_RATIO = math.exp(-4.0 * KAPPA * math.pi**2 * DT)  # approx 0.138879
 
 
 def _heat_eigenmode_u(t: float) -> np.ndarray:
@@ -49,7 +50,7 @@ def _energy(u: np.ndarray, h: float) -> float:
     return 0.5 * float(np.trapz(np.trapz(u**2, dx=h, axis=-1), dx=h, axis=-1))
 
 
-def test_fixture_analytical_heat_energy_ratio_matches_exp_minus_4kappa_pi2_dt():
+def test_fixture_analytical_heat_energy_ratio_matches_exp_minus_4pi2_dt():
     energies = [_energy(_heat_eigenmode_u(t), H) for t in TIMESTEPS]
     for k in range(len(TIMESTEPS) - 1):
         ratio = energies[k + 1] / energies[k]
