@@ -7,7 +7,7 @@
 - **ISBN:** 978-0-8218-4974-3.
 - **Section:** §7.1.2.
 - **Artifact:** Theorem 2 (energy estimates for parabolic equations). The `L²(U)` bound on `u_m` implies `E(t) ≤ E(0)` for the heat-equation eigenmode, which the rule checks on the `sin(πx)sin(πy)` eigenmode fixture.
-- **Pinned value:** per-step energy ratio on `sin(πx)sin(πy)` eigenmode with `κ = 1`, `Δt = 0.05`: `exp(-4π² · Δt) = exp(-0.1974·5π²/π²)` — numerically `exp(-4π²·0.05) ≈ 0.13888`. Tolerance `ε_quad = 10⁻⁴`.
+- **Pinned value:** per-step energy ratio on `sin(πx)sin(πy)` eigenmode with `κ = 1`, `Δt = 0.05`: `exp(-4π² · 0.05) = exp(-0.2π²) ≈ 0.13888`. Tolerance `ε_quad = 10⁻⁴`.
 - **Verification date:** 2026-04-20.
 - **Verification protocol:** analytical derivation. The `sin(πx)sin(πy)` eigenmode evolves as `sin(πx)sin(πy)·exp(-2π²t)` under the heat equation `∂_t u = Δu` (κ = 1) with homogeneous Dirichlet BCs; `E(t) = ½∫u²` evolves as `E₀ · exp(-4π²t)`; per-step ratio is `exp(-4π² · Δt)`. Evans §7.1.2 Theorem 2 verified at theorem-number precision against the text — see `../_harness/TEXTBOOK_AVAILABILITY.md`.
 

@@ -21,6 +21,16 @@ mirror; visually inspected via pymupdf → PNG → Claude vision during the
 2026-04-20 Task 0 Step 17 tightening pass). Direct theorem quotes and
 page numbers are recorded in `_harness/TEXTBOOK_AVAILABILITY.md`.
 
+**External validation surfaced a real bug during v1.0 development.** The
+PH-CON-003 anchor, reproducing Evans §7.1.2 Theorem 2 at its textbook
+parameters (`κ=1`, `Δt=0.05`), exposed that the rule's Rev 1.6 `dE/dt`
+primitive produced spurious endpoint artifacts on strictly-dissipative
+eigenmodes with decay range above ~50×. The 314-test unit suite had not
+caught this because it only exercised gentle decay. The rule was upgraded
+to a forward-difference primitive at commit `e691dd3`; the anchor now
+cleanly reproduces the textbook `exp(-4π²·0.05) ≈ 0.1389`. See
+`PH-CON-003/CITATION.md` for the full decision trace.
+
 Two theorem-number corrections from the Rev 1.6 design spec were uncovered
 during this pass and applied to the per-rule CITATION.md files: the spec's
 "§2.2.4 Theorem 13 (positivity)" is actually Symmetry of Green's function in
