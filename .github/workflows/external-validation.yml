@@ -1,0 +1,42 @@
+name: external-validation
+
+# Tier A runs on every PR to master and on pushes to master (spec §1.4).
+# Tier B (not yet present) will be added on push-to-master and release-tag
+# events only.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  tier-a:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rule:
+          - PH-POS-002
+          - PH-CON-003
+          - PH-SYM-001
+          - PH-SYM-002
+          - PH-RES-001
+          - PH-POS-001
+    name: Tier A — ${{ matrix.rule }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with mesh + dev extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,mesh]"
+      - name: Run harness unit tests
+        run: pytest --import-mode=importlib external_validation/_harness/tests -v
+      - name: Run ${{ matrix.rule }} anchor
+        run: pytest --import-mode=importlib external_validation/${{ matrix.rule }} -v
