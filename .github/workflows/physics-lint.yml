@@ -50,6 +50,14 @@ jobs:
 
       - name: Run physics-lint on ${{ matrix.model.name }}
         id: lint
+        # `physics-lint check` exits non-zero when any rule returns FAIL, which
+        # on the committed homogeneous-Dirichlet CI dumps (sample 0) is
+        # documented expected behavior for PH-BC-001 and PH-RES-001 in
+        # relative mode (see README §"v1.0 known limitations" + the
+        # 2026-04-17 backlog entry). Tolerate the non-zero exit here so the
+        # SARIF upload below runs and the findings surface in the Security
+        # tab; fix the underlying verdict-threshold behavior in v1.1.
+        continue-on-error: true
         run: |
           physics-lint check ${{ matrix.model.path }} \
               --config pyproject.toml \

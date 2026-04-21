@@ -25,6 +25,11 @@ from collections.abc import Callable
 
 import numpy as np
 
+# numpy 2.0 removed np.trapz in favor of np.trapezoid. pyproject.toml supports
+# numpy>=1.26 so both APIs must be reachable; prefer the numpy-2.x name when
+# available, fall back to the legacy name on numpy 1.26.x.
+_trapz = getattr(np, "trapezoid", np.trapz)
+
 
 def mms_perturbation_h1_error(
     mesh_x: np.ndarray,
@@ -71,8 +76,8 @@ def mms_perturbation_h1_error(
         dp_dx[-1, :] = (p[-1, :] - p[-2, :]) / hx
         dp_dy[:, 0] = (p[:, 1] - p[:, 0]) / hy
         dp_dy[:, -1] = (p[:, -1] - p[:, -2]) / hy
-        l2_sq = float(np.trapz(np.trapz(p**2, dx=hy, axis=1), dx=hx, axis=0))
-        grad_l2_sq = float(np.trapz(np.trapz(dp_dx**2 + dp_dy**2, dx=hy, axis=1), dx=hx, axis=0))
+        l2_sq = float(_trapz(_trapz(p**2, dx=hy, axis=1), dx=hx, axis=0))
+        grad_l2_sq = float(_trapz(_trapz(dp_dx**2 + dp_dy**2, dx=hy, axis=1), dx=hx, axis=0))
 
     return float(np.sqrt(l2_sq + grad_l2_sq))
 

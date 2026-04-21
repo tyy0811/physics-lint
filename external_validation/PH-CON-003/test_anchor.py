@@ -10,6 +10,9 @@ from external_validation._harness.fixtures import unit_square_grid
 from physics_lint import DomainSpec, GridField
 from physics_lint.rules import ph_con_003
 
+# numpy 2.0 removed np.trapz; prefer np.trapezoid, fall back for numpy 1.26.x.
+_trapz = getattr(np, "trapezoid", np.trapz)
+
 N = 64
 H = 1.0 / (N - 1)
 TIMESTEPS = np.array([0.0, 0.05, 0.1, 0.15, 0.2])
@@ -47,7 +50,7 @@ def _heat_dirichlet_spec() -> DomainSpec:
 
 
 def _energy(u: np.ndarray, h: float) -> float:
-    return 0.5 * float(np.trapz(np.trapz(u**2, dx=h, axis=-1), dx=h, axis=-1))
+    return 0.5 * float(_trapz(_trapz(u**2, dx=h, axis=-1), dx=h, axis=-1))
 
 
 def test_fixture_analytical_heat_energy_ratio_matches_exp_minus_4pi2_dt():
