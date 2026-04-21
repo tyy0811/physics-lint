@@ -146,6 +146,33 @@ Full results in [`dogfood/dogfood_real_results.md`](dogfood/dogfood_real_results
 
 **v1.1 roadmap.** Expanding to 6 surrogates (adding ensemble, DPS, OT-CFM, improved DDPM, flow-matching), restoring byte-identical sanity-axis comparison via a metrics-compatibility shim, and producing an out-of-distribution "MSE misses what physics catches" scatter figure are tracked in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
 
+## External validation
+
+The dogfood suite validates physics-lint against real trained neural surrogates. The **external validation** suite validates physics-lint against classical PDE theory — textbook theorems, published methodology, and reference-code implementations. Both are required; neither substitutes for the other. Dogfood catches "does the tool rank real models the way the ML ecosystem does"; external validation catches "does the tool compute the quantities its rule IDs claim."
+
+In v1.0, six rule anchors ship as first-class citizens with per-rule `CITATION.md` provenance and `test_anchor.py` reproductions:
+
+| Rule | External reference | Anchor tests | Location |
+|---|---|---|---|
+| `PH-POS-002` | Evans §2.2.3 Theorem 4 (weak maximum principle for harmonic functions) | 4 | [`external_validation/PH-POS-002/`](external_validation/PH-POS-002/) |
+| `PH-CON-003` | Evans §7.1.2 Theorem 2 (heat energy dissipation identity) | 3 | [`external_validation/PH-CON-003/`](external_validation/PH-CON-003/) |
+| `PH-SYM-001` | FFT Laplace-inverse $C_4$ rotation equivariance (discrete symmetry reproduction) | 4 | [`external_validation/PH-SYM-001/`](external_validation/PH-SYM-001/) |
+| `PH-SYM-002` | FFT Laplace-inverse reflection equivariance (discrete symmetry reproduction) | 4 | [`external_validation/PH-SYM-002/`](external_validation/PH-SYM-002/) |
+| `PH-RES-001` | Fornberg 1988 interior $O(h^4)$ (Layer 1) + Bachmayr 2024 / Ernst 2025 BDO norm-equivalence (Layer 2) | 12 | [`external_validation/PH-RES-001/`](external_validation/PH-RES-001/) |
+| `PH-POS-001` | Evans §2.2.3 Theorem 4 Positivity corollary (p. 27) + §2.3.3 Theorem 4 (heat max principle) | 4 | [`external_validation/PH-POS-001/`](external_validation/PH-POS-001/) |
+
+31 rule-anchor tests + 25 harness/infrastructure tests = 56 total. Suite runs in under 10 s on CPU.
+
+**Honest findings.** Execution of the Tier-A anchors surfaced one rule-primitive bug (`PH-CON-003`'s `np.gradient(edge_order=2)` produced endpoint artifacts on strictly-dissipative eigenmodes; fixed in commit `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent behavior requiring two-path characterization rather than a single pinned number (`PH-RES-001`'s norm-equivalence holds on the periodic+spectral $H^{-1}$ path by BDO but not on the non-periodic+FD $L^2$ fallback path by construction; both paths are now characterized independently). Per-rule `CITATION.md` files document the findings at anchor-local precision.
+
+**Run:**
+
+```bash
+source .venv/bin/activate && pytest --import-mode=importlib external_validation/ -v
+```
+
+**v1.1 roadmap.** Tier-A covers six rules out of v1.0's 18-rule catalog. The remaining twelve are tracked as forward-references in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md), each with spec-faithful primary content plus a *Post-Tier-A finding* field naming any Tier-A-surfaced structural pattern that v1.1 execution should front-load during planning (continuous-math vs discrete-predicate classification; enumerate-the-splits audit discipline).
+
 ## v1.0 known limitations
 
 **`PH-BC-001` and `PH-RES-001` in relative mode are rank-ordering reliable but absolute-threshold unreliable on homogeneous-Dirichlet samples** (where the boundary target is identically zero). Both rules divide the raw error by `avg|boundary_target|` (for `PH-BC-001`) or `avg|target|` (for `PH-RES-001`) and apply a floor at machine epsilon (~2.2e-16) when the denominator underflows. On homogeneous-Dirichlet problems the floor dominates, producing `ratio` values of ~1e13–1e14 that trip the relative-mode FAIL threshold for *any* non-zero raw error.
