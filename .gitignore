@@ -46,3 +46,8 @@ dogfood/laplace_uq_bench/*.npz
 !dogfood/laplace_uq_bench/fno_pred.npz
 !dogfood/laplace_uq_bench/ddpm_pred.npz
 dogfood/results/
+# Default extraction path for surrogate predictions produced by the local
+# dogfood workflow (run_dogfood_real.py). Reproducible from local checkpoints;
+# never belongs in the repo (~3 MB per file, opaque binary, would create a
+# second stale source of truth next to the committed CI dumps above).
+dogfood/_predictions/
