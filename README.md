@@ -163,7 +163,7 @@ In v1.0, six rule anchors ship as first-class citizens with per-rule `CITATION.m
 
 31 rule-anchor tests + 25 harness/infrastructure tests = 56 total. Suite runs in under 10 s on CPU.
 
-**Honest findings.** Execution of the Tier-A anchors surfaced one rule-primitive bug (`PH-CON-003`'s `np.gradient(edge_order=2)` produced endpoint artifacts on strictly-dissipative eigenmodes; fixed in commit `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent behavior requiring two-path characterization rather than a single pinned number (`PH-RES-001`'s norm-equivalence holds on the periodic+spectral $H^{-1}$ path by BDO but not on the non-periodic+FD $L^2$ fallback path by construction; both paths are now characterized independently). Per-rule `CITATION.md` files document the findings at anchor-local precision.
+**Honest findings.** External validation during v1.0 development surfaced one real rule-primitive correctness bug in `PH-CON-003` (the `np.gradient(edge_order=2)` primitive produced incorrect dissipation detection on the textbook Evans κ=1 heat case, a decay regime outside the unit suite's curated fixture range; fixed in `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent norm-equivalence split in `PH-RES-001` (characterized rather than fixed — the rule emits different norms on periodic+spectral vs non-periodic+FD configurations, and the Bachmayr–Dahmen–Oster framework's norm-equivalence claim holds only on the former). See per-rule `CITATION.md` files for details.
 
 **Run:**
 
