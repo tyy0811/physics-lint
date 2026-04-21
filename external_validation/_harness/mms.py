@@ -27,8 +27,11 @@ import numpy as np
 
 # numpy 2.0 removed np.trapz in favor of np.trapezoid. pyproject.toml supports
 # numpy>=1.26 so both APIs must be reachable; prefer the numpy-2.x name when
-# available, fall back to the legacy name on numpy 1.26.x.
-_trapz = getattr(np, "trapezoid", np.trapz)
+# available, fall back to the legacy name on numpy 1.26.x. Must use hasattr
+# + ternary rather than getattr(..., default=np.trapz) because the getattr
+# default is evaluated eagerly and would itself raise AttributeError on
+# numpy 2.x where np.trapz has been removed.
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 
 
 def mms_perturbation_h1_error(

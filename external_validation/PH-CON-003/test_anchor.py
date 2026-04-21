@@ -11,7 +11,8 @@ from physics_lint import DomainSpec, GridField
 from physics_lint.rules import ph_con_003
 
 # numpy 2.0 removed np.trapz; prefer np.trapezoid, fall back for numpy 1.26.x.
-_trapz = getattr(np, "trapezoid", np.trapz)
+# Ternary (not getattr default) because getattr evaluates the default eagerly.
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
 
 N = 64
 H = 1.0 / (N - 1)
