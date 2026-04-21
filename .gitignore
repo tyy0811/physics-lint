@@ -36,6 +36,12 @@ docs/plans/
 .worktrees/
 worktrees/
 
+# Local-only author artifacts — plan drafts, design specs, revision arcs.
+# Backlog/README content may reference paths under docs/superpowers/ as
+# "V1 source" pointers; those references document the internal arc but are
+# not independently reachable from a fresh clone by design.
+docs/superpowers/
+
 # Dogfood harness artifacts (external repo clone + generated dumps/results).
 # Reproducible from dogfood/clone_laplace_uq_bench.sh + generate_dumps.py.
 dogfood/laplace-uq-bench/
