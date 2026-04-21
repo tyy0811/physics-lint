@@ -1,0 +1,37 @@
+{
+  "calibration_date": "2026-04-20",
+  "physics_lint_commit": "0ba7ae99d3b6f9060530cfe080317e8714c4564d",
+  "grid_n": 64,
+  "periodic_spectral": {
+    "c_min": 0.408685632272175,
+    "C_max": 1.973560614766651,
+    "rho_values": [
+      0.81737126454435,
+      0.9482124626176327,
+      0.9867803073833255
+    ],
+    "rho_labels": [
+      "k=1",
+      "k=2",
+      "k=3"
+    ],
+    "norm_emitted_by_rule": "H-1",
+    "C_max_over_c_min": 4.829043301067912,
+    "note": "H^-1 residual norm (rule's variationally-correct path for periodic+spectral poisson). BDO norm-equivalence: ||r||_{H-1} is proportional to ||u_pert - u_exact||_{H1} within a bounded ratio (C_max/c_min < 10) across the three-mode family."
+  },
+  "nonperiodic_fd": {
+    "rho_values": [
+      4.336117810127638,
+      17.86084350813366,
+      7.105849684080043
+    ],
+    "rho_labels": [
+      "k=1 low-freq",
+      "k=4 mid-freq",
+      "k=1 bdry-resp"
+    ],
+    "norm_emitted_by_rule": "L2",
+    "note": "L^2 fallback per ph_res_001.py:123-131; ratio ||r||_{L2} / ||.||_{H1} scales linearly with perturbation wavenumber k because ||Laplacian f||_{L2} / ||f||_{H1} is proportional to k for f = sin(k pi x) sin(k pi y). This is a characterization of the rule's L^2 fallback, not a test of norm-equivalence.",
+    "C_max_over_c_min_raw": 4.119086309513326
+  }
+}
