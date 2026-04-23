@@ -1,8 +1,8 @@
 """Shared symmetry harness for Tier-A and Tier-B equivariance anchors.
 
 Primitives:
-    rotate_test(model, x, k)      - 90 deg * k rotation equivariance test
-    reflect_test(model, x, axis)  - axis reflection equivariance test
+    rotate_test(model, x, k)      - 90 deg * k rotation equivariance test (C4 subgroup of SO(2))
+    reflect_test(model, x, axis)  - axis reflection equivariance test (Z2 subgroup of O(2))
     fft_laplace_inverse           - provably C4- and reflection-equivariant operator
     non_equivariant_cnn           - random-weight CNN with positional embeddings
 
@@ -12,6 +12,25 @@ undefined there. We set u_hat(k = 0) = 0 on the inverse output; this makes
 the operator fully defined and the equivariance claim operationally complete.
 Task 11 in Tier B inherits this convention - DO NOT change the zero-mode
 policy without updating Task 11's anchor correspondingly.
+
+Structural-equivalence retrofit note (complete-v1.0 plan Task 1, 2026-04-23):
+    rotate_test and reflect_test are the numerical primitives consumed by the
+    structural-equivalence proof-sketches embedded in PH-SYM-001/CITATION.md
+    (C4 discrete rotation on a 2D periodic square grid) and
+    PH-SYM-002/CITATION.md (Z2 discrete reflection). The proof-sketches map
+    the rule's emitted equivariance-error quantity to Hall 2015 Lie Groups,
+    Lie Algebras, and Representations section 2.5 one-parameter subgroup
+    family (section-level) + section 3.7 continuous-to-smooth for matrix
+    Lie group homomorphisms (section-level), together with Varadarajan
+    1984 section 2.9-2.10 identity-component generation (section-level).
+    Hall and Varadarajan citations inherit the WARN-flagged section-level
+    framing per external_validation/_harness/TEXTBOOK_AVAILABILITY.md.
+
+    Tasks 6 (PH-SYM-003) and 7 (PH-SYM-004) will extend this harness with
+    Lie-group-specific utilities beyond the discrete C4 and Z2 cases:
+    continuous SO(2) equivariance for Task 6, translation equivariance
+    (R^2 / Z^d) for Task 7. Those extensions land under their respective
+    task commits.
 """
 
 from __future__ import annotations
