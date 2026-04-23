@@ -254,6 +254,20 @@ labeling self-consistency) must verify Task 9's F3-ABSENT subsection is
 populated (not silently omitted) and that PDEBench + Hansen appear under
 Supplementary calibration context with "calibration, not reproduction" flag.
 
+## Appendix — Demkowicz-Gopalakrishnan 2025 Acta Numerica publication status (Task 0 Step 6)
+
+Per complete-v1.0 plan §8 Task 0 Step 6, the Demkowicz-Gopalakrishnan DPG review
+paper's publication status was verified via WebSearch + WebFetch:
+
+**Published.** Demkowicz, L., Gopalakrishnan, J. (2025). *The discontinuous
+Petrov–Galerkin method.* Acta Numerica 34:293–384. Published online 2025-07-01
+by Cambridge University Press. **DOI:** 10.1017/S0962492924000102.
+
+**Consumer:** Task 13 (PH-VAR-002) CITATION.md Supplementary calibration context.
+No "in-press" flag needed; cite the DOI directly. The 2025-07-01 online date is
+in the past relative to today's date (2026-04-23), so the paper is cited as
+published.
+
 ## Update posture
 
 If a later pass obtains a stronger F3 candidate for Task 9 (e.g., a symplectic-
