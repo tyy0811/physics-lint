@@ -1,6 +1,90 @@
 # PH-RES-001 — Residual exceeds variationally-correct norm threshold
 
-## Citation
+## Function-labeled citation stack
+
+Per complete-v1.0 plan §1.3 three-function labeling. Retrofit landed during
+Task 0 Step 7 of the complete-v1.0 plan; Tier-A four-layer content preserved
+with the function-labeled structure added as the primary organizational layer.
+
+### Mathematical-legitimacy (Tier 2 theoretical-plus-multi-paper)
+
+- **Layer 1 interior convergence — Fornberg O(h⁴)**: Fornberg, B. (1988).
+  "Generation of Finite Difference Formulas on Arbitrarily Spaced Grids."
+  *Mathematics of Computation* 51(184):699–706. DOI 10.2307/2008770. The
+  `(-1, 16, -30, 16, -1)/12` coefficients at `src/physics_lint/field/grid.py:32`
+  are the standard 5-point 4th-order central second-derivative stencil
+  derived in that paper.
+- **Layer 1b boundary rationale — Strikwerda boundary closure**: Strikwerda,
+  J.C. (2004). *Finite Difference Schemes and Partial Differential
+  Equations*, 2nd ed. SIAM. ISBN 978-0-89871-567-5. §3 (FD consistency).
+  Section-level framing — Strikwerda's verification status is ⚠
+  secondary-source-confirmed in `../_harness/TEXTBOOK_AVAILABILITY.md`.
+  When an interior O(h⁴) stencil is combined with one-sided/off-center
+  boundary closures whose truncation error is O(h²), the full-domain L²
+  error inherits the O(h²) boundary contribution (boundary contribution
+  scales as O(h^{5/2}); combined with interior O(h⁴) over a log-log
+  regression at N ∈ {16, 32, 64, 128}, produces an empirical slope near 3.5).
+- **Layer 2 BDO norm-equivalence — Bachmayr-Dahmen-Oster**: Bachmayr, M.,
+  Dahmen, W., Oster, P. (2024 preprint / forthcoming). "A variational
+  framework for a posteriori error estimation of parabolic PDEs." Ernst, O.,
+  Mugler, A., Starkloff, H.-J., Ullmann, E. (2025 v3). "An analysis of a
+  posteriori error estimates for parabolic PDEs." The H⁻¹ spectral residual
+  norm is H¹-equivalent on periodic spectral grids by BDO; the L² fallback
+  is not H¹-equivalent by construction.
+
+### Correctness-fixture (CI-runnable, non-credibility-claiming)
+
+- **Layer 1 fixture**: `sin_sin_mms_square()` (analytical source
+  `f = -Δu = 2π² sin(πx) sin(πy)` on `[0, 1]²`, Dirichlet homogeneous).
+  `u_exact = sin(πx) sin(πy)` is closed-form; the residual is computed by
+  substitution. `test_anchor.py` sweeps `N ∈ {16, 32, 64, 128}` and fits
+  log-log regression.
+- **Layer 2a fixture**: `periodic_sin_sin()` on `[0, 2π]²` with three
+  perturbations `p_k(x, y) = 0.01 sin(kx) sin(ky)` for `k ∈ {1, 2, 3}`.
+  Grid 64×64, `endpoint=False` (periodic convention). Perturbation H¹
+  norms are closed-form-derivable from `||p_k||_{H¹} = O(k · ε)` and the
+  rule's H⁻¹ residual norm is computed via FFT.
+- **Layer 2b fixture**: `sin_sin_mms_square()` on `[0, 1]²` (same as Layer
+  1) with perturbations `sin(kπx) sin(kπy)` for `k ∈ {1, 4}`. Closed-form
+  k-linear scaling prediction: `||Lap p_k||_{L²} ∝ k²`, `||p_k||_{H¹} ∝ k`
+  (gradient-dominated), so `ρ_k = ||r||_{L²} / ||p_k||_{H¹} ∝ k`.
+- Pinned bounds stored in `fixtures/norm_equivalence_bounds.json` (Layer 2a);
+  Layer 2b is a range-check on the k-linear scaling ratio.
+
+### Borrowed-credibility (external published reproduction layers)
+
+- **Layer 1a — Fornberg O(h⁴) interior reproduction.** log-log slope of
+  interior residual on MMS `sin(πx)sin(πy)` at `N ∈ {16, 32, 64, 128}` must
+  land in `[3.8, 4.2]` with `R² ≥ 0.99`. **Measured value 3.993 at commit
+  c07ba33.** This reproduces Fornberg 1988's O(h⁴) central-difference
+  stencil prediction as a measured empirical rate.
+- **Layer 2a — BDO `C_max / c_min < 10` norm-equivalence reproduction.**
+  On the three-perturbation family (`k ∈ {1, 2, 3}`) on `[0, 2π]²`,
+  `ρ_k = ||r||_{H^-1} / ||u_pert - u_exact||_{H¹}` satisfies
+  `c_min ≤ ρ_k ≤ C_max` with `C_max / c_min < 10` per BDO.
+  **Measured 4.829 at commit e28c493.** Stored in
+  `fixtures/norm_equivalence_bounds.json`.
+- **Layer 1b — Full-domain characterization (not reproduction).** log-log
+  slope in `[3.3, 3.7]`. Measured value 3.494 at commit c07ba33. This is
+  *characterization* of the documented boundary-closure regime, not
+  reproduction of a specific peer-reviewed rate. Listed here under F3
+  because its pinned numerical range is a direct output comparison against
+  the Strikwerda §3 closure-theory prediction, but flagged explicitly as
+  characterization not reproduction to preserve the §1.2 F3 sharpness.
+- **Layer 2b — L² fallback k-linear characterization (not reproduction).**
+  `ρ_k=4 / ρ_k=1 ∈ [3.5, 4.5]` on non-periodic+FD path. Measured 4.119 at
+  commit e28c493. Characterization of the rule's documented L²-fallback
+  regime per closed-form scaling derivation; not a reproduction of a
+  specific peer-reviewed table.
+
+### Supplementary calibration context
+
+(None — all external references above are either F1 mathematical-legitimacy
+(Fornberg, Strikwerda, BDO papers) or F3 borrowed-credibility (measured
+reproductions and characterizations against those theorems' predictions).
+No calibration-only or plot-shape references accompany this rule.)
+
+## Citation summary
 
 - **Layer 1 (Fornberg interior O(h⁴)):** Fornberg, "Generation of Finite
   Difference Formulas on Arbitrarily Spaced Grids," *Mathematics of
@@ -9,12 +93,7 @@
   5-point 4th-order central second-derivative stencil derived in that
   paper.
 - **Layer 1b boundary rationale:** Strikwerda, *Finite Difference Schemes
-  and PDEs* (SIAM Classics 2004), §3. When an interior O(h⁴) stencil is
-  combined with one-sided/off-center boundary closures whose truncation
-  error is O(h²), the full-domain L² error inherits the O(h²) boundary
-  contribution (boundary contribution scales as O(h^{5/2}); combined with
-  interior O(h⁴) over a log-log regression at N ∈ {16, 32, 64, 128},
-  produces an empirical slope near 3.5).
+  and PDEs* (SIAM Classics 2004), §3.
 - **Layer 2 (BDO norm-equivalence):** Bachmayr, Dahmen, Oster, "A
   variational framework for posteriori error estimation of parabolic
   PDEs," 2024 preprint; Ernst, Mugler, Starkloff, Ullmann, "An analysis
