@@ -1,9 +1,11 @@
 """Citation dataclass for external-validation anchors.
 
-See design spec §1.3. Validation runs in `__post_init__`:
+See design spec §1.3 and complete-v1.0 plan §1.3 (three-function labeling).
+Validation runs in `__post_init__`:
 - All required string fields must be non-empty.
 - At least one of {arxiv_id, doi, isbn, url} must be non-None.
 - `verification_date` must be valid ISO 8601 (YYYY-MM-DD).
+- `function_tag` (optional) must be one of the four accepted labels.
 """
 
 from __future__ import annotations
@@ -24,6 +26,15 @@ _REQUIRED_NONEMPTY = (
 
 _IDENTIFIER_FIELDS = ("arxiv_id", "doi", "isbn", "url")
 
+FUNCTION_TAGS = frozenset(
+    {
+        "mathematical_legitimacy",
+        "correctness_fixture",
+        "borrowed_credibility",
+        "supplementary_calibration_context",
+    }
+)
+
 
 @dataclass
 class Citation:
@@ -39,6 +50,7 @@ class Citation:
     pinned_value: str
     verification_date: str
     verification_protocol: str
+    function_tag: str | None = None
 
     def __post_init__(self) -> None:
         for field_name in _REQUIRED_NONEMPTY:
@@ -58,3 +70,9 @@ class Citation:
                 f"Citation.verification_date must be ISO 8601 (YYYY-MM-DD); "
                 f"got {self.verification_date!r}"
             ) from exc
+
+        if self.function_tag is not None and self.function_tag not in FUNCTION_TAGS:
+            raise ValueError(
+                f"Citation.function_tag must be one of {sorted(FUNCTION_TAGS)} or None; "
+                f"got {self.function_tag!r}"
+            )

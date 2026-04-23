@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from external_validation._harness.citations import Citation
+from external_validation._harness.citations import FUNCTION_TAGS, Citation
 
 
 def _base_citation_kwargs() -> dict:
@@ -76,3 +76,47 @@ def test_citation_accepts_both_arxiv_and_doi():
     # arxiv_id already set in base kwargs
     c = Citation(**kw)
     assert c.arxiv_id is not None and c.doi is not None
+
+
+def test_citation_function_tag_defaults_to_none():
+    c = Citation(**_base_citation_kwargs())
+    assert c.function_tag is None
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "mathematical_legitimacy",
+        "correctness_fixture",
+        "borrowed_credibility",
+        "supplementary_calibration_context",
+    ],
+)
+def test_citation_accepts_every_function_tag(tag: str):
+    kw = _base_citation_kwargs()
+    kw["function_tag"] = tag
+    c = Citation(**kw)
+    assert c.function_tag == tag
+
+
+def test_citation_rejects_unknown_function_tag():
+    kw = _base_citation_kwargs()
+    kw["function_tag"] = "calibration"  # plain-english word, not the canonical label
+    with pytest.raises(ValueError, match="function_tag"):
+        Citation(**kw)
+
+
+def test_function_tags_constant_covers_all_four():
+    # If this fails, §1.2 / §1.3 of complete-v1.0 plan were changed and
+    # the harness constant was not updated accordingly.
+    assert (
+        frozenset(
+            {
+                "mathematical_legitimacy",
+                "correctness_fixture",
+                "borrowed_credibility",
+                "supplementary_calibration_context",
+            }
+        )
+        == FUNCTION_TAGS
+    )
