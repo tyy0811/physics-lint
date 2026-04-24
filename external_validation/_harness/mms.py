@@ -17,6 +17,15 @@ paths: periodic+spectral emits H^-1 (norm-equivalent to H^1), non-periodic
 +FD emits L^2 (not norm-equivalent across frequencies by construction).
 The same MMS helper is reused for both paths with the periodic flag
 switching gradient + quadrature conventions.
+
+Rev 1.9 (Task 12 — PH-NUM-002): adds Case A harness-layer observed-order
+anchor. The rule ships FD4 + 2nd-order-boundary-band + spectral backends;
+the harness layer uses a *pure-interior* 2nd-order central-difference
+Laplacian so the measured slope is the textbook p_obs = 2 (no boundary
+degradation, no 4th-order interior masking). This establishes the
+observed-order methodology at a pedagogically clean rate independent of
+the rule's FD4 stencil choices — mirrors Task 9's harness-authoritative
+pattern for wave energy.
 """
 
 from __future__ import annotations
@@ -87,3 +96,70 @@ def mms_perturbation_h1_error(
 
 # Back-compat alias (retained for imports that land mid-migration).
 mms_sin_sin_h1_error = mms_perturbation_h1_error
+
+
+# ---------------------------------------------------------------------------
+# Case A harness-layer 2nd-order-FD observed-order anchor (Task 12, PH-NUM-002)
+# ---------------------------------------------------------------------------
+#
+# Purpose: anchor the observed-order methodology p_obs = log2(r_h / r_{h/2})
+# at the textbook clean-second-order rate p = 2 independent of PH-NUM-002's
+# production path (which uses FD4 with a 2nd-order boundary band, and
+# spectral + periodic which saturates). This helper is authoritative for
+# the F1 identity "2nd-order FD residual on a smooth harmonic u converges
+# as O(h^2)" without entanglement with the rule's shipped FD4 stencil.
+#
+# Scope:
+# - Smooth non-periodic harmonic u on [0, 1]^2 (e.g. exp(x) cos(y),
+#   sin(pi x) sinh(pi y)).
+# - Interior-only 2nd-order central-difference Laplacian; L^2 norm taken
+#   over the interior grid (excluding the boundary ring) so no one-sided
+#   or 2nd-order-boundary stencil enters the measurement.
+# - Harmonic-polynomial fixtures (e.g. x^2 - y^2) are *excluded* because
+#   2nd-order FD is exact on polynomials of degree <= 2 -> residuals
+#   saturate at roundoff and p_obs becomes noise.
+
+
+def laplacian_fd2_interior(u: np.ndarray, hx: float, hy: float) -> np.ndarray:
+    """Pure interior 2nd-order central-difference Laplacian on a 2D grid.
+
+    Returns a zero-padded array of the same shape as `u` with the Laplacian
+    filled on `[1:-1, 1:-1]` only. No one-sided boundary stencil, so the
+    measured residual reflects pure O(h^2) interior truncation error on a
+    smooth harmonic u.
+    """
+    lap = np.zeros_like(u)
+    lap[1:-1, 1:-1] = (u[2:, 1:-1] - 2 * u[1:-1, 1:-1] + u[:-2, 1:-1]) / (hx * hx) + (
+        u[1:-1, 2:] - 2 * u[1:-1, 1:-1] + u[1:-1, :-2]
+    ) / (hy * hy)
+    return lap
+
+
+def interior_l2_norm(field: np.ndarray, hx: float, hy: float) -> float:
+    """L^2 norm over the interior (exclude boundary ring). Rectangle rule."""
+    interior = field[1:-1, 1:-1]
+    return float(np.sqrt(np.sum(interior * interior) * hx * hy))
+
+
+def mms_observed_order_fd2(
+    fixture: Callable[[int], tuple[np.ndarray, float, float]],
+    *,
+    n_coarse: int,
+    n_fine: int,
+) -> tuple[float, float, float]:
+    """Observed-order (Roy 2005 formula) on the 2nd-order interior-FD path.
+
+    Returns ``(p_obs, r_coarse, r_fine)`` where `r` is the interior L^2 norm
+    of the 2nd-order FD Laplacian applied to `fixture(N)`. The caller picks
+    a smooth *harmonic* u so the true Laplacian is identically zero and
+    the measured residual is pure truncation.
+
+    `fixture(n)` must return `(u, hx, hy)`.
+    """
+    uc, hxc, hyc = fixture(n_coarse)
+    uf, hxf, hyf = fixture(n_fine)
+    rc = interior_l2_norm(laplacian_fd2_interior(uc, hxc, hyc), hxc, hyc)
+    rf = interior_l2_norm(laplacian_fd2_interior(uf, hxf, hyf), hxf, hyf)
+    if rc <= 0.0 or rf <= 0.0:
+        return float("inf"), rc, rf
+    return float(np.log2(rc / rf)), rc, rf
