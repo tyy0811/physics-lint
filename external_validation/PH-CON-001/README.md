@@ -60,7 +60,7 @@ Summary:
   arXiv:2302.11002 Table 1 diffusion-equation row with
   semantic-equivalence derivation; reproduction deferred to V1.1.
 
-## Plan-diffs (11 cumulative across Tier-B execution)
+## Plan-diffs (11 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 9, 10, 11 (introduced
 in Task 8). Diffs 1–8 are from Tasks 2, 3, 4, 5. Summary:

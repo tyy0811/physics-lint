@@ -4,7 +4,7 @@ name: physics-lint
 # laplace-uq-bench surrogates committed to dogfood/laplace_uq_bench/ and
 # emits per-surrogate SARIF to the Security tab. See Week 4 plan Task 4
 # for scope (3 surrogates from Week 2½; 6-surrogate expansion is v1.1 per
-# docs/backlog/v1.1.md).
+# docs/backlog/v1.2.md).
 #
 # The README hero image (docs/figures/sarif-hero.png) is the FNO PH-POS-002
 # alert rendered in the Security tab from this workflow's first successful
@@ -12,7 +12,7 @@ name: physics-lint
 # PH-BC-001 during the 2026-04-17 interpretation pass: on homogeneous-
 # Dirichlet samples, PH-BC-001's relative-mode ratio is threshold-
 # unreliable; PH-POS-002 discriminates FNO uniquely and cleanly. See
-# README §"v1.0 known limitations" and docs/backlog/v1.1.md.)
+# README §"v1.0 known limitations" and docs/backlog/v1.2.md.)
 
 on:
   push:
@@ -33,7 +33,7 @@ jobs:
       matrix:
         # v1.0 scope: 3 surrogates from Week 2½ real-ML dogfood.
         # Ensemble / DPS / OT-CFM / improved-DDPM / flow-matching deferred
-        # to v1.1 — see docs/backlog/v1.1.md.
+        # to v1.1 — see docs/backlog/v1.2.md.
         model:
           - { name: unet-regressor, path: dogfood/laplace_uq_bench/unet_regressor_pred.npz }
           - { name: fno,            path: dogfood/laplace_uq_bench/fno_pred.npz }

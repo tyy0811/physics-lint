@@ -34,7 +34,7 @@ comparable; `PH-SYM-001` picks up the C4 failure.
 
 Using synthetic constructions for Cases 1-2 keeps the gallery self-contained
 (no checkpoint download, no GPU) while still demonstrating the rule
-mechanics. Real-model extension is tracked in `docs/backlog/v1.1.md`
+mechanics. Real-model extension is tracked in `docs/backlog/v1.2.md`
 (6-surrogate restoration + marketing scatter plot entries).
 
 ```{code-cell} ipython3
@@ -165,6 +165,6 @@ has a concrete, specifically-diagnosable physics violation.
 
 Cases 1 and 2 are constructed pathologies for gallery self-containedness.
 Case 3 is a real trained model. The v1.1 backlog (marketing scatter plot +
-6-surrogate restoration entries in `docs/backlog/v1.1.md`) ships the same
+6-surrogate restoration entries in `docs/backlog/v1.2.md`) ships the same
 pattern against the full 6-surrogate laplace-uq-bench set and a
 distribution-shift OOD test.

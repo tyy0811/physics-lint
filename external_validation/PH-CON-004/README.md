@@ -104,7 +104,7 @@ The anchor's F1 proof-sketch step 2 explicitly flags this distinction.
 Any future V1.x tightening of the rule toward a full residual estimator
 would need to add source + facet-jump terms and revisit the F1 claim.
 
-## Plan-diffs (22 cumulative across Tier-B execution)
+## Plan-diffs (22 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 19–22 (Task 10). Diffs
 1–18 are from Tasks 2, 3, 4, 5, 8, 9, 12. Summary of Task 10 diffs:

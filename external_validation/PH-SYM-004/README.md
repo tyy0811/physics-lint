@@ -111,7 +111,7 @@ contract must be updated in the same commit to switch from "rule
 SKIPs with V1-stub reason" to "rule emits numerical equivariance
 error that matches harness-level measurement."
 
-## Plan-diffs (26 cumulative across Tier-B execution)
+## Plan-diffs (26 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 23–26 (Task 7). Diffs
 1–22 are from Tasks 2, 3, 4, 5, 8, 9, 10, 12. Summary of Task 7 diffs:

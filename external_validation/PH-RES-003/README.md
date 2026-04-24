@@ -45,7 +45,7 @@ See `CITATION.md` for the full function-labeled citation stack. Summary:
   reproduction) + Trefethen 2000 Program 5 plot (plot-shape framing,
   not reproduction).
 
-## Plan-diffs (5 cumulative across Tier-B execution)
+## Plan-diffs (5 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 3, 4, 5 (introduced in
 Task 3). Diffs 1 and 2 are from Task 2 (`PH-RES-002`). Summary:

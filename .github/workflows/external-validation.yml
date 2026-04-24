@@ -1,8 +1,10 @@
 name: external-validation
 
-# Tier A runs on every PR to master and on pushes to master (spec §1.4).
-# Tier B (not yet present) will be added on push-to-master and release-tag
-# events only.
+# Runs all 18 external-validation anchors on every PR to master and on
+# pushes to master. No opt-in GPU job in v1.0; plan §14 two-layer
+# RotMNIST + Modal A100 validation and the ImageNet-opt-in Gruver
+# reproduction are documented as F3-INFRA-GAP deferrals to v1.x per
+# docs/backlog/v1.2.md.
 
 on:
   push:
@@ -14,29 +16,62 @@ permissions:
   contents: read
 
 jobs:
-  tier-a:
+  external-validation:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         rule:
-          - PH-POS-002
+          - PH-BC-001
+          - PH-BC-002
+          - PH-CON-001
+          - PH-CON-002
           - PH-CON-003
+          - PH-CON-004
+          - PH-NUM-001
+          - PH-NUM-002
+          - PH-POS-001
+          - PH-POS-002
+          - PH-RES-001
+          - PH-RES-002
+          - PH-RES-003
           - PH-SYM-001
           - PH-SYM-002
-          - PH-RES-001
-          - PH-POS-001
-    name: Tier A — ${{ matrix.rule }}
+          - PH-SYM-003
+          - PH-SYM-004
+          - PH-VAR-002
+    name: ${{ matrix.rule }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Install physics-lint with mesh + dev extras
+      - name: Install physics-lint with dev + mesh extras
         run: |
           pip install --upgrade pip
           pip install -e ".[dev,mesh]"
-      - name: Run harness unit tests
+      - name: Run shared harness unit tests
         run: pytest --import-mode=importlib external_validation/_harness/tests -v
       - name: Run ${{ matrix.rule }} anchor
         run: pytest --import-mode=importlib external_validation/${{ matrix.rule }} -v
+
+  closeout-scripts:
+    runs-on: ubuntu-latest
+    name: CITATION.md closeout checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with dev extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: check_citation_md_three_function_structure.py
+        run: |
+          python scripts/check_citation_md_three_function_structure.py \
+            external_validation/PH-*/CITATION.md
+      - name: check_theorem_number_framing.py
+        run: |
+          python scripts/check_theorem_number_framing.py \
+            external_validation/PH-*/CITATION.md

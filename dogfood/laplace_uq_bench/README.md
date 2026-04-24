@@ -17,7 +17,7 @@ output. Until they are committed, CI will fail on the matrix with a
 "file not found" error — deliberate, so the dependency is visible.
 
 6-surrogate expansion (ensemble, DPS, OT-CFM, improved-DDPM,
-flow-matching) is v1.1 per [docs/backlog/v1.1.md](../../docs/backlog/v1.1.md).
+flow-matching) is v1.1 per [docs/backlog/v1.2.md](../../docs/backlog/v1.2.md).
 
 The rest of this README documents the **fallback D' synthetic-defect harness**
 (`oracle`, `coarsened`, `smoothed`, `noisy` dumps in this directory), which

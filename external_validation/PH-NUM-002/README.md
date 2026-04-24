@@ -93,7 +93,7 @@ in the rule docstring for reference but not validated as an observed
 rate in V1. See CITATION.md proof-sketch step 5 and the "Liouville on
 T²" note.
 
-## Plan-diffs (18 cumulative across Tier-B execution)
+## Plan-diffs (18 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 14–18 (Task 12). Diffs
 1–13 are from Tasks 2, 3, 4, 5, 8, 9. Summary of Task 12 diffs:

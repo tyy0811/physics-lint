@@ -58,7 +58,7 @@ Summary:
   rearrangement motivates finite-volume conservation schemes; not a
   reproduction).
 
-## Plan-diffs (6 cumulative across Tier-B execution)
+## Plan-diffs (6 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diff 6 (introduced in Task
 5). Diffs 1–5 are from Tasks 2 + 3. Summary:

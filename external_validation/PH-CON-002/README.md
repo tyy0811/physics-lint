@@ -62,7 +62,7 @@ Summary:
 - **Supplementary calibration context**: PDEBench shallow-water
   cRMSE (mass, flagged); Hansen CE (first-order, flagged).
 
-## Plan-diffs (13 cumulative across Tier-B execution)
+## Plan-diffs (13 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 12 and 13 (Task 9).
 Diffs 1–11 are from Tasks 2, 3, 4, 5, 8. Summary:

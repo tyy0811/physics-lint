@@ -140,30 +140,31 @@ physics-lint v1.0 is validated against three trained surrogates from [`github.co
 
 - **Real axis #1** (`PH-BC-001` vs upstream `bc_err`): full ranking agreement on all three surrogates (DDPM best, FNO worst — FNO's boundary error is ~150× DDPM).
 - **Sanity axis** (`PH-RES-001` vs upstream `pde_residual`): rank-1 consistent under a pre-disclosed definitional gap (fd4 vs fd2 stencil, full-grid vs interior scope, L² trapezoidal vs dimensionless RMS).
-- **Real axis #2** (`PH-POS-002` vs upstream `max_viol`): magnitude-vs-count definitional gap, resolved in v1.1 via a metrics-compatibility shim.
+- **Real axis #2** (`PH-POS-002` vs upstream `max_viol`): magnitude-vs-count definitional gap, resolved in v1.2 via a metrics-compatibility shim.
 
 Full results in [`dogfood/dogfood_real_results.md`](dogfood/dogfood_real_results.md). Methodology notes and reinterpretation rationale in [`docs/tradeoffs.md`](docs/tradeoffs.md).
 
-**v1.1 roadmap.** Expanding to 6 surrogates (adding ensemble, DPS, OT-CFM, improved DDPM, flow-matching), restoring byte-identical sanity-axis comparison via a metrics-compatibility shim, and producing an out-of-distribution "MSE misses what physics catches" scatter figure are tracked in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+**v1.2 roadmap.** Expanding to 6 surrogates (adding ensemble, DPS, OT-CFM, improved DDPM, flow-matching), restoring byte-identical sanity-axis comparison via a metrics-compatibility shim, and producing an out-of-distribution "MSE misses what physics catches" scatter figure are tracked in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 ## External validation
 
 The dogfood suite validates physics-lint against real trained neural surrogates. The **external validation** suite validates physics-lint against classical PDE theory — textbook theorems, published methodology, and reference-code implementations. Both are required; neither substitutes for the other. Dogfood catches "does the tool rank real models the way the ML ecosystem does"; external validation catches "does the tool compute the quantities its rule IDs claim."
 
-In v1.0, six rule anchors ship as first-class citizens with per-rule `CITATION.md` provenance and `test_anchor.py` reproductions:
+physics-lint v1.0 provides external-validation anchors for all 18 benchmark-anchorable rules. These anchors combine mathematical-legitimacy arguments, correctness fixtures, and, where executable in v1.0, borrowed-credibility reproductions or documented absent-with-justification cases.
 
-| Rule | External reference | Anchor tests | Location |
-|---|---|---|---|
-| `PH-POS-002` | Evans §2.2.3 Theorem 4 (weak maximum principle for harmonic functions) | 4 | [`external_validation/PH-POS-002/`](external_validation/PH-POS-002/) |
-| `PH-CON-003` | Evans §7.1.2 Theorem 2 (heat energy dissipation identity) | 3 | [`external_validation/PH-CON-003/`](external_validation/PH-CON-003/) |
-| `PH-SYM-001` | FFT Laplace-inverse $C_4$ rotation equivariance (discrete symmetry reproduction) | 4 | [`external_validation/PH-SYM-001/`](external_validation/PH-SYM-001/) |
-| `PH-SYM-002` | FFT Laplace-inverse reflection equivariance (discrete symmetry reproduction) | 4 | [`external_validation/PH-SYM-002/`](external_validation/PH-SYM-002/) |
-| `PH-RES-001` | Fornberg 1988 interior $O(h^4)$ (Layer 1) + Bachmayr 2024 / Ernst 2025 BDO norm-equivalence (Layer 2) | 12 | [`external_validation/PH-RES-001/`](external_validation/PH-RES-001/) |
-| `PH-POS-001` | Evans §2.2.3 Theorem 4 Positivity corollary (p. 27) + §2.3.3 Theorem 4 (heat max principle) | 4 | [`external_validation/PH-POS-001/`](external_validation/PH-POS-001/) |
+**"Externally anchored" is not "formally proven" or "peer reviewed."** Each anchor documents the specific mathematical backbone a rule relies on, verifies the rule's implementation against closed-form or analytical fixtures, and either reproduces a published numerical baseline or documents why no directly-comparable baseline exists in v1.0. Per-rule [`CITATION.md`](external_validation/) files record the exact distribution.
 
-31 rule-anchor tests + 25 harness/infrastructure tests = 56 total. Suite runs in under 10 s on CPU.
+Per the plan's three-function labeling (`docs/plans/2026-04-22-physics-lint-external-validation-complete.md` §1.3):
 
-**Honest findings.** External validation during v1.0 development surfaced one real rule-primitive correctness bug in `PH-CON-003` (the `np.gradient(edge_order=2)` primitive produced incorrect dissipation detection on the textbook Evans κ=1 heat case, a decay regime outside the unit suite's curated fixture range; fixed in `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent norm-equivalence split in `PH-RES-001` (characterized rather than fixed — the rule emits different norms on periodic+spectral vs non-periodic+FD configurations, and the Bachmayr–Dahmen–Oster framework's norm-equivalence claim holds only on the former). See per-rule `CITATION.md` files for details.
+- **F1 Mathematical-legitimacy** is present for all 18 rules.
+- **F2 Correctness-fixture** (CI-runnable implementation check) is present for all 18 rules.
+- **F3 Borrowed-credibility** (live published-baseline reproduction) is present for 1 rule (`PH-RES-001`). The other 17 document F3-absent with justification — F3-INFRA-GAP where the required loader / adapter / Modal infrastructure is deferred to v1.x, F3-absent-by-structure for info-flag and V1-stub rules, and F3-absent because no directly-comparable published baseline exists for the rule's specific emitted quantity.
+
+The anchor index, full 18-row matrix, and caveats (V1 stubs, narrower-estimator scoping, section-level textbook framing per the §6.4 primary-source verification discipline) are in [`external_validation/README.md`](external_validation/README.md); per-rule provenance is in each rule's `CITATION.md`.
+
+267 rule-anchor tests + 44 harness/infrastructure tests. Full suite runs in under 30 s on CPU with no GPU / Modal / ImageNet / escnn / e3nn / RotMNIST dependency.
+
+**Honest findings.** External validation during v1.0 development surfaced one real rule-primitive correctness bug in `PH-CON-003` (`np.gradient(edge_order=2)` produced spurious endpoint artifacts on strictly-dissipative eigenmodes at the textbook Evans κ=1 heat case; fixed in `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent norm-equivalence split in `PH-RES-001` (characterized rather than fixed — the rule emits different norms on periodic + spectral vs non-periodic + FD configurations, and the Bachmayr-Dahmen-Oster framework's norm-equivalence claim holds only on the former). See per-rule `CITATION.md` files for details.
 
 **Run:**
 
@@ -171,7 +172,7 @@ In v1.0, six rule anchors ship as first-class citizens with per-rule `CITATION.m
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/ -v
 ```
 
-**v1.1 roadmap.** Tier-A covers six rules out of v1.0's 18-rule catalog. The remaining twelve are tracked as forward-references in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md), each with spec-faithful primary content plus a *Post-Tier-A finding* field naming any Tier-A-surfaced structural pattern that v1.1 execution should front-load during planning (continuous-math vs discrete-predicate classification; enumerate-the-splits audit discipline).
+**v1.2 roadmap.** Items deferred from v1.0 (3D tetrahedral-mesh extension for `PH-CON-004`, full `PH-NUM-001` MMS h-refinement, `PH-SYM-004` adapter-mode upgrade, live PDEBench / Hansen ProbConserv / RotMNIST / escnn / e3nn / Gruver reproductions, tighter hyperbolic norm-equivalence anchors for `PH-VAR-002`) are tracked in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 ## v1.0 known limitations
 
@@ -181,9 +182,9 @@ source .venv/bin/activate && pytest --import-mode=importlib external_validation/
 
 - The *ranking* across models stays correct — FNO > UNet > DDPM on `PH-BC-001` raw error, matching the laplace-uq-bench `bc_err` table. The dogfood 3-axis ranking agreement (above) is unaffected.
 - The *verdict* (`PASS`/`FAIL`) on such samples should not be trusted as an absolute signal. On the v1.0 CI dogfood workflow (sample 0 of `tyy0811/laplace-uq-bench` is homogeneous-Dirichlet), all three surrogates report `PH-BC-001` and `PH-RES-001` FAIL; only the raw magnitudes discriminate.
-- Users running CI with `continue-on-error: false` who want to block PRs on *real* BC violations on homogeneous-Dirichlet samples should prefer `PH-BC-001` in `mode = "absolute"` (per-rule override). The per-rule override surface is v1.1 (`docs/backlog/v1.1.md`); until then, use the workflow to surface alerts informatively and gate on other rules.
+- Users running CI with `continue-on-error: false` who want to block PRs on *real* BC violations on homogeneous-Dirichlet samples should prefer `PH-BC-001` in `mode = "absolute"` (per-rule override). The per-rule override surface is v1.2 (`docs/backlog/v1.2.md`); until then, use the workflow to surface alerts informatively and gate on other rules.
 
-**Resolution path.** v1.1 regularizes the relative-mode denominator with `max(avg|ref|, absolute_floor)` where `absolute_floor` is a calibrated per-problem-class floor (not machine epsilon), making the ratio meaningful on homogeneous-Dirichlet problems. Tracked in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+**Resolution path.** v1.2 regularizes the relative-mode denominator with `max(avg|ref|, absolute_floor)` where `absolute_floor` is a calibrated per-problem-class floor (not machine epsilon), making the ratio meaningful on homogeneous-Dirichlet problems. Tracked in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 ## Rule catalog (v1.0)
 
@@ -212,7 +213,7 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 
 `physics-lint rules list` shows this table (<50 ms via lazy registry). `physics-lint rules show PH-RES-001` prints the full per-rule docs including derivation and citation.
 
-**Design-doc future surface (v1.1).** Three additional rules — `PH-VAR-001` (L² residual on second-order strong form), `PH-NUM-003` (non-C² activation scan), `PH-NUM-004` (configured BC vs model training BC) — are deferred to v1.1 along with the `[tool.physics-lint.rules]` per-rule override surface. See [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+**Design-doc future surface (v1.2).** Three additional rules — `PH-VAR-001` (L² residual on second-order strong form), `PH-NUM-003` (non-C² activation scan), `PH-NUM-004` (configured BC vs model training BC) — are deferred to v1.2 along with the `[tool.physics-lint.rules]` per-rule override surface. See [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 ## Supported PDEs and models
 
@@ -329,7 +330,7 @@ bc_line = 58
 
 `physics-lint config init --pde heat` emits a heat-specific commented template. `physics-lint config show --config pyproject.toml` validates your config and pretty-prints the resolved spec (no target required).
 
-**Design-doc future surface.** `[tool.physics-lint.rules]` per-rule overrides (`tol_pass`, `abs_threshold`, `enabled`, `severity`) are specified in the design doc but not wired through the CLI in v1.0. Disable individual rules at run time via `--disable PH-SYM-003`. The full override surface lands in v1.1 per [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+**Design-doc future surface.** `[tool.physics-lint.rules]` per-rule overrides (`tol_pass`, `abs_threshold`, `enabled`, `severity`) are specified in the design doc but not wired through the CLI in v1.0. Disable individual rules at run time via `--disable PH-SYM-003`. The full override surface lands in v1.2 per [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 ## CLI reference
 
@@ -360,7 +361,7 @@ permissions:
 
 ## Development
 
-Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.1 backlog in [`docs/backlog/v1.1.md`](docs/backlog/v1.1.md).
+Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.2 backlog in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
 **Stack:** Python 3.10+, hatchling, pydantic 2.0+, typer, ruff, pytest + hypothesis, Sphinx + MyST + furo. Apache-2.0 license. Six-job CI matrix (Linux × Python 3.10/3.11/3.12 × NumPy 1.26/2.0 × PyTorch 2.0/2.2/2.5 + macOS arm64). 85% coverage gate.
 

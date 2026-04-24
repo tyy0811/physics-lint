@@ -130,7 +130,7 @@ that lands, this anchor's rule-verdict contract must be updated in
 the same commit to switch from "rule PASSes with V1.1-stub reason"
 to "rule emits convergence rate matching harness-level measurement."
 
-## Plan-diffs (29 cumulative across Tier-B execution)
+## Plan-diffs (29 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 27–29 (Task 11). Diffs
 1–26 are from Tasks 2, 3, 4, 5, 7, 8, 9, 10, 12. Summary of Task 11

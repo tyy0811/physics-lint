@@ -146,7 +146,7 @@ def _load_adapter(
             "loader cannot construct from an adapter module or dump file. "
             "Construct MeshField directly via "
             "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
-            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "to rule check() functions. See docs/backlog/v1.2.md for the "
             "planned loader integration."
         )
 
@@ -223,7 +223,7 @@ def _load_dump(
             "loader cannot construct from an adapter module or dump file. "
             "Construct MeshField directly via "
             "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
-            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "to rule check() functions. See docs/backlog/v1.2.md for the "
             "planned loader integration."
         )
 

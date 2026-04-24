@@ -253,7 +253,7 @@ Together they surface the rule's two-regime structure honestly rather
 than pinning a single number that would hold only on one regime. This
 pattern is referenced from `feedback_deviation_pattern_escalation.md`
 and is proposed as a template for Tier-B continuous-math rules (see
-`docs/backlog/v1.1.md` PH-NUM-002 Post-Tier-A finding for the
+`docs/backlog/v1.2.md` PH-NUM-002 Post-Tier-A finding for the
 Tier-B application).
 
 ## Commit trail

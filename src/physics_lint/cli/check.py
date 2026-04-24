@@ -49,7 +49,7 @@ def _autoextract_kwargs(
     - `boundary_values` (PH-POS-002): same sources as `boundary_target`.
 
     `refined_field` and any other kwargs stay in `remaining` — they need
-    loader/adapter contract extensions tracked in docs/backlog/v1.1.md.
+    loader/adapter contract extensions tracked in docs/backlog/v1.2.md.
     """
     filled: dict[str, Any] = {}
     remaining: list[str] = []
@@ -75,7 +75,7 @@ def _skipped_for_missing_kwargs(entry, extras: list[str]) -> RuleResult:
     pattern where a user runs `physics-lint check model.pt`, sees green,
     and doesn't realize 3/N rules never fired.
 
-    V1 limitation; V1.1 auto-extraction tracked in docs/backlog/v1.1.md.
+    V1 limitation; V1.1 auto-extraction tracked in docs/backlog/v1.2.md.
     """
     joined = ", ".join(extras)
     return RuleResult(

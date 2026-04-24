@@ -20,7 +20,7 @@ def self_test_cmd(
     this subcommand works from a wheel install as well as a repo clone.
 
     Note: a `--rule <id>` single-rule invocation is tracked in
-    docs/backlog/v1.1.md and is intentionally not exposed in v1.0 — the
+    docs/backlog/v1.2.md and is intentionally not exposed in v1.0 — the
     Week 4 selftest module runs the full battery or nothing.
     """
     from physics_lint.selftest import run

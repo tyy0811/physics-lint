@@ -65,7 +65,7 @@ Summary:
   (flagged periodic, calibration-adjacent). Reproduction tolerance
   (±2×) documented; not a reproduction claim in V1.
 
-## Plan-diffs (8 cumulative across Tier-B execution)
+## Plan-diffs (8 cumulative across complete-v1.0 execution)
 
 See `test_anchor.py` module docstring for diffs 7 and 8 (introduced
 in Task 4). Diffs 1–6 are from Tasks 2, 3, 5. Summary:

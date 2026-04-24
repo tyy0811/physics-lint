@@ -184,7 +184,7 @@ preflight writedown, including:
   Supplementary.
 - Expected plan-diffs 30–34 enumerated.
 
-## Plan-diffs (29 cumulative across Tier-B execution before Task 6)
+## Plan-diffs (29 cumulative across complete-v1.0 execution before Task 6)
 
 See `test_anchor.py` module docstring for diffs 30–34 (Task 6). Diffs
 1–29 are from Tasks 2, 3, 4, 5, 7, 8, 9, 10, 11, 12 (commits
