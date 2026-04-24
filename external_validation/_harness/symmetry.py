@@ -6,6 +6,16 @@ Primitives:
     fft_laplace_inverse           - provably C4- and reflection-equivariant operator
     non_equivariant_cnn           - random-weight CNN with positional embeddings
 
+    Task 7 (PH-SYM-004 translation equivariance) additions:
+    shift_commutation_error(model, x, shifts, dims) - grid-aligned shift commutation error
+    identity_op                   - trivially equivariant (error = 0)
+    circular_convolution_1d       - periodic-kernel 1D convolution via FFT
+    circular_convolution_2d       - periodic-kernel 2D convolution via FFT
+    fourier_multiplier_1d         - Fourier-domain multiplier m(k); equivariant by convolution theorem
+    fourier_multiplier_2d         - Fourier-domain multiplier m(kx, ky); equivariant
+    coord_dependent_multiply_1d   - non-equivariant negative control: u(x) -> w(x) u(x)
+    coord_dependent_multiply_2d   - non-equivariant negative control: 2D
+
 Zero-mode convention for the FFT Laplace inverse: the Laplacian's kernel on
 a periodic square grid is the constant (k = 0) mode, so (-Laplacian)^-1 is
 undefined there. We set u_hat(k = 0) = 0 on the inverse output; this makes
@@ -26,11 +36,17 @@ Structural-equivalence retrofit note (complete-v1.0 plan Task 1, 2026-04-23):
     Hall and Varadarajan citations inherit the WARN-flagged section-level
     framing per external_validation/_harness/TEXTBOOK_AVAILABILITY.md.
 
-    Tasks 6 (PH-SYM-003) and 7 (PH-SYM-004) will extend this harness with
+    Tasks 6 (PH-SYM-003) and 7 (PH-SYM-004) extend this harness with
     Lie-group-specific utilities beyond the discrete C4 and Z2 cases:
     continuous SO(2) equivariance for Task 6, translation equivariance
-    (R^2 / Z^d) for Task 7. Those extensions land under their respective
-    task commits.
+    (R^2 / Z^d) for Task 7. Task 7's additions (grid-aligned shift
+    commutation on periodic domain) follow the CRITICAL three-layer
+    pattern per 2026-04-24 user-revised contract: F1 Kondor-Trivedi 2018
+    compact-group theorem + Li et al. 2021 FNO convolution theorem;
+    F2 harness-authoritative on controlled operators (identity, circular
+    convolution, Fourier multiplier) plus a coordinate-dependent-
+    multiplication negative control; rule-verdict contract verifies the
+    V1 stub SKIPs with the documented reasons (ph_sym_004.py:36-52).
 """
 
 from __future__ import annotations
@@ -117,3 +133,166 @@ class _NonEquivariantCNN(nn.Module):
 def non_equivariant_cnn() -> _NonEquivariantCNN:
     """Fresh random-weight non-equivariant CNN for negative controls."""
     return _NonEquivariantCNN()
+
+
+# ---------------------------------------------------------------------------
+# Task 7 (PH-SYM-004 translation equivariance) primitives.
+# ---------------------------------------------------------------------------
+#
+# Action of the translation group on a periodic grid of shape (..., N) or
+# (..., Nx, Ny): T_s u := torch.roll(u, shifts=s, dims=(-1,)) (1D) or
+# T_s u := torch.roll(u, shifts=(sx, sy), dims=(-2, -1)) (2D). Integer s
+# is "grid-aligned." Continuous / sub-grid shifts are out of V1 scope
+# (would require interpolation).
+#
+# Equivariance definition: K commutes with T_s iff K(T_s u) = T_s K(u) for
+# all valid u and s. Verified via shift_commutation_error below.
+
+
+def shift_commutation_error(
+    model: Callable[[torch.Tensor], torch.Tensor],
+    x: torch.Tensor,
+    *,
+    shifts,
+    dims,
+) -> float:
+    """Return relative L2 error between model(T_s x) and T_s model(x).
+
+    For a translation-equivariant operator K, model(torch.roll(x, s)) must
+    equal torch.roll(model(x), s). The quantity returned is
+    ``||model(T_s x) - T_s model(x)||_2 / ||model(T_s x)||_2``, bounded
+    below by float-precision roundoff for true equivariance, and growing
+    to O(1) for operators that are not translation-equivariant.
+    """
+    y_shift_then_model = model(torch.roll(x, shifts=shifts, dims=dims))
+    y_model_then_shift = torch.roll(model(x), shifts=shifts, dims=dims)
+    return _rel_l2(y_shift_then_model, y_model_then_shift)
+
+
+def identity_op(x: torch.Tensor) -> torch.Tensor:
+    """Trivially translation-equivariant operator; error is exactly 0."""
+    return x
+
+
+def circular_convolution_1d(
+    kernel: torch.Tensor,
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """1D circular convolution via FFT. Translation-equivariant by the
+    convolution theorem: convolution with a fixed kernel commutes with
+    shift on a periodic domain.
+
+    `kernel` is zero-padded to the signal length and centered at the
+    origin (FFT-convention index 0) via a half-kernel shift.
+    """
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        n = x.shape[-1]
+        k = kernel.shape[-1]
+        padded = torch.zeros(n, dtype=x.dtype)
+        padded[:k] = kernel.to(x.dtype)
+        padded = torch.roll(padded, -(k // 2))
+        xhat = torch.fft.fft(x)
+        khat = torch.fft.fft(padded)
+        return torch.fft.ifft(xhat * khat).real
+
+    return op
+
+
+def circular_convolution_2d(
+    kernel: torch.Tensor,
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """2D circular convolution via FFT. Translation-equivariant by the
+    convolution theorem on the periodic 2-torus.
+    """
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        nx, ny = x.shape[-2], x.shape[-1]
+        kx, ky = kernel.shape[-2], kernel.shape[-1]
+        padded = torch.zeros(nx, ny, dtype=x.dtype)
+        padded[:kx, :ky] = kernel.to(x.dtype)
+        padded = torch.roll(padded, shifts=(-(kx // 2), -(ky // 2)), dims=(-2, -1))
+        xhat = torch.fft.fftn(x, dim=(-2, -1))
+        khat = torch.fft.fftn(padded, dim=(-2, -1))
+        return torch.fft.ifftn(xhat * khat, dim=(-2, -1)).real
+
+    return op
+
+
+def fourier_multiplier_1d(n: int, *, seed: int = 0) -> Callable[[torch.Tensor], torch.Tensor]:
+    """1D Fourier-domain multiplier m(k) with real even symmetry.
+
+    Translation-equivariant by the convolution theorem: multiplication in
+    Fourier space corresponds to circular convolution in real space, which
+    commutes with shifts on a periodic domain. Even symmetry in `k` plus
+    real multiplier ensures the output is real-valued for real input.
+    """
+    g = torch.Generator().manual_seed(seed)
+    m = torch.randn(n, generator=g, dtype=torch.float64)
+    # Enforce m(k) = m(-k) so real input -> real output.
+    for k in range(1, n // 2 + (0 if n % 2 == 0 else 1)):
+        m[n - k] = m[k]
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        xhat = torch.fft.fft(x)
+        return torch.fft.ifft(xhat * m.to(x.dtype)).real
+
+    return op
+
+
+def fourier_multiplier_2d(
+    nx: int, ny: int, *, seed: int = 0
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """2D Fourier-domain multiplier m(kx, ky), symmetrized for real output.
+
+    Translation-equivariant by the convolution theorem on the 2-torus.
+    Symmetrization m = 0.5 * (m + flip(m, (-2, -1))) gives m(-kx, -ky) =
+    m(kx, ky), which pairs with real input to produce real output.
+    """
+    g = torch.Generator().manual_seed(seed)
+    m = torch.randn(nx, ny, generator=g, dtype=torch.float64)
+    m_flipped = torch.flip(m, dims=(-2, -1)).clone()
+    m = 0.5 * (m + m_flipped)
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        xhat = torch.fft.fftn(x, dim=(-2, -1))
+        return torch.fft.ifftn(xhat * m.to(x.dtype), dim=(-2, -1)).real
+
+    return op
+
+
+def coord_dependent_multiply_1d(
+    n: int, center: float = 0.5, sigma: float = math.sqrt(0.1)
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """Non-equivariant negative control. Multiplies input by a position-
+    dependent Gaussian mask w(x) = exp(-(x - center)^2 / sigma^2) on
+    x in [0, 1]. Breaks translation equivariance because the mask is
+    fixed in space while the shift moves the signal under it.
+    """
+    x_coord = torch.linspace(0, 1, n, dtype=torch.float64)
+    w = torch.exp(-((x_coord - center) ** 2) / (sigma**2))
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        return w.to(x.dtype) * x
+
+    return op
+
+
+def coord_dependent_multiply_2d(
+    nx: int,
+    ny: int,
+    center: tuple[float, float] = (0.5, 0.5),
+    sigma: float = math.sqrt(0.1),
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """2D non-equivariant negative control. w(x, y) = exp(-((x-cx)^2 +
+    (y-cy)^2) / sigma^2).
+    """
+    xg = torch.linspace(0, 1, nx, dtype=torch.float64)
+    yg = torch.linspace(0, 1, ny, dtype=torch.float64)
+    grid_x, grid_y = torch.meshgrid(xg, yg, indexing="ij")
+    cx, cy = center
+    w = torch.exp(-((grid_x - cx) ** 2 + (grid_y - cy) ** 2) / (sigma**2))
+
+    def op(x: torch.Tensor) -> torch.Tensor:
+        return w.to(x.dtype) * x
+
+    return op
