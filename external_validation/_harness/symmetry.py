@@ -47,6 +47,20 @@ Structural-equivalence retrofit note (complete-v1.0 plan Task 1, 2026-04-23):
     convolution, Fourier multiplier) plus a coordinate-dependent-
     multiplication negative control; rule-verdict contract verifies the
     V1 stub SKIPs with the documented reasons (ph_sym_004.py:36-52).
+
+    Task 6 (PH-SYM-003) adds continuous SO(2) Lie-derivative primitives:
+        so2_lie_derivative(model, grid)          - jvp infinitesimal generator
+        radial_scalar(phi)                        - positive control (L_A f = 0)
+        coord_dependent_scalar_2d                 - negative control
+        anisotropic_xx_minus_yy_2d                - negative control
+        finite_small_angle_defect(model, grid, eps) - Case C finite-vs-infinitesimal
+
+    The so2_lie_derivative primitive is the harness-authoritative version of
+    the same jvp computation ph_sym_003.check() performs; F2 validates the
+    primitive against closed-form analytical answers, then the rule-verdict
+    contract in PH-SYM-003/test_anchor.py wraps the harness primitive's
+    positive/negative controls in CallableField and asserts the rule emits
+    the expected PASS/WARN/FAIL verdict.
 """
 
 from __future__ import annotations
@@ -296,3 +310,146 @@ def coord_dependent_multiply_2d(
         return w.to(x.dtype) * x
 
     return op
+
+
+# ---------------------------------------------------------------------------
+# Task 6 (PH-SYM-003) SO(2) Lie-derivative primitives.
+# ---------------------------------------------------------------------------
+#
+# Single-generator Lie derivative L_A f at theta = 0 along the one-parameter
+# subgroup R_theta = exp(theta A) of SO(2), A = [[0,-1],[1,0]]. The generator
+# J (imaginary unit in the complex representation) acts on coordinates as
+# A (x, y) = (-y, x). Rule PH-SYM-003 consumes the same jvp-based computation;
+# the harness exposes it directly so F2 tests the implemented quantity against
+# closed-form analytical expressions.
+#
+# Grid convention: grid tensor of shape (..., 2) with last dim = (x, y);
+# origin-centered square domain in [-L/2, L/2] x [-L/2, L/2]. This matches
+# ph_sym_003.py's grid contract (line 54-68 gates).
+
+
+def _origin_centered_square_grid(n: int, half_extent: float = 1.0) -> torch.Tensor:
+    """Return an (n, n, 2) origin-centered square grid on [-H, H]^2.
+
+    Used by SO(2) fixtures to satisfy ph_sym_003.py's origin-centered +
+    square-domain gates. float64 throughout for jvp numerical accuracy.
+    """
+    coord = torch.linspace(-half_extent, half_extent, n, dtype=torch.float64)
+    gx, gy = torch.meshgrid(coord, coord, indexing="ij")
+    return torch.stack([gx, gy], dim=-1)
+
+
+def _rotate_grid(grid: torch.Tensor, theta: torch.Tensor) -> torch.Tensor:
+    """Apply SO(2) rotation R_theta to grid points about the origin."""
+    c = torch.cos(theta)
+    s = torch.sin(theta)
+    x = grid[..., 0]
+    y = grid[..., 1]
+    x_rot = c * x - s * y
+    y_rot = s * x + c * y
+    return torch.stack([x_rot, y_rot], dim=-1)
+
+
+def so2_lie_derivative(
+    model: Callable[[torch.Tensor], torch.Tensor],
+    grid: torch.Tensor,
+) -> torch.Tensor:
+    """Return the pointwise Lie derivative L_A f on grid, as a tensor.
+
+    Computes d/dtheta |_{theta=0} model(R_theta grid) via forward-mode AD
+    (torch.autograd.functional.jvp). This is the same primitive PH-SYM-003's
+    check() uses internally (ph_sym_003.py:70-87); exposed here so F2 can
+    verify the primitive against closed-form analytical expressions
+    independently of the rule's tolerance machinery.
+
+    Shape of return: same as model(grid). For scalar-output models the last
+    dim is squeezed by model itself.
+    """
+    from torch.autograd.functional import jvp
+
+    def rotated(theta_param: torch.Tensor) -> torch.Tensor:
+        return model(_rotate_grid(grid, theta_param))
+
+    theta0 = torch.zeros(1, dtype=torch.float64)
+    tangent = torch.ones_like(theta0)
+    _, lie = jvp(rotated, (theta0,), v=(tangent,))
+    return lie
+
+
+def so2_lie_derivative_norm(
+    model: Callable[[torch.Tensor], torch.Tensor],
+    grid: torch.Tensor,
+) -> float:
+    """Per-point L2 norm of the Lie derivative (matches ph_sym_003.py:89)."""
+    lie = so2_lie_derivative(model, grid)
+    norm = float(torch.linalg.vector_norm(lie))
+    denom = max(float(lie.numel()), 1.0) ** 0.5
+    return norm / denom
+
+
+def radial_scalar(
+    phi: Callable[[torch.Tensor], torch.Tensor],
+) -> Callable[[torch.Tensor], torch.Tensor]:
+    """SO(2)-invariant positive control: f(x, y) = phi(r), r = sqrt(x^2 + y^2).
+
+    Radial scalar maps are invariant under SO(2) by construction because
+    |R_theta (x, y)| = |(x, y)|. L_A f = phi'(r) * d/dtheta |_{theta=0} r(R_theta x)
+    and r is rotation-invariant, so L_A f = 0 exactly (up to jvp roundoff).
+    """
+
+    def op(coord: torch.Tensor) -> torch.Tensor:
+        x = coord[..., 0]
+        y = coord[..., 1]
+        r = torch.sqrt(x * x + y * y)
+        return phi(r)
+
+    return op
+
+
+def identity_scalar_2d(coord: torch.Tensor) -> torch.Tensor:
+    """Scalar-valued constant-one map. Trivially SO(2)-invariant; L_A f = 0."""
+    return torch.ones_like(coord[..., 0])
+
+
+def coord_dependent_scalar_2d(coord: torch.Tensor) -> torch.Tensor:
+    """Negative control: f(x, y) = x. Closed-form L_A f = -y.
+
+    Derivation: L_A f = grad(f) . (A (x, y)) = (1, 0) . (-y, x) = -y. So
+    ||L_A f||_{per-point L2} equals the per-point L2 norm of -y over the grid.
+    """
+    return coord[..., 0]
+
+
+def anisotropic_xx_minus_yy_2d(coord: torch.Tensor) -> torch.Tensor:
+    """Negative control: f(x, y) = x^2 - y^2. Closed-form L_A f = -4 x y.
+
+    Derivation: grad(f) = (2x, -2y); A (x, y) = (-y, x); dot product is
+    2x * (-y) + (-2y) * x = -4 x y.
+    """
+    x = coord[..., 0]
+    y = coord[..., 1]
+    return x * x - y * y
+
+
+def finite_small_angle_defect(
+    model: Callable[[torch.Tensor], torch.Tensor],
+    grid: torch.Tensor,
+    epsilon: float,
+) -> float:
+    """Case C finite-vs-infinitesimal consistency primitive.
+
+    Returns ||f(R_eps x) - f(x) - eps * L_A f(x)||_2 / ||eps * L_A f(x)||_2.
+    For smooth non-equivariant f, this is the Taylor remainder ratio and
+    must scale as O(epsilon) as epsilon -> 0.
+    """
+    theta = torch.tensor([epsilon], dtype=torch.float64)
+    f0 = model(grid)
+    f_eps = model(_rotate_grid(grid, theta.squeeze()))
+    lie = so2_lie_derivative(model, grid)
+    linear_predict = f0 + epsilon * lie
+    residual = f_eps - linear_predict
+    num = float(torch.linalg.vector_norm(residual))
+    denom = float(torch.linalg.vector_norm(epsilon * lie))
+    if denom == 0.0:
+        return float("inf") if num > 0 else 0.0
+    return num / denom
