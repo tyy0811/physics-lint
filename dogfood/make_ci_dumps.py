@@ -142,7 +142,7 @@ def main() -> int:
     models = [m.strip() for m in args.models.split(",") if m.strip()]
     for model in models:
         extraction_path = args.extraction_dir / f"{model}.npz"
-        output_path = args.output_dir / f"{model}_pred.npz"
+        output_path = args.output_dir / f"{model}_pred_v1.npz"
         convert_model(extraction_path, output_path, sample_index=args.sample_index)
     return 0
 

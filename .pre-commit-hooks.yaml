@@ -13,7 +13,7 @@
             hooks:
               - id: physics-lint
                 args: [models/fno_adapter.py]
-                # or: args: [dogfood/laplace_uq_bench/fno_pred.npz]
+                # or: args: [dogfood/laplace_uq_bench/fno_pred_v1.npz]
 
     Multi-target batching is tracked in docs/backlog/v1.1.md.
   entry: physics-lint check
