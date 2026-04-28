@@ -5,6 +5,19 @@ name: external-validation
 # RotMNIST + Modal A100 validation and the ImageNet-opt-in Gruver
 # reproduction are documented as F3-INFRA-GAP deferrals to v1.x per
 # docs/backlog/v1.2.md.
+#
+# Python-version scope: this workflow pins python-version: '3.11' for
+# every per-rule matrix shard. The rationale is that the external-
+# validation harness is pure-Python + numpy + scikit-fem with no
+# version-sensitive autograd / torch / cuda surface; the broader
+# Python 3.10 / 3.11 / 3.12 × NumPy 1.26 / 2.0 × torch 2.0 / 2.2 / 2.5
+# cross-product coverage runs in the main CI workflow (.github/
+# workflows/ci.yml), which exercises the same shared-harness modules
+# that the per-rule anchors import. Expanding the external-validation
+# matrix to multiple Python versions would multiply CI time by ~3 for
+# minimal additional defect-finding leverage. Revisit if a rule anchor
+# starts importing a torch / cuda / jax surface, or if a numpy-specific
+# regression is observed in CI.
 
 on:
   push:

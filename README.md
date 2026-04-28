@@ -24,7 +24,12 @@ docs/plans/2026-05-05-physics-lint-v1-week-4.md §"README framing
 commitment" for context.
 -->
 
+<!-- Hero image is captured from the first post-merge CI run on master; see the TODO above.
+     Until captured, the placeholder below renders in place of a broken image.
 ![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](docs/figures/sarif-hero.png)
+-->
+
+> _Hero image (`docs/figures/sarif-hero.png`) will be captured from this repository's first post-merge CI run on `master` and committed in a follow-up. See the HTML comment above for the capture procedure._
 
 *Above: the FNO `PH-POS-002` alert surfaced in physics-lint's own repository Security tab. The screenshot is from running physics-lint against three trained surrogates from [`tyy0811/laplace-uq-bench`](https://github.com/tyy0811/laplace-uq-bench) — `unet_regressor`, `fno`, `ddpm`. All three failed at least one physics check on the sample; FNO is the most severely flagged because it **uniquely violates the maximum principle** (interior extremum exceeds boundary extrema by 0.078 in a Dirichlet-homogeneous problem), while UNet and DDPM respect the principle cleanly. `PH-POS-002` catches the violation as a code-scanning alert with a physically interpretable message and rule documentation links.*
 

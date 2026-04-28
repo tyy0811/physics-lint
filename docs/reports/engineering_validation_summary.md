@@ -1,13 +1,20 @@
 # Engineering Validation Summary for physics-lint v1.0
 
-This document is the engineering-evidence companion to the separately drafted
-`physics_lint_v1_mathematical_foundations.md` (Function-1 source of truth, to
-be moved into `docs/reports/`). It records what was built, measured, and
-mechanically verified for the v1.0 release. It is not a mathematical proof,
-not formal verification, and not a peer-review certification. PASS in any
-table below means "the rule's implementation matches its documented
-contract on the harness fixtures the anchor exercises," not "the rule is
-universally physically correct."
+> **Status:** The integrated rule-by-rule matrix in §3 is superseded by §24 of
+> `docs/reports/physics_lint_v1_validation_report.md` (the canonical combined
+> Function-1 + Function-2 + Function-3 v1.0 validation report). This file is
+> preserved as the engineering-side audit fragment that fed the integrated
+> matrix; consult §24 of the validation report for the current canonical
+> values when they diverge.
+
+This document is the engineering-evidence companion to the integrated
+v1.0 validation report (`physics_lint_v1_validation_report.md`). It
+records what was built, measured, and mechanically verified for the v1.0
+release. It is not a mathematical proof, not formal verification, and
+not a peer-review certification. PASS in any table below means "the
+rule's implementation matches its documented contract on the harness
+fixtures the anchor exercises," not "the rule is universally physically
+correct."
 
 ## 1. Final Repository State
 

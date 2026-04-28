@@ -6,6 +6,20 @@ design rationale and anchor-selection methodology, and
 `docs/plans/2026-04-22-physics-lint-external-validation-complete.md` for
 the complete-v1.0 execution plan.
 
+> **Plan-section reference note.** The complete-v1.0 plan
+> (`docs/plans/2026-04-22-physics-lint-external-validation-complete.md`)
+> is gitignored per `.gitignore:33` (it is a working-session planning
+> artifact, not a public deliverable). Per-rule `CITATION.md` files and
+> several READMEs cite plan section numbers (`§1.2`, `§1.3`, `§6.2`,
+> `§6.4`, `§14`, `§19`, `§21`). The substantive content of each cited
+> section is reproduced in the affected rule's `CITATION.md` and in
+> this README's three-function labeling description below; the §
+> citation in those files identifies the source of the methodology
+> decision. Readers who do not have access to the plan can rely on
+> the per-rule `CITATION.md` and the validation report
+> (`docs/reports/physics_lint_v1_validation_report.md`) — neither
+> requires the plan file to be readable in isolation.
+
 physics-lint v1.0 provides external-validation anchors for all 18
 benchmark-anchorable rules. These anchors combine mathematical-
 legitimacy arguments, correctness fixtures, and, where executable in
