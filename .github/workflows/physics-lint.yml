@@ -33,11 +33,21 @@ jobs:
       matrix:
         # v1.0 scope: 3 surrogates from Week 2½ real-ML dogfood.
         # Ensemble / DPS / OT-CFM / improved-DDPM / flow-matching deferred
-        # to v1.1 — see docs/backlog/v1.2.md.
-        model:
-          - { name: unet-regressor, path: dogfood/laplace_uq_bench/unet_regressor_pred.npz }
-          - { name: fno,            path: dogfood/laplace_uq_bench/fno_pred.npz }
-          - { name: ddpm,           path: dogfood/laplace_uq_bench/ddpm_pred.npz }
+        # to v1.2 — see docs/backlog/v1.2.md.
+        #
+        # Use `include:` with a primitive string `model` value so each
+        # shard's SARIF environment.model is unique. Object-valued matrix
+        # entries (e.g. `{ name: ..., path: ... }`) serialize to
+        # environment: {"model":""}, which causes code-scanning analyses
+        # to collapse and the FNO shard's PH-POS-002 alert to be
+        # overwritten by the unet/ddpm uploads.
+        include:
+          - model: unet-regressor
+            path: dogfood/laplace_uq_bench/unet_regressor_pred.npz
+          - model: fno
+            path: dogfood/laplace_uq_bench/fno_pred.npz
+          - model: ddpm
+            path: dogfood/laplace_uq_bench/ddpm_pred.npz
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +58,7 @@ jobs:
       - name: Install physics-lint
         run: pip install -e .
 
-      - name: Run physics-lint on ${{ matrix.model.name }}
+      - name: Run physics-lint on ${{ matrix.model }}
         id: lint
         # `physics-lint check` exits non-zero when any rule returns FAIL, which
         # on the committed homogeneous-Dirichlet CI dumps (sample 0) is
@@ -59,15 +69,15 @@ jobs:
         # tab; fix the underlying verdict-threshold behavior in v1.1.
         continue-on-error: true
         run: |
-          physics-lint check ${{ matrix.model.path }} \
+          physics-lint check ${{ matrix.path }} \
               --config pyproject.toml \
-              --category physics-lint-${{ matrix.model.name }} \
+              --category physics-lint-${{ matrix.model }} \
               --format sarif \
-              --output physics-lint-${{ matrix.model.name }}.sarif
+              --output physics-lint-${{ matrix.model }}.sarif
 
       - name: Upload SARIF
         if: always()
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: physics-lint-${{ matrix.model.name }}.sarif
-          category: physics-lint-${{ matrix.model.name }}
+          sarif_file: physics-lint-${{ matrix.model }}.sarif
+          category: physics-lint-${{ matrix.model }}
