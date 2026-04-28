@@ -113,6 +113,15 @@ def test_sarif_source_mapped_when_metadata_has_sarif_spec():
 
 
 def test_sarif_severity_level_mapping():
+    """Verify error/warning/info severities map to SARIF error/warning/note levels.
+
+    Note: ``PH-VAR-001`` is referenced here only as a future-rule-id reservation
+    (not implemented in v1.0; see README §"Rule catalog" design-doc future-surface
+    block and ``docs/reports/physics_lint_v1_validation_report.md`` Appendix D).
+    The rule-id is reserved in the SARIF severity-mapping fixture so that the
+    eventual v1.2 implementation will inherit the info → note level mapping
+    without needing a fixture change.
+    """
     rules = [
         _rr("PH-RES-001", "FAIL", severity="error", raw_value=1.0, violation_ratio=1000),
         _rr("PH-SYM-001", "WARN", severity="warning", raw_value=0.1, violation_ratio=50),
