@@ -93,6 +93,52 @@ def test_empty_report_is_pass():
     assert r.status_counts == {"PASS": 0, "WARN": 0, "FAIL": 0, "SKIPPED": 0}
 
 
+def test_overall_status_skipped_first_then_pass_is_pass():
+    """Regression: max(..., key=rank) would pick the first SKIPPED at rank 0
+    over later PASS rules. SKIPPED must be excluded from aggregate entirely."""
+    r = PhysicsLintReport(
+        pde="laplace",
+        grid_shape=(64, 64),
+        metadata={},
+        rules=[
+            _rr("PH-SYM-003", "SKIPPED", reason="dump mode"),
+            _rr("PH-RES-001", "PASS"),
+            _rr("PH-BC-001", "PASS"),
+        ],
+    )
+    assert r.overall_status == "PASS"
+    assert r.exit_code == 0
+
+
+def test_overall_status_all_skipped_is_pass():
+    r = PhysicsLintReport(
+        pde="laplace",
+        grid_shape=(64, 64),
+        metadata={},
+        rules=[
+            _rr("PH-SYM-003", "SKIPPED", reason="dump mode"),
+            _rr("PH-SYM-004", "SKIPPED", reason="periodic"),
+        ],
+    )
+    assert r.overall_status == "PASS"
+    assert r.exit_code == 0
+
+
+def test_overall_status_skipped_does_not_mask_fail():
+    r = PhysicsLintReport(
+        pde="laplace",
+        grid_shape=(64, 64),
+        metadata={},
+        rules=[
+            _rr("PH-SYM-003", "SKIPPED"),
+            _rr("PH-POS-001", "FAIL"),
+            _rr("PH-SYM-004", "SKIPPED"),
+        ],
+    )
+    assert r.overall_status == "FAIL"
+    assert r.exit_code == 1
+
+
 def test_error_severity_fail_triggers_exit_code():
     r = PhysicsLintReport(
         pde="laplace",

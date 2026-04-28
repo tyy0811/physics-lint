@@ -41,6 +41,13 @@ class LoadedTarget:
     spec: DomainSpec
     field: Field
     model: Callable[..., Any] | None
+    # Optional per-target auxiliary data. `boundary_target` carries the
+    # true Dirichlet BC values for the problem when the caller has them
+    # (e.g. a dogfood dump that extracted predictions alongside the
+    # ground-truth BC). CLI auto-extraction uses this for PH-BC-001 and
+    # PH-POS-002 without requiring a full V1.1 per-rule kwarg injection
+    # plumb. None for adapter-mode and for dumps that don't include it.
+    boundary_target: Any | None = None
 
 
 def load_target(
@@ -139,7 +146,7 @@ def _load_adapter(
             "loader cannot construct from an adapter module or dump file. "
             "Construct MeshField directly via "
             "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
-            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "to rule check() functions. See docs/backlog/v1.2.md for the "
             "planned loader integration."
         )
 
@@ -216,7 +223,7 @@ def _load_dump(
             "loader cannot construct from an adapter module or dump file. "
             "Construct MeshField directly via "
             "physics_lint.field.MeshField(basis=..., dofs=...) and pass it "
-            "to rule check() functions. See docs/backlog/v1.1.md for the "
+            "to rule check() functions. See docs/backlog/v1.2.md for the "
             "planned loader integration."
         )
 
@@ -251,7 +258,15 @@ def _load_dump(
         if spec.field.backend != "auto"
         else ("spectral" if spec.periodic else "fd"),
     )
-    return LoadedTarget(spec=spec, field=field, model=None)
+    # Optional boundary_target: when a dump ships the true Dirichlet BC
+    # alongside the prediction (dogfood dumps from laplace-uq-bench do
+    # this via make_ci_dumps.py), carry it through so PH-BC-001 and
+    # PH-POS-002 can run from the CLI against the real BC rather than
+    # skipping.
+    boundary_target = None
+    if isinstance(loaded, np.lib.npyio.NpzFile) and "boundary_target" in loaded.files:
+        boundary_target = np.asarray(loaded["boundary_target"])
+    return LoadedTarget(spec=spec, field=field, model=None, boundary_target=boundary_target)
 
 
 def _compute_h_from_spec(spec: DomainSpec) -> tuple[float, ...]:

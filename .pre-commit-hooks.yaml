@@ -1,0 +1,21 @@
+- id: physics-lint
+  name: physics-lint
+  description: >-
+    Lint a neural PDE surrogate adapter or dump. Users must specify the
+    target path via `args` in their own .pre-commit-config.yaml (one invocation
+    per configured path). physics-lint check accepts exactly one target, so
+    pass_filenames is false to avoid pre-commit passing multiple matched
+    files to a single-target CLI. Example downstream config:
+
+        repos:
+          - repo: https://github.com/tyy0811/physics-lint
+            rev: v1.0.0
+            hooks:
+              - id: physics-lint
+                args: [models/fno_adapter.py]
+                # or: args: [dogfood/laplace_uq_bench/fno_pred.npz]
+
+    Multi-target batching is tracked in docs/backlog/v1.1.md.
+  entry: physics-lint check
+  language: python
+  pass_filenames: false

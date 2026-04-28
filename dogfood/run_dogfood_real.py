@@ -304,7 +304,7 @@ def format_report(
     lines.append("## Scope caveats\n")
     lines.append(
         "- **n=3 models:** DPS, ensemble, OT-CFM, improved DDPM, flow-matching "
-        "deferred to v1.1 (see `docs/backlog/v1.1.md`)."
+        "deferred to v1.1 (see `docs/backlog/v1.2.md`)."
     )
     lines.append(
         "- **L² baselines:** both physics-lint PH-RES-001 and upstream "

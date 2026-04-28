@@ -5,6 +5,10 @@ import numpy as np
 from physics_lint.analytical import heat as heat_sols
 from physics_lint.analytical import wave as wave_sols
 
+# numpy 2.0 removed np.trapz; prefer np.trapezoid, fall back for numpy 1.26.x.
+# Ternary (not getattr default) because getattr evaluates the default eagerly.
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
 
 def test_heat_eigenfunction_hd_square_pde_satisfied():
     sol = heat_sols.eigenfunction_decay_square(kappa=0.01)
@@ -91,6 +95,6 @@ def test_wave_energy_conserved_standing():
         gx = sol.grad_x(X, Y, t)
         gy = sol.grad_y(X, Y, t)
         energy_density = 0.5 * (u_t**2 + sol.c**2 * (gx**2 + gy**2))
-        energies.append(float(np.trapz(np.trapz(energy_density, dx=h), dx=h)))
+        energies.append(float(_trapz(_trapz(energy_density, dx=h), dx=h)))
     for e in energies[1:]:
         assert abs(e - energies[0]) / energies[0] < 1e-4

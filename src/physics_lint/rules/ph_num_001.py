@@ -4,7 +4,7 @@
 kwarg in V1, so this rule cannot compare quadrature at orders ``q`` and ``2q``.
 It ships as a *structural stub*: the rule module exists, the rule ID is in the
 registry, and the CLI surface is stable. V1.1 can plug in the real q-vs-2q check
-without breaking any public API. See ``docs/backlog/v1.1.md`` for the backlog
+without breaking any public API. See ``docs/backlog/v1.2.md`` for the backlog
 item.
 
 In V1 the rule emits ``PASS`` with a ``reason`` string that says

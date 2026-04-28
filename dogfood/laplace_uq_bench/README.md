@@ -1,3 +1,31 @@
+# laplace-uq-bench dogfood harness — fallback D' + Week 2½ real-ML
+
+**Week 2½ update (2026-04-17):** Criterion 3 was reinterpreted during
+Week 2½ to run against three real trained surrogates (`unet_regressor`,
+`fno`, `ddpm`) from the local laplace-uq-bench development setup. The
+canonical real-ML dogfood harness is now `dogfood/run_dogfood_real.py`
+(not `dogfood/run_dogfood.py`) with results at
+[dogfood_real_results.md](../dogfood_real_results.md). The 3-surrogate
+scoped-MIXED PASS verdict is documented in
+[docs/tradeoffs.md](../../docs/tradeoffs.md) 2026-04-17 Phase 3 entry.
+
+**CI workflow expects real-ML dumps at this path.** Week 4 Task 4 ships
+`.github/workflows/physics-lint.yml` which lints
+`{unet_regressor,fno,ddpm}_pred.npz` in this directory on every PR. Those
+dumps are git-committed (Week 4 Task 4 Step 0) from Week 2½ extraction
+output. Until they are committed, CI will fail on the matrix with a
+"file not found" error — deliberate, so the dependency is visible.
+
+6-surrogate expansion (ensemble, DPS, OT-CFM, improved-DDPM,
+flow-matching) is v1.1 per [docs/backlog/v1.2.md](../../docs/backlog/v1.2.md).
+
+The rest of this README documents the **fallback D' synthetic-defect harness**
+(`oracle`, `coarsened`, `smoothed`, `noisy` dumps in this directory), which
+is retained as a rule-pipeline self-test exercise. It is NOT the v1.0
+criterion 3 artifact.
+
+---
+
 # laplace-uq-bench dogfood harness — fallback D'
 
 Week-2 deliverable for V1 release criterion 3. This directory contains

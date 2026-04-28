@@ -42,6 +42,9 @@ dev = [
     "furo>=2024.5",
 ]
 
+[project.scripts]
+physics-lint = "physics_lint.cli:app"
+
 [project.urls]
 Homepage = "https://github.com/tyy0811/physics-lint"
 Documentation = "https://physics-lint.readthedocs.io"
@@ -63,6 +66,7 @@ ignore = ["E501"]  # line-length handled by formatter
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B", "N802"]  # allow non-snake-case test names (test_PH_RES_001)
+"src/physics_lint/cli/*" = ["B008", "UP045"]  # typer canonical pattern uses typer.Argument/Option in defaults and Optional[X]
 
 [tool.ruff.lint.isort]
 known-first-party = ["physics_lint"]
@@ -90,4 +94,4 @@ exclude_lines = [
 
 [tool.codespell]
 skip = "*.lock,*.pyc,.git,dist,build,*.egg-info,docs/_build,src/physics_lint/data/floors.toml"
-ignore-words-list = "bochner,fosls,riesz,sobolev,dirichlet,neumann,laplace,poisson,helmholtz,ernst,fornberg,trefethen,jekel,hansen,gruver,brandstetter,virkkunen,bachmayr,dahmen,oster,qiu,kovachki,welling,worrall,helwig,ot,cfm,ddpm,dps,fno,pinn,pino,pde,pdes,nd,ue,nin,oint"
+ignore-words-list = "bochner,fosls,riesz,sobolev,dirichlet,neumann,laplace,poisson,helmholtz,ernst,fornberg,trefethen,jekel,hansen,gruver,brandstetter,virkkunen,bachmayr,dahmen,oster,qiu,kovachki,welling,worrall,helwig,ot,cfm,ddpm,dps,fno,pinn,pino,pde,pdes,nd,ue,nin,oint,numer"

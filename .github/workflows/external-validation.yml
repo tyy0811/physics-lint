@@ -1,0 +1,90 @@
+name: external-validation
+
+# Runs all 18 external-validation anchors on every PR to master and on
+# pushes to master. No opt-in GPU job in v1.0; plan §14 two-layer
+# RotMNIST + Modal A100 validation and the ImageNet-opt-in Gruver
+# reproduction are documented as F3-INFRA-GAP deferrals to v1.x per
+# docs/backlog/v1.2.md.
+#
+# Python-version scope: this workflow pins python-version: '3.11' for
+# every per-rule matrix shard. The rationale is that the external-
+# validation harness is pure-Python + numpy + scikit-fem with no
+# version-sensitive autograd / torch / cuda surface; the broader
+# Python 3.10 / 3.11 / 3.12 × NumPy 1.26 / 2.0 × torch 2.0 / 2.2 / 2.5
+# cross-product coverage runs in the main CI workflow (.github/
+# workflows/ci.yml), which exercises the same shared-harness modules
+# that the per-rule anchors import. Expanding the external-validation
+# matrix to multiple Python versions would multiply CI time by ~3 for
+# minimal additional defect-finding leverage. Revisit if a rule anchor
+# starts importing a torch / cuda / jax surface, or if a numpy-specific
+# regression is observed in CI.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  external-validation:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        rule:
+          - PH-BC-001
+          - PH-BC-002
+          - PH-CON-001
+          - PH-CON-002
+          - PH-CON-003
+          - PH-CON-004
+          - PH-NUM-001
+          - PH-NUM-002
+          - PH-POS-001
+          - PH-POS-002
+          - PH-RES-001
+          - PH-RES-002
+          - PH-RES-003
+          - PH-SYM-001
+          - PH-SYM-002
+          - PH-SYM-003
+          - PH-SYM-004
+          - PH-VAR-002
+    name: ${{ matrix.rule }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with dev + mesh extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,mesh]"
+      - name: Run shared harness unit tests
+        run: pytest --import-mode=importlib external_validation/_harness/tests -v
+      - name: Run ${{ matrix.rule }} anchor
+        run: pytest --import-mode=importlib external_validation/${{ matrix.rule }} -v
+
+  closeout-scripts:
+    runs-on: ubuntu-latest
+    name: CITATION.md closeout checks
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with dev extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: check_citation_md_three_function_structure.py
+        run: |
+          python scripts/check_citation_md_three_function_structure.py \
+            external_validation/PH-*/CITATION.md
+      - name: check_theorem_number_framing.py
+        run: |
+          python scripts/check_theorem_number_framing.py \
+            external_validation/PH-*/CITATION.md

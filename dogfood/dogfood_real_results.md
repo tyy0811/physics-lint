@@ -48,7 +48,7 @@ Scale ratios (physlint / upstream):
 - Expected violators (upstream max_viol > 0): `['fno']`
 - Physics-lint violators (PH-POS-002 > 1e-10): `[]`
 - Not a ranking disagreement but a **quantity disagreement**. Physics-lint's PH-POS-002 measures overshoot *magnitude* (how far outside the boundary envelope does any pixel go); upstream's `max_viol` counts interior pixels outside `[bc_min − 1e-6, bc_max + 1e-6]`. On these three models the outputs are tight enough to the BC envelope that physics-lint's magnitude floor (1e-10) never trips. FNO — the only model upstream flags — has 0.6% of interior pixels outside upstream's count-threshold window (1e-6), but no individual pixel's overshoot magnitude crosses physics-lint's 1e-10 floor. The two rules answered different questions about the same model.
-- **v1.1 resolution path** (see `docs/backlog/v1.1.md` 2026-04-17 entry): extend the metrics-compatibility shim pattern to PH-POS-002 so it emits a `max_viol_count_compatible_value` alongside the default magnitude value, restoring a byte-identical comparison on this axis too.
+- **v1.1 resolution path** (see `docs/backlog/v1.2.md` 2026-04-17 entry): extend the metrics-compatibility shim pattern to PH-POS-002 so it emits a `max_viol_count_compatible_value` alongside the default magnitude value, restoring a byte-identical comparison on this axis too.
 
 ## Verdict rule reinterpretation
 
@@ -67,7 +67,7 @@ Net: one real axis meets its Criterion-3 spirit cleanly; one axis is a v1.1-shim
 
 ## Scope caveats
 
-- **n=3 models:** DPS, ensemble, OT-CFM, improved DDPM, flow-matching deferred to v1.1 (see `docs/backlog/v1.1.md` 2026-04-16 entry for the 6-surrogate expansion).
+- **n=3 models:** DPS, ensemble, OT-CFM, improved DDPM, flow-matching deferred to v1.1 (see `docs/backlog/v1.2.md` 2026-04-16 entry for the 6-surrogate expansion).
 - **L² baselines:** both physics-lint PH-RES-001 and upstream pde_residual compute L² on Dirichlet Laplace. H⁻¹ requires periodicity; the H¹-vs-H⁻¹ ranking check from the original Week 2 plan is not computable on this non-periodic surrogate set (see `docs/tradeoffs.md` 2026-04-16 Criterion 3 entry for the reinterpretation history).
 - **Reduced sample scope:** `N_SAMPLES=100`, `N_SAMPLES_DDPM=1` (tripwire E3, pre-committed at Phase 2 close). Plan default `N_SAMPLES=300`, `N_SAMPLES_DDPM=5` would have cost ~15h CPU for DDPM alone (Phase 2 measured 36.6 s/DDPM-input at n_s=1); E3's scope reduction kept the run inside the 6h timer at the cost of higher sampling variance on the sanity-axis rank-2/3 separation.
 - **Not 1:1 reimplementations:** rules measure quantities in the same spirit as upstream columns but with different norms, scopes, or thresholds (design doc §6.5). The axes are informative comparisons, not sanity checks of upstream's implementation. The v1.1 `metrics-compatibility` shim will change this for PH-RES-001 (sanity axis) and PH-POS-002 (binary axis); PH-BC-001's L² relative vs L¹ absolute is inherent to the rule's norm choice and ships as-is.

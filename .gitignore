@@ -24,6 +24,9 @@ env/
 
 # Docs
 docs/_build/
+docs/sphinx/_build/
+# Auto-generated rule pages (created by conf.py builder-inited hook)
+docs/sphinx/rules/
 
 # Local-only design and planning notes (kept out of the public repo)
 docs/design/
@@ -33,8 +36,24 @@ docs/plans/
 .worktrees/
 worktrees/
 
+# Local-only author artifacts — plan drafts, design specs, revision arcs.
+# Backlog/README content may reference paths under docs/superpowers/ as
+# "V1 source" pointers; those references document the internal arc but are
+# not independently reachable from a fresh clone by design.
+docs/superpowers/
+
 # Dogfood harness artifacts (external repo clone + generated dumps/results).
 # Reproducible from dogfood/clone_laplace_uq_bench.sh + generate_dumps.py.
 dogfood/laplace-uq-bench/
 dogfood/laplace_uq_bench/*.npz
+# Exception: the 3 real-ML surrogate dumps are committed so the CI dogfood
+# workflow (.github/workflows/physics-lint.yml) runs on a clean checkout.
+!dogfood/laplace_uq_bench/unet_regressor_pred.npz
+!dogfood/laplace_uq_bench/fno_pred.npz
+!dogfood/laplace_uq_bench/ddpm_pred.npz
 dogfood/results/
+# Default extraction path for surrogate predictions produced by the local
+# dogfood workflow (run_dogfood_real.py). Reproducible from local checkpoints;
+# never belongs in the repo (~3 MB per file, opaque binary, would create a
+# second stale source of truth next to the committed CI dumps above).
+dogfood/_predictions/
