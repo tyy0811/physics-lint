@@ -1,5 +1,10 @@
 # Integration Contract — Part IX Engineering Fill
 
+> **Status:** Superseded by §24 of `docs/reports/physics_lint_v1_validation_report.md`.
+> This file is preserved as the engineering-side audit fragment that fed the
+> integrated v1.0 validation matrix. The canonical combined report is
+> `physics_lint_v1_validation_report.md`.
+
 This fragment is the engineering-side fill of Part IX ("Integration Contract for Final Validation Report") of `physics_lint_v1_mathematical_foundations.md` (F1 source-of-truth document). It supplies the F2 (correctness fixture), CI status, and Commit / provenance columns from real engineering evidence in this repo. The F3 anchor citations and Limitation columns are F1-side curations and are reproduced from the per-rule CITATION.md and engineering summary so the user can paste over them with the Part IX wording if it differs. CI status is uniform (28-of-28 SUCCESS at HEAD `6907699`, PR #3 MERGEABLE), so the CI status column is filled with the same value for every row but the table preserves it explicitly per the integration contract. The Commit column gives the short SHA where the F2 anchor landed (or last materially changed) on the `external-validation-tier-a` branch.
 
 | Rule | Correctness fixture (F2) | External anchor (F3) | CI status | Commit / provenance | Limitation checked |
