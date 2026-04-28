@@ -240,7 +240,7 @@ Domains: 2D and 3D structured Cartesian grids. Optional unstructured meshes via 
 
 $$c_B \|r_B(u^\delta)\|_{Y'} \leq \|u - u^\delta\|_W \leq C_B \|r_B(u^\delta)\|_{Y'}$$
 
-(Bachmayr et al. 2024 Eq. 2.13; Ernst et al. 2025 Eq. 3.2–3.3). The constants and the test-space norm $Y'$ depend on the formulation, not the PDE class alone. physics-lint implements the standard second-order residual and warns via `PH-VAR-001` when `L²` would be misleading. For hyperbolic problems, `PH-VAR-002` notes that norm-equivalence is weaker and conjectural.
+(Bachmayr et al. 2024 Eq. 2.13; Ernst et al. 2025 Eq. 3.2–3.3). The constants and the test-space norm $Y'$ depend on the formulation, not the PDE class alone. physics-lint implements the standard second-order residual. For hyperbolic problems, `PH-VAR-002` notes that norm-equivalence is weaker and conjectural.
 
 **2. Self-calibration against numerical floor.** Every rule reports
 
