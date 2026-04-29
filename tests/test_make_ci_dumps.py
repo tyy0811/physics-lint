@@ -43,7 +43,7 @@ def test_convert_model_writes_loadable_dump(tmp_path: Path):
     extraction_path = tmp_path / "fno.npz"
     predictions, truth = _write_fake_extraction(extraction_path, n_samples=3, seed=1)
 
-    output_path = tmp_path / "fno_pred.npz"
+    output_path = tmp_path / "fno_pred_v1.npz"
     convert_model(extraction_path, output_path, sample_index=0)
 
     loaded = load_target(output_path, cli_overrides={}, toml_path=None)
@@ -62,7 +62,7 @@ def test_convert_model_sample_index(tmp_path: Path):
     extraction_path = tmp_path / "ddpm.npz"
     predictions, _ = _write_fake_extraction(extraction_path, n_samples=5, seed=7)
 
-    output_path = tmp_path / "ddpm_pred.npz"
+    output_path = tmp_path / "ddpm_pred_v1.npz"
     convert_model(extraction_path, output_path, sample_index=3)
 
     loaded = np.load(output_path)

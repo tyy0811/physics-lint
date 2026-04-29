@@ -43,11 +43,11 @@ jobs:
         # overwritten by the unet/ddpm uploads.
         include:
           - model: unet-regressor
-            path: dogfood/laplace_uq_bench/unet_regressor_pred.npz
+            path: dogfood/laplace_uq_bench/unet_regressor_pred_v1.npz
           - model: fno
-            path: dogfood/laplace_uq_bench/fno_pred.npz
+            path: dogfood/laplace_uq_bench/fno_pred_v1.npz
           - model: ddpm
-            path: dogfood/laplace_uq_bench/ddpm_pred.npz
+            path: dogfood/laplace_uq_bench/ddpm_pred_v1.npz
 
     steps:
       - uses: actions/checkout@v4
