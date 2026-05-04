@@ -47,7 +47,17 @@ app = modal.App("rollout-anchors-lagrangebench")
 # Hour-0 image: JAX with CUDA 12 only. Heavy installs deferred so a
 # micro-gate FAIL does not waste image-build time on this side-quest.
 # Mirrors plan §3.2 step 1 verbatim ("pip install -U 'jax[cuda12]' jaxlib").
-jax_image = modal.Image.debian_slim(python_version="3.11").pip_install("jax[cuda12]", "jaxlib")
+#
+# Python 3.10 (not 3.11): LagrangeBench's pyproject.toml pins
+# ``python_requires = ">=3.9, <=3.11"`` which PEP 440 normalises as
+# (3, 9, 0) <= python <= (3, 11, 0), excluding all 3.11.x patch releases.
+# Modal's debian_slim(python_version="3.11") ships 3.11.x where x>0, which
+# fails the pin. 3.10 is the highest version satisfying both the
+# LagrangeBench pin and JAX 0.10's range. Upstream-forced — not a
+# methodology choice — and therefore not pre-registered in DECISIONS.md;
+# this comment is the audit trail. If LagrangeBench relaxes the pin
+# upstream (e.g., to ``<3.12``), bumping to 3.11 is a clean change.
+jax_image = modal.Image.debian_slim(python_version="3.10").pip_install("jax[cuda12]", "jaxlib")
 
 
 MICRO_GATE_GPU_CLASS = (
