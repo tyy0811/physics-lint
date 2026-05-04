@@ -46,6 +46,9 @@ from typing import Any
 
 import numpy as np
 
+from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+    MeshRollout,
+)
 from external_validation._rollout_anchors._harness.particle_rollout_adapter import (
     ParticleRollout,
 )
@@ -251,4 +254,207 @@ def build_energy_growth_rollout(
             f"deliberate violation: particle 0 accelerates at rate {growth_rate}; "
             f"dissipation_sign_violation > 0 expected"
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Mesh-side synthetic rollouts (Day 0.5 follow-up — NS channel-flow)
+# ---------------------------------------------------------------------------
+#
+# The mesh-side analogue of the particle-side fixtures: a 2D channel
+# flow on a uniform Cartesian grid, both as a mass-conservation-by-
+# construction case (∂u/∂x = 0 in the bulk) and a deliberately-broken
+# divergence-violating case (∂u/∂x = alpha ≠ 0). Mirrors what
+# `c4_invariant_4particle.py` + `c4_perturbed_4particle.py` provide for
+# the symmetry side, with Gate-B-style symmetry — exercising the mesh
+# harness's `mass_conservation_defect_on_mesh` / `energy_drift_on_mesh`
+# / `dissipation_sign_violation_on_mesh` against analytical
+# expectations before Day 2's Modal session begins.
+
+
+@dataclass(frozen=True)
+class SyntheticMeshCase:
+    """A synthetic mesh rollout plus its analytically-known defect values."""
+
+    rollout: MeshRollout
+    expected_mass_conservation_defect: float | None  # None when SKIP expected
+    expected_energy_drift: float | None
+    expected_dissipation_sign_violation: float | None
+    description: str
+
+
+def _mesh_metadata(model: str, *, regular_grid: bool, **extra: Any) -> dict[str, Any]:
+    """Boilerplate mesh metadata per `SCHEMA.md` §2; synthetic placeholders."""
+    base = {
+        "ckpt_hash": "synthetic-no-checkpoint",
+        "ngc_version": "synthetic-no-version",
+        "git_sha": "synthetic-no-git-sha",
+        "dataset": "synthetic-channel-flow",
+        "model": model,
+        "framework": "synthetic",
+        "framework_version": "0.0.0",
+        "resampling_applied": False,
+        "regular_grid": regular_grid,
+    }
+    base.update(extra)
+    return base
+
+
+def _make_regular_grid_positions(nx: int, ny: int, lx: float, ly: float) -> np.ndarray:
+    """(nx*ny, 2) node positions on a uniform Cartesian grid in (0, lx) x (0, ly).
+
+    Uses ``indexing='ij'`` so reshape(nx, ny, ...) recovers the grid view.
+    """
+    xs = np.linspace(0.0, lx, nx, endpoint=False)
+    ys = np.linspace(0.0, ly, ny, endpoint=False)
+    mesh_x, mesh_y = np.meshgrid(xs, ys, indexing="ij")
+    return np.stack([mesh_x.ravel(), mesh_y.ravel()], axis=1)
+
+
+def build_uniform_channel_flow(
+    *,
+    nx: int = 32,
+    ny: int = 16,
+    lx: float = 2.0,
+    ly: float = 1.0,
+    n_timesteps: int = 20,
+    dt: float = 0.05,
+    inlet_speed: float = 1.0,
+) -> SyntheticMeshCase:
+    """2D channel flow with uniform horizontal velocity v = (u_0, 0).
+
+    Mass-conservation by construction: ∂u/∂x = 0 and ∂v/∂y = 0
+    everywhere, so ∇·v = 0 to floating-point precision. KE is constant
+    over the trajectory (no time evolution applied). All three mesh-
+    side defects emit zero.
+
+    The fixture is the mesh analogue of ``build_constant_velocity_rollout``
+    on the particle side: simplest possible conservation case, exercises
+    the harness's regular-grid path end-to-end without exposing it to
+    interesting physics.
+    """
+    n_nodes = nx * ny
+    node_positions = _make_regular_grid_positions(nx, ny, lx, ly)
+    velocity = np.zeros((n_timesteps, n_nodes, 2))
+    velocity[..., 0] = inlet_speed  # u(t, node) = u_0 everywhere
+    rollout = MeshRollout(
+        node_positions=node_positions,
+        node_type=np.zeros(n_nodes, dtype=np.int32),
+        node_values={"velocity": velocity},
+        dt=dt,
+        metadata=_mesh_metadata(
+            "synthetic-uniform-channel",
+            regular_grid=True,
+            grid_shape=(nx, ny),
+        ),
+    )
+    return SyntheticMeshCase(
+        rollout=rollout,
+        expected_mass_conservation_defect=0.0,
+        expected_energy_drift=0.0,
+        expected_dissipation_sign_violation=0.0,
+        description="2D channel flow v = (u_0, 0); divergence-free by construction",
+    )
+
+
+def build_divergence_violation_channel(
+    *,
+    nx: int = 32,
+    ny: int = 16,
+    lx: float = 2.0,
+    ly: float = 1.0,
+    n_timesteps: int = 20,
+    dt: float = 0.05,
+    inlet_speed: float = 1.0,
+    alpha: float = 0.1,
+) -> SyntheticMeshCase:
+    """2D channel flow with ``∂u/∂x = alpha != 0`` — deliberate violation.
+
+    Velocity field ``v(x, y) = (u_0 * (1 + alpha * x), 0)``; divergence
+    ``∇·v = u_0 * alpha`` constant over the domain, so the harness's
+    relative defect
+
+        max_t  || ∇·v ||_L2 / || v ||_L2
+            =  | u_0 alpha | * sqrt(volume)
+              / || u_0 (1 + alpha x) ||_L2
+            ≈  alpha / sqrt(1 + alpha + alpha^2/3)    (for u_0 = 1, lx = 1)
+
+    For the default ``alpha = 0.1, lx = 2.0, ly = 1.0, u_0 = 1.0``,
+    the defect is approximately ``0.1 / sqrt(1 + alpha*lx/2 + ...)``,
+    well within the harness's discretisation precision.
+
+    Used in the test as a positive-control: the harness's
+    ``mass_conservation_defect_on_mesh`` must emit a value
+    distinguishable from zero on this fixture.
+    """
+    n_nodes = nx * ny
+    node_positions = _make_regular_grid_positions(nx, ny, lx, ly)
+    # Per-node u(x) = u_0 * (1 + alpha * x); v = 0.
+    velocity = np.zeros((n_timesteps, n_nodes, 2))
+    velocity[..., 0] = inlet_speed * (1.0 + alpha * node_positions[:, 0])[None, :]
+    rollout = MeshRollout(
+        node_positions=node_positions,
+        node_type=np.zeros(n_nodes, dtype=np.int32),
+        node_values={"velocity": velocity},
+        dt=dt,
+        metadata=_mesh_metadata(
+            "synthetic-divergence-violation",
+            regular_grid=True,
+            grid_shape=(nx, ny),
+        ),
+    )
+    return SyntheticMeshCase(
+        rollout=rollout,
+        expected_mass_conservation_defect=None,  # > 0; not asserting exact value
+        expected_energy_drift=0.0,  # KE is constant in time (no t-dependence)
+        expected_dissipation_sign_violation=0.0,
+        description=(
+            f"2D channel flow v = (u_0*(1+alpha*x), 0) with alpha={alpha}; "
+            f"div != 0 deliberate violation"
+        ),
+    )
+
+
+def build_graph_mesh_skip_case(
+    *,
+    n_nodes: int = 50,
+    n_timesteps: int = 10,
+    dt: float = 0.05,
+) -> SyntheticMeshCase:
+    """Synthetic graph-mesh rollout — must SKIP per the Day 2 audit gate.
+
+    Sets ``framework = "pytorch+dgl"`` and provides an irregular
+    ``node_positions`` array so the harness's ``is_regular_grid`` is
+    False. All three mesh-side defects must emit a SKIP HarnessDefect
+    citing the Day 2 audit gate, not a numeric value — even though the
+    velocity field is well-defined.
+    """
+    rng = np.random.default_rng(seed=20260504)
+    node_positions = rng.uniform(0.0, 1.0, size=(n_nodes, 2))
+    velocity = np.zeros((n_timesteps, n_nodes, 2))
+    velocity[..., 0] = 1.0
+    edge_index = np.array([[0, 1], [1, 0]], dtype=np.int64)  # token edge
+    rollout = MeshRollout(
+        node_positions=node_positions,
+        node_type=np.zeros(n_nodes, dtype=np.int32),
+        node_values={"velocity": velocity},
+        dt=dt,
+        metadata={
+            "ckpt_hash": "synthetic-graph",
+            "ngc_version": "synthetic-graph",
+            "git_sha": "synthetic-graph",
+            "dataset": "synthetic-graph-skip",
+            "model": "synthetic-graph",
+            "framework": "pytorch+dgl",
+            "framework_version": "0.0.0",
+            "resampling_applied": False,
+        },
+        edge_index=edge_index,
+    )
+    return SyntheticMeshCase(
+        rollout=rollout,
+        expected_mass_conservation_defect=None,  # SKIP expected
+        expected_energy_drift=None,  # SKIP expected
+        expected_dissipation_sign_violation=None,  # SKIP expected
+        description="graph-mesh rollout; Day 2 audit gate skip-with-reason",
     )
