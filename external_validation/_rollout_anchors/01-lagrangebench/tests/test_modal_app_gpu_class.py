@@ -20,6 +20,7 @@ import ast
 from pathlib import Path
 
 D0_13_STAGE_1_GPU_CLASS = "T4"
+D0_13_STAGE_2_GPU_CLASS = "A10G"
 MODAL_APP_PATH = Path(__file__).resolve().parent.parent / "modal_app.py"
 
 
@@ -74,5 +75,26 @@ def test_lagrangebench_smoke_gpu_class_matches_d0_13_pre_registration() -> None:
         f"LAGRANGEBENCH_SMOKE_GPU_CLASS = {actual!r} in {MODAL_APP_PATH.name} "
         f"does not match D0-13 stage-1 pre-registration "
         f"({D0_13_STAGE_1_GPU_CLASS!r}). Either revert the code change or "
+        f"land a new DECISIONS sub-entry refining D0-13."
+    )
+
+
+def test_rollout_generation_gpu_class_matches_d0_13_pre_registration() -> None:
+    """Rung-3 production rollouts run on A10G per D0-13 stage-2.
+
+    D0-13 stage-2 sets A10G as the default for "Day 1 §3.2 step 3
+    rollout generation (SEGNN/GNS inference)". The rung-3 production
+    rollout function in modal_app.py uses
+    ROLLOUT_GENERATION_GPU_CLASS as its gpu= argument; this test
+    pins it. If a workload OOMs on A10G the per-D0-13 escalation
+    path is to switch *that workload* to A100 with a sub-entry; the
+    default value pinned here remains A10G.
+    """
+    assert MODAL_APP_PATH.is_file(), f"modal_app.py not found at {MODAL_APP_PATH}"
+    actual = _read_module_string_constant(MODAL_APP_PATH, "ROLLOUT_GENERATION_GPU_CLASS")
+    assert actual == D0_13_STAGE_2_GPU_CLASS, (
+        f"ROLLOUT_GENERATION_GPU_CLASS = {actual!r} in {MODAL_APP_PATH.name} "
+        f"does not match D0-13 stage-2 pre-registration "
+        f"({D0_13_STAGE_2_GPU_CLASS!r}). Either revert the code change or "
         f"land a new DECISIONS sub-entry refining D0-13."
     )

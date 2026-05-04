@@ -1,23 +1,24 @@
 """Modal entrypoint for LagrangeBench rollout generation (Day 1).
 
-Two functions live here, one per rung in the test ladder:
+Three functions live here, one per rung in the test ladder:
 
 - ``jax_micro_gate`` (rung 1, plan §7 / D0-10): JAX-CUDA install
   visibility check. Returns ``jax.devices()``. Cheapest possible
   failure-mode-isolated test for the JAX-on-Modal-CUDA install path.
+  Runs on T4 per D0-13 stage-1.
 - ``lagrangebench_install_smoke`` (rung 2, plan §3.2 step 1):
   LagrangeBench install + toy-config inference smoke. Three sub-checks
-  (import → JAX-still-sees-GPU → ``python main.py mode=infer
-  dataset=tgv2d``). Surfaces version-pinning conflicts where
-  LagrangeBench's deps would silently downgrade JAX, and surfaces
-  Hydra/CLI breakage and missing-data failure modes via captured
-  stdout/stderr.
-
-Both functions run on T4 per D0-13 stage-1 ("smoke tests use the
-cheapest CUDA-JAX path"). Day 1 §3.2 step 3 production rollouts will
-land on A10G (D0-13 stage 2) in a separate function; A100 is reserved
-as OOM fallback only — see DECISIONS D0-13 for the full stage-by-stage
-matrix and the OOM escalation criterion.
+  (import → JAX-still-sees-GPU → ``python main.py mode=infer``).
+  Surfaces version-pinning conflicts where LagrangeBench's deps would
+  silently downgrade JAX, and surfaces Hydra/CLI breakage and
+  missing-data failure modes via captured stdout/stderr. Runs on T4
+  per D0-13 stage-1.
+- ``lagrangebench_rollout_p0_segnn_tgv2d`` (rung 3, plan §3.2 step 3,
+  D0-15): SEGNN-10-64 checkpoint inference on TGV 2D test split.
+  Downloads the checkpoint via gdown into the
+  ``rollout-anchors-artifacts`` Modal Volume per the D0-14 layout,
+  runs inference, captures any rollout files written. Runs on A10G
+  per D0-13 stage-2.
 
 Per D0-10 + D0-13: if ``jax.devices()`` does not return at least one
 device with ``platform == "gpu"``, the agent pivots to JAX-CPU
@@ -27,15 +28,17 @@ user re-authorisation. The 2h plan cap is a ceiling, not an
 authorisation.
 
 Subsequent commits will layer in:
-- Dataset download (``bash download_data.sh tgv2d|dam2d`` into a
-  Modal Volume so the download persists across runs)
-- Checkpoint download (gdown URLs from the LagrangeBench README)
-- Inference + rollout export to ``particle_rollout.npz`` schema
-- ``particle_rollout_adapter`` invocation
+- ``.npz`` materialization in particle_rollout.npz schema (rung 3.5,
+  if LagrangeBench's native rollout output format is not already
+  schema-conformant)
+- ``particle_rollout_adapter`` invocation (rung 4)
+- P1 (GNS-TGV2D) and P2/P3 rollouts (separate functions, mostly
+  reusing rung-3's volume + checkpoint download infrastructure)
 
 Run with:
-    modal run external_validation/_rollout_anchors/01-lagrangebench/modal_app.py
+    modal run external_validation/_rollout_anchors/01-lagrangebench/modal_app.py::main
     modal run external_validation/_rollout_anchors/01-lagrangebench/modal_app.py::lagrangebench_smoke
+    modal run external_validation/_rollout_anchors/01-lagrangebench/modal_app.py::rollout_p0_segnn_tgv2d
 """
 
 from __future__ import annotations
@@ -415,4 +418,283 @@ def lagrangebench_smoke() -> None:
         print(
             "  -> rung 2 verdict: FAIL — install or post-install JAX-GPU "
             "regression. Inspect import_error / jax_devices_after_lb_import."
+        )
+
+
+# Rung-3 image: lagrangebench_image + gdown (for Google-Drive checkpoint
+# download) + unzip (for unpacking the zipped checkpoint archives). Layered
+# on top of lagrangebench_image so cached layers (jax + lagrangebench
+# install + torch CPU) are reused; this is a thin extension.
+rollout_image = lagrangebench_image.apt_install("unzip").pip_install("gdown")
+
+
+# Modal Volume: persistent storage for rollout-anchors artifacts. Layout
+# pre-registered in DECISIONS D0-14:
+#   /vol/checkpoints/<provider>/<name>/best/   (unzipped checkpoint dirs)
+#   /vol/datasets/<provider>/<dataset_name>/   (downloaded datasets)
+#   /vol/rollouts/<provider>/<name>_<git_sha>.<ext>  (generated rollouts)
+rollout_volume = modal.Volume.from_name("rollout-anchors-artifacts", create_if_missing=True)
+
+
+# LagrangeBench checkpoint catalogue: gdown file IDs from the README's
+# pretrained-models table (https://github.com/tumaer/lagrangebench).
+# URLs are code artifacts (they change when upstream reorganises),
+# so they live here rather than in DECISIONS.md prose. The methodology
+# decision is "we use the URLs LagrangeBench upstream publishes"
+# (DECISIONS D0-15); the URLs themselves live with the code that uses
+# them.
+LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS: dict[str, str] = {
+    # 2D
+    "segnn_tgv2d": "1llGtakiDmLfarxk6MUAtqj6sLleMQ7RL",
+    "gns_tgv2d": "19TO4PaFGcryXOFFKs93IniuPZKEcaJ37",
+    "segnn_rpf2d": "108dZVWs2qxAvKiboeEBW-nIcv-aslhYP",
+    "gns_rpf2d": "1uYusVlP1ykUNuw58vo7Wss-xyTMmopAn",
+    "segnn_ldc2d": "1D_wgs2pD9pTXoJK76yi-R0K2tY_T6lPn",
+    "gns_ldc2d": "1JvdsW0H6XrgC2_cwV3pP66cAm9j1-AXc",
+    "segnn_dam2d": "1_6rHxK81vzrdIMPtJ7rIkeoUgsTeKmSn",
+    "gns_dam2d": "16bJz3VfSMxOG1II8kCg5DlzGhjvdip2p",
+    # 3D (P3 stretch only per plan §3.1)
+    "segnn_tgv3d": "1ivJnHTgfbQ0IJujc5O0CUoQNiGU4zi_d",
+    "gns_tgv3d": "1DEkXxrebS9eyLSMlc_ztHrqlh29NgLXC",
+    "segnn_rpf3d": "1Qczh3Z_z0grTuRuPDHyiYLzV1zg7Liz9",
+    "gns_rpf3d": "1yo-qgShLd1sgS1u5zkMXdJvhuPBwEQQE",
+    "segnn_ldc3d": "1ZIg7FXc1l3C4ekc9WvVvjHEl5KKxOA_U",
+    "gns_ldc3d": "1b3IIkxk5VcWiT8Oyqg1wex8-ZfJv2g_v",
+}
+
+
+# Map LagrangeBench dataset short names to the directory name produced by
+# ``download_data.sh`` (matches each checkpoint config's ``dataset.src``).
+# Discovered via inspection of upstream configs/<dataset>/base.yaml.
+LAGRANGEBENCH_DATASET_DIRS: dict[str, str] = {
+    "tgv_2d": "2D_TGV_2500_10kevery100",
+    # extend as P1+ work scales
+}
+
+
+ROLLOUT_GENERATION_GPU_CLASS = (
+    "A10G"  # D0-13 stage-2 default; drift-guarded by tests/test_modal_app_gpu_class.py
+)
+
+
+@app.function(
+    image=rollout_image,
+    gpu=ROLLOUT_GENERATION_GPU_CLASS,
+    volumes={"/vol": rollout_volume},
+    timeout=3600,
+)
+def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dict:
+    """Rung 3 P0: SEGNN-10-64 inference on TGV 2D test split (D0-15).
+
+    Steps:
+    1. Ensure SEGNN-TGV2D checkpoint is unpacked under
+       /vol/checkpoints/lagrangebench/segnn_tgv2d/best/. If missing,
+       gdown the zip from the LagrangeBench README's pretrained-models
+       table, unzip, commit the volume.
+    2. Ensure TGV2D dataset is unpacked under
+       /vol/datasets/lagrangebench/2D_TGV_2500_10kevery100/. If missing,
+       run ``bash download_data.sh tgv_2d /vol/datasets/lagrangebench/``
+       from /opt/lagrangebench, commit the volume. (LagrangeBench's
+       ``mode=infer`` also auto-downloads if dataset.src is missing
+       per the README; explicit download here makes the volume layout
+       deterministic and avoids the auto-download running inside the
+       inference subprocess on every invocation.)
+    3. Run ``python main.py mode=infer eval.test=True
+       load_ckp=<ckpt>/best eval.n_rollout_steps=100 eval.n_trajs=20
+       dataset.src=<dataset>`` per D0-15.
+    4. Walk /opt/lagrangebench (and /vol/rollouts) for any files
+       written during inference. Compute SHA-256 of each. Return a
+       manifest of (path, size, sha256) tuples plus stdout/stderr
+       tails so future-me can reconstruct what got written.
+
+    The ``.npz`` materialization in the SCHEMA.md particle_rollout.npz
+    shape is NOT done in this rung. If LagrangeBench's native output
+    is already schema-conformant, rung 4 (the harness adapter
+    invocation) consumes it directly. If not, a thin materialization
+    rung 3.5 lands between this and rung 4. Don't pre-emptively
+    write that materializer until rung-3's actual output shape is
+    known empirically.
+    """
+    import hashlib
+    import os
+    import subprocess
+    import time
+
+    manifest: dict = {
+        "git_sha": git_sha,
+        "full_git_sha": full_git_sha,
+        "checkpoint_download_skipped": False,
+        "dataset_download_skipped": False,
+        "inference_returncode": None,
+        "inference_wall_seconds": None,
+        "inference_stdout_tail": "",
+        "inference_stderr_tail": "",
+        "files_written": [],  # list of {path, size, sha256}
+    }
+
+    # Step 1: checkpoint
+    ckpt_root = "/vol/checkpoints/lagrangebench/segnn_tgv2d"
+    ckpt_dir = f"{ckpt_root}/best"
+    if os.path.isdir(ckpt_dir):
+        manifest["checkpoint_download_skipped"] = True
+    else:
+        os.makedirs(ckpt_root, exist_ok=True)
+        zip_path = f"{ckpt_root}/segnn_tgv2d.zip"
+        gdown_id = LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["segnn_tgv2d"]
+        subprocess.run(
+            ["gdown", gdown_id, "-O", zip_path],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["unzip", "-o", zip_path, "-d", ckpt_root],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        # Some checkpoint zips unpack into a subdir named like the zip;
+        # the README's load_ckp= pattern expects /best directly under
+        # ckpt_root. Walk one level if needed.
+        if not os.path.isdir(ckpt_dir):
+            for entry in os.listdir(ckpt_root):
+                candidate = os.path.join(ckpt_root, entry, "best")
+                if os.path.isdir(candidate):
+                    # Move <entry>/best to <ckpt_root>/best
+                    os.rename(candidate, ckpt_dir)
+                    break
+        rollout_volume.commit()
+
+    # Step 2: dataset
+    dataset_root = "/vol/datasets/lagrangebench"
+    dataset_dir = f"{dataset_root}/{LAGRANGEBENCH_DATASET_DIRS['tgv_2d']}"
+    if os.path.isdir(dataset_dir):
+        manifest["dataset_download_skipped"] = True
+    else:
+        os.makedirs(dataset_root, exist_ok=True)
+        os.chdir("/opt/lagrangebench")
+        subprocess.run(
+            ["bash", "download_data.sh", "tgv_2d", dataset_root + "/"],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=900,
+        )
+        rollout_volume.commit()
+
+    # Step 3: inference
+    rollout_dir = "/vol/rollouts/lagrangebench"
+    os.makedirs(rollout_dir, exist_ok=True)
+
+    os.chdir("/opt/lagrangebench")
+    inf_start = time.monotonic()
+    inf_proc = subprocess.run(
+        [
+            "python",
+            "main.py",
+            "mode=infer",
+            "eval.test=True",
+            f"load_ckp={ckpt_dir}",
+            "eval.n_rollout_steps=100",
+            "eval.n_trajs=20",
+            f"dataset.src={dataset_dir}",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=2400,
+    )
+    manifest["inference_wall_seconds"] = round(time.monotonic() - inf_start, 1)
+    manifest["inference_returncode"] = inf_proc.returncode
+    manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
+    manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
+
+    # Step 4: walk for files written
+    # LagrangeBench's eval saves rollouts under outputs/ or wandb/ or
+    # similar; capture any file written under known candidate roots.
+    candidate_roots = [
+        "/opt/lagrangebench/outputs",
+        "/opt/lagrangebench/rollouts",
+        "/opt/lagrangebench/wandb",
+        rollout_dir,
+    ]
+    for root in candidate_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for fn in filenames:
+                fp = os.path.join(dirpath, fn)
+                try:
+                    size = os.path.getsize(fp)
+                    if size > 50 * 1024 * 1024:
+                        # Skip SHA-256 on large files (>50 MB) to keep
+                        # the manifest cheap; record size only.
+                        manifest["files_written"].append(
+                            {"path": fp, "size": size, "sha256": "<skipped_large>"}
+                        )
+                        continue
+                    h = hashlib.sha256()
+                    with open(fp, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            h.update(chunk)
+                    manifest["files_written"].append(
+                        {"path": fp, "size": size, "sha256": h.hexdigest()}
+                    )
+                except OSError as e:
+                    manifest["files_written"].append(
+                        {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
+                    )
+
+    rollout_volume.commit()
+    return manifest
+
+
+@app.local_entrypoint()
+def rollout_p0_segnn_tgv2d() -> None:
+    """Fire the rung-3 P0 SEGNN-TGV2D rollout (D0-15)."""
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_short = subprocess.check_output(
+        ["git", "rev-parse", "--short=10", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Rung 3 P0 SEGNN-TGV2D rollout (D0-15) ===")
+    print(f"  gpu_class:           {ROLLOUT_GENERATION_GPU_CLASS}")
+    print(f"  git_sha (short):     {git_sha_short}")
+    print(f"  git_sha (full):      {git_sha_full}")
+    print(f"  checkpoint gdown id: {LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS['segnn_tgv2d']}")
+    print()
+    result = lagrangebench_rollout_p0_segnn_tgv2d.remote(
+        git_sha=git_sha_short, full_git_sha=git_sha_full
+    )
+    print("--- manifest ---")
+    print(f"  checkpoint_download_skipped: {result['checkpoint_download_skipped']}")
+    print(f"  dataset_download_skipped:    {result['dataset_download_skipped']}")
+    print(f"  inference_returncode:        {result['inference_returncode']}")
+    print(f"  inference_wall_seconds:      {result['inference_wall_seconds']}")
+    print()
+    print("--- inference stdout (last 3 KB) ---")
+    print(result["inference_stdout_tail"] or "(empty)")
+    print()
+    print("--- inference stderr (last 3 KB) ---")
+    print(result["inference_stderr_tail"] or "(empty)")
+    print()
+    print(f"--- files written ({len(result['files_written'])} entries) ---")
+    for f in result["files_written"][:80]:
+        print(f"  {f['size']:>12}  {f['sha256'][:16]}...  {f['path']}")
+    if len(result["files_written"]) > 80:
+        print(f"  ... ({len(result['files_written']) - 80} more)")
+    print()
+    print("--- verdict ---")
+    if result["inference_returncode"] == 0:
+        print("  -> rung 3 P0 verdict: PASS — inference returncode 0.")
+        print("     Next: inspect 'files written' for rollout artifact location;")
+        print("     rung 3.5 (schema materialization) or rung 4 (harness invoke) follows.")
+    else:
+        print(
+            f"  -> rung 3 P0 verdict: FAIL — inference returncode "
+            f"{result['inference_returncode']}. Inspect stderr above."
         )
