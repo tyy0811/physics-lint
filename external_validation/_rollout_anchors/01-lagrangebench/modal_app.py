@@ -489,6 +489,86 @@ ROLLOUT_GENERATION_GPU_CLASS = (
 )
 
 
+# Cumulative upstream-compatibility patches required to reach a clean
+# rung-3 verdict. Each entry captures (layer, methodology-relevance,
+# git ref, summary). The structured-record framing replaces "patch
+# count feels like a lot" with "N library-internal-regression
+# patches with load-bearing methodology relevance" — actionable,
+# auditable, surface-able in the rung-3 verdict log at a glance.
+#
+# Methodology relevance is defined relative to the physics-lint
+# harness (the consumer of rollout artifacts): "load-bearing" means
+# the patch affects what the harness reads (positions, velocities,
+# KE, particle types, dt, domain box, metadata); "non-load-bearing"
+# means the patch is in a layer the harness doesn't touch.
+#
+# Discipline going forward: when a new patch is needed and falls
+# into the "library-internal regression with load-bearing methodology
+# relevance" bucket, surface immediately for higher-level review
+# rather than apply a workaround. The other buckets (infrastructure,
+# config, library-internal-non-load-bearing) are bounded and well-
+# understood; the load-bearing-library-internal bucket is the signal
+# that the cumulative-patch posture has shifted from "stand up a
+# 2026 JAX-CUDA-Modal stack" to "patch around upstream's actual
+# correctness regressions in our consumed surface."
+UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
+    {
+        "ref": "physics-lint 9276596",
+        "layer": "infrastructure",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "Python pin 3.11.x -> 3.10 (LagrangeBench pyproject "
+            "<=3.11 normalises to <=3.11.0 under PEP 440, excluding "
+            "Modal debian_slim:3.11's 3.11.x patch level)"
+        ),
+    },
+    {
+        "ref": "physics-lint 32b6b79",
+        "layer": "infrastructure",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "torch CPU index --extra-index-url for torch==2.3.1+cpu "
+            "(LagrangeBench pins +cpu local-version-segment hosted on "
+            "PyTorch's wheel index, not Modal's default PyPI mirror)"
+        ),
+    },
+    {
+        "ref": "physics-lint 91d3ce7",
+        "layer": "infrastructure",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "jax[cuda12]==0.4.29 + jaxlib==0.4.29 matched-stack pin "
+            "(without it, jax_image's plugin/pjrt at 0.6.x carry PJRT "
+            "API 0.70 vs LagrangeBench's pinned jax 0.4.29 framework "
+            "PJRT API 0.54; mismatch breaks GPU access)"
+        ),
+    },
+    {
+        "ref": "physics-lint 63e33e9",
+        "layer": "config",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "dataset.name=tgv2d CLI arg (older SEGNN-TGV2D checkpoint "
+            "config doesn't carry dataset.name; current LagrangeBench "
+            "runner.py:148 reads cfg.dataset.name with no auto-inference "
+            "fallback)"
+        ),
+    },
+    {
+        "ref": "physics-lint <this commit>",
+        "layer": "library-internal",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "Sinkhorn metric drop via eval.infer.metrics=[mse,e_kin] "
+            "(ott-jax 0.4.9 self-inconsistency: sinkhorn_divergence "
+            "forwards sinkhorn_kwargs to Geometry.__init__() which "
+            "doesn't accept it; Sinkhorn is not consumed by any "
+            "in-scope physics-lint rule)"
+        ),
+    },
+]
+
+
 @app.function(
     image=rollout_image,
     gpu=ROLLOUT_GENERATION_GPU_CLASS,
@@ -654,9 +734,19 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
             # TGV2D checkpoint's bundled config doesn't carry
             # dataset.name (older runner inferred from path; current
             # HEAD doesn't). Pre-registered in DECISIONS D0-15
-            # (amendment). Valid name space per upstream data.py:
+            # (amendment 1). Valid name space per upstream data.py:
             # {tgv2d, tgv3d, rpf2d, rpf3d, ldc2d, ldc3d, dam2d}.
             "dataset.name=tgv2d",
+            # eval.infer.metrics=[mse,e_kin]: drops Sinkhorn divergence
+            # from the per-rollout evaluation list. ott-jax 0.4.9 is
+            # internally self-inconsistent — sinkhorn_divergence
+            # forwards sinkhorn_kwargs to Geometry.__init__() which
+            # doesn't accept it. Default eval.infer.metrics is
+            # [mse, sinkhorn, e_kin]; this drops Sinkhorn. Sinkhorn is
+            # NOT consumed by any in-scope physics-lint rule, so the
+            # methodology cost of the drop is zero (DECISIONS D0-15
+            # amendment 2 carries the full reasoning).
+            "eval.infer.metrics=[mse,e_kin]",
         ],
         capture_output=True,
         text=True,
@@ -762,6 +852,23 @@ def rollout_p0_segnn_tgv2d() -> None:
         print(f"  {f['size']:>12}  {f['sha256'][:16]}...  {f['path']}")
     if len(result["files_written"]) > 80:
         print(f"  ... ({len(result['files_written']) - 80} more)")
+    print()
+    # Cumulative-patch-shape distribution: structured signal for
+    # whether proceed-with-LagrangeBench-HEAD remains the right
+    # posture, vs. pause-for-higher-level-review. See
+    # UPSTREAM_COMPAT_PATCHES module constant for the full reasoning.
+    print(
+        f"--- patches required to reach this verdict ({len(UPSTREAM_COMPAT_PATCHES)} entries) ---"
+    )
+    _layer_counts: dict[str, int] = {}
+    _relevance_counts: dict[str, int] = {}
+    for p in UPSTREAM_COMPAT_PATCHES:
+        _layer_counts[p["layer"]] = _layer_counts.get(p["layer"], 0) + 1
+        _relevance_counts[p["relevance"]] = _relevance_counts.get(p["relevance"], 0) + 1
+        print(f"  [{p['layer']:>16}] [{p['relevance']:>16}] {p['ref']}\n    {p['summary']}")
+    _layer_summary = ", ".join(f"{n} {layer}" for layer, n in _layer_counts.items())
+    _relevance_summary = ", ".join(f"{n} {rel}" for rel, n in _relevance_counts.items())
+    print(f"  distribution: {_layer_summary} | {_relevance_summary}")
     print()
     print("--- verdict ---")
     if result["inference_returncode"] == 0:
