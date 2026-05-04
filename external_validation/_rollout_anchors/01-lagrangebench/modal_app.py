@@ -46,18 +46,37 @@ app = modal.App("rollout-anchors-lagrangebench")
 
 # Hour-0 image: JAX with CUDA 12 only. Heavy installs deferred so a
 # micro-gate FAIL does not waste image-build time on this side-quest.
-# Mirrors plan §3.2 step 1 verbatim ("pip install -U 'jax[cuda12]' jaxlib").
 #
 # Python 3.10 (not 3.11): LagrangeBench's pyproject.toml pins
 # ``python_requires = ">=3.9, <=3.11"`` which PEP 440 normalises as
 # (3, 9, 0) <= python <= (3, 11, 0), excluding all 3.11.x patch releases.
 # Modal's debian_slim(python_version="3.11") ships 3.11.x where x>0, which
 # fails the pin. 3.10 is the highest version satisfying both the
-# LagrangeBench pin and JAX 0.10's range. Upstream-forced — not a
+# LagrangeBench pin and JAX 0.4.29's range. Upstream-forced — not a
 # methodology choice — and therefore not pre-registered in DECISIONS.md;
 # this comment is the audit trail. If LagrangeBench relaxes the pin
 # upstream (e.g., to ``<3.12``), bumping to 3.11 is a clean change.
-jax_image = modal.Image.debian_slim(python_version="3.10").pip_install("jax[cuda12]", "jaxlib")
+#
+# jax[cuda12]==0.4.29 + jaxlib==0.4.29: matched-stack pin to align
+# jax_image's framework with lagrangebench_image's pinned framework.
+# Without this pin, jax_image resolves to the latest 3.10-compatible
+# JAX (was 0.6.2), and the plugin/pjrt packages installed alongside
+# (also 0.6.x) carry a different PJRT API version (0.70) than the
+# framework jax 0.4.29 ends up using after LagrangeBench's
+# pin-driven downgrade in lagrangebench_image (PJRT API 0.54). The
+# resulting framework/plugin mismatch breaks GPU access at runtime:
+# "INVALID_ARGUMENT: Mismatched PJRT plugin PJRT API version (0.70)
+# and framework PJRT API version 0.54". Pinning jax[cuda12] to the
+# LagrangeBench-required version ensures plugin/pjrt match the
+# framework from the start in BOTH images. Discovered via rung 2
+# sub-check 2 FAIL at 60cacea; this commit applies option (i) from
+# the discussion (matched-stack pin); option (ii) (bundled-cuda
+# jaxlib==0.4.29+cuda12.cudnn89 from JAX's release storage) is the
+# fallback if pip cannot resolve jax[cuda12]==0.4.29 here.
+jax_image = modal.Image.debian_slim(python_version="3.10").pip_install(
+    "jax[cuda12]==0.4.29",
+    "jaxlib==0.4.29",
+)
 
 
 MICRO_GATE_GPU_CLASS = (
@@ -81,6 +100,41 @@ def _package_version(name: str) -> str:
         return "<not_installed>"
 
 
+def _capture_pjrt_api_version() -> str:
+    """Best-effort capture of the framework PJRT API version observed at runtime.
+
+    PJRT API version is the load-bearing identity for plugin/framework
+    compatibility — rung 2 sub-check 2's first FAIL surfaced at this
+    axis specifically (framework 0.54 vs plugin 0.70). Package versions
+    (jax/jaxlib/plugin/pjrt) are reliable proxies under matched-stack
+    installs, but the runtime PJRT API value is what determines
+    compatibility, so it's worth capturing directly when possible.
+
+    JAX does not expose the PJRT API version through a stable public
+    API; this helper probes several known internal paths and falls back
+    to ``"<unknown>"`` if all probes fail. Bounded best-effort — keeps
+    the audit trail useful when introspection works without being a
+    silent failure when it doesn't.
+    """
+    import importlib
+
+    candidates = (
+        ("jax._src.lib.xla_client", "pjrt_api_version"),
+        ("jax._src.lib.xla_client", "_pjrt_api_version"),
+        ("jaxlib.xla_client", "pjrt_api_version"),
+        ("jaxlib.xla_extension", "pjrt_api_version"),
+    )
+    for module_path, attr in candidates:
+        try:
+            module = importlib.import_module(module_path)
+            value = getattr(module, attr, None)
+            if value is not None:
+                return str(value)
+        except Exception:
+            continue
+    return "<unknown>"
+
+
 @app.function(image=jax_image, gpu=MICRO_GATE_GPU_CLASS, timeout=600)
 def jax_micro_gate() -> dict:
     """Hour-2 micro-gate per plan §7 / D0-10 (refined by D0-13).
@@ -98,18 +152,34 @@ def jax_micro_gate() -> dict:
     import jax
     import jaxlib
 
-    devices = jax.devices()
-    backend = jax.default_backend()
-    has_gpu = any(d.platform == "gpu" for d in devices)
+    # jax.devices() raises RuntimeError on plugin/framework PJRT API
+    # mismatch (rung 2's first FAIL surfaced at this shape). Wrap to
+    # let the verdict ladder report cleanly through the structured
+    # return rather than via uncaught exception.
+    gpu_init_error: str | None = None
+    try:
+        devices = jax.devices()
+        backend = jax.default_backend()
+        has_gpu = any(d.platform == "gpu" for d in devices)
+        device_strs = [str(d) for d in devices]
+        device_count = len(devices)
+    except RuntimeError as e:
+        gpu_init_error = f"jax_devices_raised: {type(e).__name__}: {e}"
+        backend = "<errored>"
+        has_gpu = False
+        device_strs = []
+        device_count = 0
     return {
-        "devices": [str(d) for d in devices],
+        "devices": device_strs,
         "default_backend": backend,
         "has_gpu": has_gpu,
-        "device_count": len(devices),
+        "device_count": device_count,
+        "gpu_init_error": gpu_init_error,
         "jax_version": jax.__version__,
         "jaxlib_version": jaxlib.__version__,
         "jax_cuda12_plugin_version": _package_version("jax-cuda12-plugin"),
         "jax_cuda12_pjrt_version": _package_version("jax-cuda12-pjrt"),
+        "pjrt_api_version": _capture_pjrt_api_version(),
     }
 
 
@@ -123,10 +193,13 @@ def main() -> None:
     print(f"  jaxlib_version:             {result['jaxlib_version']}")
     print(f"  jax_cuda12_plugin_version:  {result['jax_cuda12_plugin_version']}")
     print(f"  jax_cuda12_pjrt_version:    {result['jax_cuda12_pjrt_version']}")
+    print(f"  pjrt_api_version:           {result['pjrt_api_version']}")
     print(f"  default_backend:            {result['default_backend']}")
     print(f"  device_count:               {result['device_count']}")
     print(f"  devices:                    {result['devices']}")
     print(f"  has_gpu:                    {result['has_gpu']}")
+    if result["gpu_init_error"]:
+        print(f"  gpu_init_error:             {result['gpu_init_error']}")
     if result["has_gpu"]:
         print(
             f"  -> verdict: PASS — CUDA GPU ({MICRO_GATE_GPU_CLASS}) visible "
@@ -206,12 +279,24 @@ def lagrangebench_install_smoke() -> dict:
         lb_import_ok = False
         lb_import_error = f"{type(e).__name__}: {e}"
 
-    # Sub-check 2: JAX still sees GPU after the LagrangeBench import
+    # Sub-check 2: JAX still sees GPU after the LagrangeBench import.
+    # jax.devices() raises RuntimeError on plugin/framework PJRT API
+    # mismatch (rung 2's first FAIL at 60cacea surfaced at this shape).
+    # Wrap to let the verdict ladder report cleanly through the
+    # structured return rather than via uncaught exception that exits
+    # the function before the verdict logic runs.
     import jax
     import jaxlib
 
-    devices = jax.devices()
-    has_gpu = any(d.platform == "gpu" for d in devices)
+    gpu_init_error: str | None = None
+    try:
+        devices = jax.devices()
+        has_gpu = any(d.platform == "gpu" for d in devices)
+        device_strs = [str(d) for d in devices]
+    except RuntimeError as e:
+        gpu_init_error = f"jax_devices_raised: {type(e).__name__}: {e}"
+        has_gpu = False
+        device_strs = []
 
     # Sub-check 3: try the toy infer command
     smoke_returncode: int | None = None
@@ -244,8 +329,10 @@ def lagrangebench_install_smoke() -> dict:
         "jaxlib_version_after_lb_import": jaxlib.__version__,
         "jax_cuda12_plugin_version_after_lb_import": _package_version("jax-cuda12-plugin"),
         "jax_cuda12_pjrt_version_after_lb_import": _package_version("jax-cuda12-pjrt"),
+        "pjrt_api_version_after_lb_import": _capture_pjrt_api_version(),
         "jax_has_gpu_after_lb_import": has_gpu,
-        "jax_devices_after_lb_import": [str(d) for d in devices],
+        "jax_devices_after_lb_import": device_strs,
+        "gpu_init_error_after_lb_import": gpu_init_error,
         "smoke_returncode": smoke_returncode,
         "smoke_stdout_tail": smoke_stdout_tail,
         "smoke_stderr_tail": smoke_stderr_tail,
@@ -275,8 +362,16 @@ def lagrangebench_smoke() -> None:
         f"  jax_cuda12_pjrt_version_after_lb_import:   "
         f"{result['jax_cuda12_pjrt_version_after_lb_import']}"
     )
+    print(
+        f"  pjrt_api_version_after_lb_import:          {result['pjrt_api_version_after_lb_import']}"
+    )
     print(f"  jax_has_gpu_after_lb_import:               {result['jax_has_gpu_after_lb_import']}")
     print(f"  jax_devices_after_lb_import:               {result['jax_devices_after_lb_import']}")
+    if result["gpu_init_error_after_lb_import"]:
+        print(
+            f"  gpu_init_error_after_lb_import:            "
+            f"{result['gpu_init_error_after_lb_import']}"
+        )
     print(f"  smoke_returncode:              {result['smoke_returncode']}")
     print("  --- smoke stdout (last 2 KB) ---")
     print(result["smoke_stdout_tail"] or "(empty)")
