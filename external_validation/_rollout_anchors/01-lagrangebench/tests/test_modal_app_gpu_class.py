@@ -39,7 +39,7 @@ def _read_module_string_constant(source_path: Path, name: str) -> str | None:
 
 
 def test_modal_app_gpu_class_matches_d0_13_pre_registration() -> None:
-    """The hour-0 / hour-2 micro-gate runs on T4 per D0-13's stage-1 default.
+    """The hour-0 / hour-2 JAX micro-gate runs on T4 per D0-13's stage-1 default.
 
     If a future change wants to move the micro-gate to a different GPU
     class (e.g., L4 for similar price + sm_89), the change must land
@@ -51,6 +51,28 @@ def test_modal_app_gpu_class_matches_d0_13_pre_registration() -> None:
     assert actual == D0_13_STAGE_1_GPU_CLASS, (
         f"MICRO_GATE_GPU_CLASS = {actual!r} in {MODAL_APP_PATH.name} does "
         f"not match D0-13 stage-1 pre-registration "
+        f"({D0_13_STAGE_1_GPU_CLASS!r}). Either revert the code change or "
+        f"land a new DECISIONS sub-entry refining D0-13."
+    )
+
+
+def test_lagrangebench_smoke_gpu_class_matches_d0_13_pre_registration() -> None:
+    """The Day-1 §3.2 step-1 LagrangeBench install smoke runs on T4 (D0-13 stage-1).
+
+    D0-13's stage-1 description is "Hour-0 / hour-2 JAX micro-gate"
+    with rationale "Smoke test only; cheapest CUDA-JAX path; same
+    epistemic content as A100" — the rationale extends naturally to
+    the rung-2 LagrangeBench install smoke (also a smoke test, also
+    cheapest-CUDA-JAX-path, also same epistemic content as A100). If
+    a future change wants to graduate the rung-2 smoke to A10G or
+    similar (e.g., because the toy infer needs >16 GB), the change
+    must land alongside a DECISIONS sub-entry under D0-13.
+    """
+    assert MODAL_APP_PATH.is_file(), f"modal_app.py not found at {MODAL_APP_PATH}"
+    actual = _read_module_string_constant(MODAL_APP_PATH, "LAGRANGEBENCH_SMOKE_GPU_CLASS")
+    assert actual == D0_13_STAGE_1_GPU_CLASS, (
+        f"LAGRANGEBENCH_SMOKE_GPU_CLASS = {actual!r} in {MODAL_APP_PATH.name} "
+        f"does not match D0-13 stage-1 pre-registration "
         f"({D0_13_STAGE_1_GPU_CLASS!r}). Either revert the code change or "
         f"land a new DECISIONS sub-entry refining D0-13."
     )
