@@ -39,6 +39,7 @@ Spec §3.2.
         "framework_version":  str,
         "write_every":        int,   # rollout dt = dataset.dt * write_every (LagrangeBench convention)
         "write_every_source": str,   # "dataset" if read from dataset metadata.json; "default" if defaulted to 1
+        "periodic_boundary_conditions": list[bool],  # length D; True axes get minimum-image distance for derived velocities
     },
 }
 ```
@@ -57,6 +58,22 @@ mass is therefore methodologically equivalent to the dataset's implicit
 normalization for these tests. Datasets that *do* carry per-particle mass
 should pass it through unchanged; the harness consumes whatever mass field
 is present.
+
+`metadata.periodic_boundary_conditions` is a length-D boolean list
+mirroring LagrangeBench dataset metadata.json's `periodic_boundary_conditions`
+key; `True` indicates the axis has periodic BC and the conversion
+applied minimum-image distance correction when deriving velocities
+from positions. Without this correction, particles crossing periodic
+boundaries produce spurious O(L/dt) velocities under naive central
+differences (rung-3.5 spot-check on f75e22d8dd surfaced 5+-order-of-
+magnitude KE inflation on SEGNN-TGV2D from this exact failure mode;
+see DECISIONS.md D0-17). Datasets where the key is missing from
+metadata.json get all-False per axis and the conversion is no-op
+(non-periodic fallback). Consumers that compute distances directly
+from positions (rather than from velocities) should also consult this
+field — the harness's `gridify` already does, but any future consumer
+of the npz that does e.g. ``np.linalg.norm(p1 - p2)`` on TGV2D would
+need to apply the same correction.
 
 `metadata.write_every` and `metadata.write_every_source` exist because
 LagrangeBench dataset metadata.json conditionally carries `write_every`
@@ -311,7 +328,7 @@ in ``test_read_only_path.py`` enforces this discipline.
 
 ## 5. Versioning
 
-Schema version: `1.2`. Bumps land here first, with a one-line changelog
+Schema version: `1.3`. Bumps land here first, with a one-line changelog
 below; adapters follow.
 
 - **1.0** (2026-05-04): initial schema, Day 0.
@@ -324,8 +341,15 @@ below; adapters follow.
   conversion-module work). ``metadata.write_every`` and
   ``metadata.write_every_source`` added to capture LagrangeBench's
   conditional dt-stride convention with explicit source-of-truth
-  instrumentation. Additive only; existing v1.0 / v1.1 npz files cannot
-  be read by post-1.2 ``load_rollout_npz`` (the field was already required;
-  v1.0 / v1.1 npz files written without ``particle_mass`` were already
-  un-readable, so v1.2 regularises documentation rather than introducing
-  a new compatibility break).
+  instrumentation.
+- **1.3** (2026-05-04): ``metadata.periodic_boundary_conditions`` field
+  added (DECISIONS.md D0-17). Threaded through from LagrangeBench
+  dataset metadata.json so the conversion's minimum-image-distance
+  correction for derived velocities is auditable post-hoc, and so any
+  future consumer of the npz that computes distances directly from
+  positions can apply the same correction. Additive only; existing
+  v1.2 npzs read cleanly via ``load_rollout_npz`` (field is consumed
+  through the metadata-dict round-trip, not as a top-level npz field).
+  Required for any LagrangeBench dataset with periodic BC (TGV2D,
+  RPF2D, ...); pre-1.3 npzs on these datasets had spurious wraparound
+  velocities and should be regenerated.

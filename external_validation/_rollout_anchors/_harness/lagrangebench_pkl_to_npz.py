@@ -31,9 +31,15 @@ metadata. This module performs the four reconciliations:
    differences over ``dt = metadata["dt"] * metadata["write_every"]``
    (matching LagrangeBench's own factor at ``runner.py:260`` and
    ``metrics.py:99``); endpoints use first-order forward/backward
-   differences. Methodology framing in DECISIONS.md D0-15 amendment 4:
-   PH-CON-002 then tests dynamical consistency of the positional
-   rollout under conservation, not direct velocity-output conservation.
+   differences. **Periodic-aware**: on datasets with
+   ``periodic_boundary_conditions`` set in dataset metadata.json, the
+   minimum-image convention is applied along each periodic axis to
+   prevent boundary-wraparound from producing spurious O(L/dt)
+   velocities (DECISIONS.md D0-17, motivated by the rung-3.5 spot-check
+   on f75e22d8dd which surfaced 5+-order-of-magnitude KE inflation on
+   SEGNN-TGV2D). Methodology framing in DECISIONS.md D0-15 amendment 4:
+   PH-CON-002 tests dynamical consistency of the positional rollout
+   under conservation, not direct velocity-output conservation.
 
 2. **particle_mass populated** as uniform unit mass per particle. SPH
    datasets (LagrangeBench's entire 2D / 3D corpus) fold the per-
@@ -59,7 +65,8 @@ metadata. This module performs the four reconciliations:
 ## Validation surface
 
 Every load-bearing field has a shape / dtype / value-range check at
-conversion time. The five assertions per DECISIONS.md D0-15 amendment 4:
+conversion time. Six assertions total (five from DECISIONS.md D0-15
+amendment 4 + one added by D0-17):
 
 - ``particle_mass.shape == (N_particles,)``
 - ``particle_mass.dtype == np.float64``
@@ -68,6 +75,8 @@ conversion time. The five assertions per DECISIONS.md D0-15 amendment 4:
 - ``RolloutMetadata.write_every_source`` set to ``"dataset"`` or
   ``"default"`` (no other values; populated by this module from the
   conversion's read of dataset metadata.json)
+- ``periodic_boundary_conditions`` length equals D (D0-17; rejected
+  if dataset metadata.json carries a length-mismatched array)
 
 The assertions raise ``ValueError`` with the rollout filename in the
 message, so a failure surfaces both the rule violated and the file
@@ -124,9 +133,20 @@ class RolloutMetadata:
     ckpt_path: str = ""
     write_every: int = 1
     write_every_source: str = "default"
+    # D0-17 (rung-3.5 spot-check finding): periodic_boundary_conditions
+    # is read from LB dataset metadata.json and threaded through into the
+    # npz so consumers know whether positions are wrap-around-aware.
+    # Stored as tuple[bool, ...] for hashability; len matches positions D.
+    # Empty tuple is the dataclass-default sentinel only — convert_rollout_dir
+    # always populates it with len-D bools (defaulting to all-False per axis
+    # if the dataset metadata omits the key).
+    periodic_boundary_conditions: tuple[bool, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
+        d = asdict(self)
+        # asdict converts tuple to list — keep as list for JSON / npz round-trip.
+        d["periodic_boundary_conditions"] = list(self.periodic_boundary_conditions)
+        return d
 
 
 # ---------------------------------------------------------------------------
@@ -169,7 +189,13 @@ def _walk_compat(root: Path):
         yield Path(dp), dns, fns
 
 
-def _central_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
+def _central_diff_velocities(
+    positions: np.ndarray,
+    dt: float,
+    *,
+    domain_extent: np.ndarray | None = None,
+    periodic_axes: np.ndarray | None = None,
+) -> np.ndarray:
     """Velocities from positions via second-order central differences.
 
     Interior: ``v[t] = (pos[t+1] - pos[t-1]) / (2*dt)``.
@@ -181,17 +207,79 @@ def _central_diff_velocities(positions: np.ndarray, dt: float) -> np.ndarray:
 
     The half-timestep offset of forward-only differences would silently
     bias kinetic energy; central differences keep velocity aligned with
-    position. See DECISIONS.md D0-15 amendment 4 for the methodology
-    framing on derived-vs-model-output velocities.
+    position. See DECISIONS.md D0-15 amendment 4 for the original
+    methodology framing on derived-vs-model-output velocities and
+    DECISIONS.md D0-17 for the periodic-distance correction added after
+    the rung-3.5 spot-check on f75e22d8dd surfaced wraparound-induced
+    spurious velocities on TGV2D.
+
+    Periodic-distance correction
+    ----------------------------
+    On periodic-boundary datasets, a particle crossing a boundary
+    (e.g. position 0.999 → 0.001) has a true displacement of +0.002,
+    not -0.998. Without correction, the central difference reports a
+    spurious O(L/dt) velocity at every wraparound frame — verified on
+    SEGNN-TGV2D traj00 to inflate KE(0) by 5+ orders of magnitude.
+
+    When ``domain_extent`` and ``periodic_axes`` are both supplied, the
+    correction applies the minimum-image convention along each periodic
+    axis::
+
+        delta = pos[t+1] - pos[t-1]
+        delta -= L * round(delta / L)          # only for periodic axes
+        v[t]   = delta / (2 * dt)
+
+    On non-periodic axes the raw delta is preserved. Calling without
+    ``domain_extent`` / ``periodic_axes`` (or with all-False
+    ``periodic_axes``) reproduces the pre-D0-17 behavior exactly — this
+    is the regression-guard contract enforced by
+    ``test_central_diff_no_op_when_non_periodic``.
+
+    Parameters
+    ----------
+    positions
+        ``(T, N, D)`` position array.
+    dt
+        Rollout timestep.
+    domain_extent
+        ``(D,)`` per-axis domain extent (``domain_box[1] - domain_box[0]``).
+        Required if any axis is periodic; ignored if ``periodic_axes`` is
+        ``None`` or all-False.
+    periodic_axes
+        ``(D,)`` boolean array; ``True`` indicates the axis has periodic
+        boundary conditions and the minimum-image correction applies.
     """
     if positions.shape[0] < 2:
         raise ValueError(
             f"central_diff_velocities requires T >= 2 timesteps; got T={positions.shape[0]}"
         )
+    apply_periodic = (
+        periodic_axes is not None and domain_extent is not None and np.any(periodic_axes)
+    )
+    if apply_periodic:
+        if periodic_axes.shape != (positions.shape[2],):
+            raise ValueError(
+                f"periodic_axes shape {periodic_axes.shape} must be ({positions.shape[2]},) "
+                f"to match positions D"
+            )
+        if domain_extent.shape != (positions.shape[2],):
+            raise ValueError(
+                f"domain_extent shape {domain_extent.shape} must be ({positions.shape[2]},) "
+                f"to match positions D"
+            )
+
     velocities = np.empty_like(positions, dtype=np.float64)
-    velocities[1:-1] = (positions[2:] - positions[:-2]) / (2.0 * dt)
-    velocities[0] = (positions[1] - positions[0]) / dt
-    velocities[-1] = (positions[-1] - positions[-2]) / dt
+
+    def _diff(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+        delta = a - b
+        if apply_periodic:
+            wrap = domain_extent * np.round(delta / domain_extent)
+            delta = np.where(periodic_axes[None, None, :], delta - wrap, delta)
+        return delta
+
+    velocities[1:-1] = _diff(positions[2:], positions[:-2]) / (2.0 * dt)
+    velocities[0] = _diff(positions[1:2], positions[0:1])[0] / dt
+    velocities[-1] = _diff(positions[-1:], positions[-2:-1])[0] / dt
     return velocities
 
 
@@ -316,6 +404,21 @@ def convert_rollout_dir(
             f"domain_box mins must be strictly less than maxes elementwise; "
             f"got mins={domain_box[0].tolist()}, maxes={domain_box[1].tolist()}"
         )
+    domain_extent = domain_box[1] - domain_box[0]  # (D,) per-axis extent for periodic wrap
+
+    # D0-17: periodic_boundary_conditions threaded through from LB
+    # dataset metadata.json. Defaults to all-False per axis if the
+    # dataset metadata omits the key (non-periodic fallback). The
+    # periodic-distance correction in _central_diff_velocities is a
+    # no-op when periodic_axes is all-False (regression-guarded by
+    # test_central_diff_no_op_when_non_periodic).
+    pbc_raw = ds_meta.get("periodic_boundary_conditions", [False] * d_dim)
+    periodic_axes = np.asarray(pbc_raw, dtype=bool)
+    if periodic_axes.shape != (d_dim,):
+        raise ValueError(
+            f"{dataset_metadata_path} 'periodic_boundary_conditions' must have "
+            f"length D={d_dim}; got {pbc_raw!r}"
+        )
 
     ckpt_hash = _hash_directory(ckpt_dir)
     runtime_metadata = replace(
@@ -324,11 +427,17 @@ def convert_rollout_dir(
         ckpt_path=str(ckpt_dir),
         write_every=write_every,
         write_every_source=write_every_source,
+        periodic_boundary_conditions=tuple(bool(x) for x in periodic_axes.tolist()),
     )
     if runtime_metadata.write_every_source not in {"dataset", "default"}:
         raise ValueError(
             f"write_every_source must be 'dataset' or 'default'; got "
             f"{runtime_metadata.write_every_source!r}"
+        )
+    if len(runtime_metadata.periodic_boundary_conditions) != d_dim:
+        raise ValueError(
+            f"periodic_boundary_conditions length "
+            f"{len(runtime_metadata.periodic_boundary_conditions)} must equal D={d_dim}"
         )
 
     written: list[Path] = []
@@ -359,7 +468,12 @@ def convert_rollout_dir(
                 f"{pkl_path} particle_type shape {particle_type.shape} "
                 f"must be ({n_particles},) to match predicted_rollout"
             )
-        velocities = _central_diff_velocities(positions, dt_rollout)
+        velocities = _central_diff_velocities(
+            positions,
+            dt_rollout,
+            domain_extent=domain_extent,
+            periodic_axes=periodic_axes,
+        )
         particle_mass = np.ones(n_particles, dtype=np.float64)
         if particle_mass.shape != (n_particles,):
             raise ValueError(

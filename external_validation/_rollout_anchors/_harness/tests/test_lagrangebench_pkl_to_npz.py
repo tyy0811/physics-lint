@@ -53,12 +53,16 @@ def _write_metadata_json(
     dt: float = 0.005,
     write_every: int | None = 100,
     bounds: list[list[float]] | None = None,
+    periodic_boundary_conditions: list[bool] | None = None,
 ) -> None:
     """Write a synthetic LagrangeBench-shaped metadata.json.
 
     bounds default is 2D unit square in (D, 2) per-axis-[min, max] layout.
     Pass ``write_every=None`` to omit the field (mimics the tutorial
     fixture ``tests/3D_LJ_3_1214every1/metadata.json``).
+    Pass ``periodic_boundary_conditions=None`` to omit it (defaults to
+    all-False per axis in conversion); pass ``[True, True]`` etc. to
+    exercise the periodic-distance path.
     """
     if bounds is None:
         bounds = [[0.0, 1.0], [0.0, 1.0]]
@@ -68,6 +72,8 @@ def _write_metadata_json(
     }
     if write_every is not None:
         payload["write_every"] = write_every
+    if periodic_boundary_conditions is not None:
+        payload["periodic_boundary_conditions"] = periodic_boundary_conditions
     with open(path, "w") as f:
         json.dump(payload, f)
 
@@ -149,6 +155,110 @@ def test_central_diff_velocities_endpoints_first_order() -> None:
 def test_central_diff_velocities_requires_two_timesteps() -> None:
     with pytest.raises(ValueError, match="T >= 2"):
         _central_diff_velocities(np.zeros((1, 4, 2)), dt=0.1)
+
+
+# ---------------------------------------------------------------------------
+# 1b. Periodic-distance correction (D0-17, motivated by rung-3.5 spot-check)
+# ---------------------------------------------------------------------------
+
+
+def test_central_diff_periodic_wraparound_corrects_one_step_jump() -> None:
+    """Single-step wraparound: pos jumps from 0.95 -> 0.05 across t=0,1.
+
+    Forward diff at t=0: naive = (0.05 - 0.95) / dt = -0.9/dt;
+    periodic = (0.05 - 0.95 - 1.0 * round(-0.9)) / dt = (-0.9 + 1.0) / dt = +0.1/dt.
+
+    Physical interpretation: particle moved +0.1 (forward through the
+    boundary), not -0.9 (backward across the entire domain).
+    """
+    positions = np.array(
+        [[[0.95, 0.5]], [[0.05, 0.5]], [[0.15, 0.5]]],  # +0.1 per step, wraps at t=0->1
+        dtype=np.float64,
+    )
+    dt = 1.0
+    extent = np.array([1.0, 1.0])
+    pa = np.array([True, True])
+
+    v_naive = _central_diff_velocities(positions, dt)
+    v_periodic = _central_diff_velocities(positions, dt, domain_extent=extent, periodic_axes=pa)
+
+    # Forward diff at t=0:
+    np.testing.assert_allclose(v_naive[0, 0, 0], -0.9 / dt)  # spurious O(L/dt)
+    np.testing.assert_allclose(v_periodic[0, 0, 0], 0.1 / dt, atol=1e-12)  # physical
+
+    # Interior central diff at t=1:
+    # naive: (0.15 - 0.95) / (2 dt) = -0.4
+    # periodic: delta = -0.8; round(-0.8) = -1; corrected = -0.8 - (-1.0) = 0.2 → 0.1
+    np.testing.assert_allclose(v_naive[1, 0, 0], -0.4 / dt)
+    np.testing.assert_allclose(v_periodic[1, 0, 0], 0.1 / dt, atol=1e-12)
+
+    # Periodic-corrected |v| should be bounded by L/2 / dt = 0.5
+    assert np.abs(v_periodic).max() <= 0.5 + 1e-12
+
+    # Y-axis is unchanged in this scenario (particle stays at y=0.5)
+    np.testing.assert_allclose(v_periodic[..., 1], 0.0, atol=1e-12)
+
+
+def test_central_diff_no_op_when_periodic_axes_all_false() -> None:
+    """Non-periodic fallback: periodic_axes all-False ≡ no periodic_axes ≡ naive.
+
+    Rules out the case where someone accidentally applies the wrap to a
+    non-periodic dataset and silently corrupts velocities the other way.
+    """
+    rng = np.random.default_rng(20260504)
+    positions = rng.uniform(0.0, 1.0, size=(8, 5, 3))  # arbitrary trajectory
+    dt = 0.1
+
+    v_no_arg = _central_diff_velocities(positions, dt)
+    v_pa_false = _central_diff_velocities(
+        positions,
+        dt,
+        domain_extent=np.array([1.0, 1.0, 1.0]),
+        periodic_axes=np.array([False, False, False]),
+    )
+    np.testing.assert_array_equal(v_no_arg, v_pa_false)
+
+
+def test_central_diff_periodic_no_op_when_no_boundary_crossing() -> None:
+    """Regression guard: trajectory that stays in domain interior (no wraparound)
+    must produce bit-identical velocities under naive and periodic-corrected paths.
+
+    A particle that never crosses a boundary has true central-diff delta
+    bounded well below L/2; the periodic correction's ``round(delta / L)``
+    is always zero on those frames, so the correction is a no-op.
+    """
+    # Particle stays inside [0.3, 0.7] x [0.3, 0.7] across 10 timesteps
+    rng = np.random.default_rng(42)
+    positions = 0.3 + 0.4 * rng.uniform(0.0, 1.0, size=(10, 6, 2))
+    dt = 0.05
+    extent = np.array([1.0, 1.0])
+    pa = np.array([True, True])
+
+    v_naive = _central_diff_velocities(positions, dt)
+    v_periodic = _central_diff_velocities(positions, dt, domain_extent=extent, periodic_axes=pa)
+    np.testing.assert_allclose(v_naive, v_periodic, atol=1e-12)
+
+
+def test_central_diff_validates_periodic_axes_shape() -> None:
+    positions = np.zeros((3, 4, 2), dtype=np.float64)
+    with pytest.raises(ValueError, match=r"periodic_axes shape"):
+        _central_diff_velocities(
+            positions,
+            dt=0.1,
+            domain_extent=np.array([1.0, 1.0]),
+            periodic_axes=np.array([True, True, True]),  # D=3 != positions D=2
+        )
+
+
+def test_central_diff_validates_domain_extent_shape() -> None:
+    positions = np.zeros((3, 4, 2), dtype=np.float64)
+    with pytest.raises(ValueError, match=r"domain_extent shape"):
+        _central_diff_velocities(
+            positions,
+            dt=0.1,
+            domain_extent=np.array([1.0, 1.0, 1.0]),  # D=3 != positions D=2
+            periodic_axes=np.array([True, True]),
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +396,115 @@ def test_write_every_source_dataset_when_present(tmp_path: Path) -> None:
     assert rollout.metadata["write_every"] == 50
     assert rollout.metadata["write_every_source"] == "dataset"
     assert rollout.dt == pytest.approx(0.01 * 50)
+
+
+def test_periodic_boundary_conditions_threaded_to_metadata(tmp_path: Path) -> None:
+    """When LB metadata.json carries periodic_boundary_conditions, it lands in the npz metadata."""
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, True])
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    written = convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+    rollout = load_rollout_npz(written[0])
+    assert rollout.metadata["periodic_boundary_conditions"] == [True, True]
+
+
+def test_periodic_boundary_conditions_default_false_when_missing(tmp_path: Path) -> None:
+    """Defensive default: missing key in metadata.json -> [False, False, ...] per axis."""
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=None)  # omit key
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    written = convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+    rollout = load_rollout_npz(written[0])
+    assert rollout.metadata["periodic_boundary_conditions"] == [False, False]
+
+
+def test_periodic_correction_changes_velocities_for_wraparound_trajectory(tmp_path: Path) -> None:
+    """End-to-end: periodic-aware conversion produces bounded velocities on a wraparound rollout.
+
+    Synthesize a particle that crosses the periodic boundary mid-trajectory.
+    Without periodic correction (periodic_boundary_conditions=[False, False]),
+    the converted velocities are O(L/dt) at wraparound frames.
+    With periodic correction ([True, True]), velocities stay bounded by
+    physical magnitude.
+    """
+    import pickle as _pickle
+
+    n_t, n_p = 10, 1
+    # Particle at (0.5, 0.5) drifting +0.1 in x per step; wraps at t=5
+    positions = np.zeros((n_t, n_p, 2), dtype=np.float32)
+    for t in range(n_t):
+        positions[t, 0, 0] = (0.5 + 0.1 * t) % 1.0
+        positions[t, 0, 1] = 0.5
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    blob = {
+        "predicted_rollout": positions,
+        "ground_truth_rollout": positions[:1],
+        "particle_type": np.zeros(n_p, dtype=np.int32),
+    }
+    with open(rollout_dir / "rollout_0.pkl", "wb") as f:
+        _pickle.dump(blob, f)
+
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    # Non-periodic conversion: spurious O(L/dt) velocity at wraparound
+    md_path = tmp_path / "metadata_nonperiodic.json"
+    _write_metadata_json(
+        md_path, dt=1.0, write_every=1, periodic_boundary_conditions=[False, False]
+    )
+    written_naive = convert_rollout_dir(
+        rollout_dir,
+        md_path,
+        ckpt_dir,
+        metadata=_caller_metadata(),
+        output_dir=tmp_path / "out_naive",
+    )
+    r_naive = load_rollout_npz(written_naive[0])
+
+    # Periodic conversion: physical velocity (~0.1)
+    md_path_p = tmp_path / "metadata_periodic.json"
+    _write_metadata_json(
+        md_path_p, dt=1.0, write_every=1, periodic_boundary_conditions=[True, True]
+    )
+    written_periodic = convert_rollout_dir(
+        rollout_dir,
+        md_path_p,
+        ckpt_dir,
+        metadata=_caller_metadata(),
+        output_dir=tmp_path / "out_periodic",
+    )
+    r_periodic = load_rollout_npz(written_periodic[0])
+
+    # Physical max v = 0.1 / dt = 0.1; naive central-diff at wraparound frames
+    # gives -(L - 2*0.1) / (2 dt) = -0.4 (spurious O(L/dt)).
+    naive_max = float(np.abs(r_naive.velocities).max())
+    periodic_max = float(np.abs(r_periodic.velocities).max())
+    assert naive_max > 3 * periodic_max, (
+        f"naive should be substantially larger than periodic "
+        f"(spurious wraparound velocity); got naive={naive_max:.3f}, periodic={periodic_max:.3f}"
+    )
+    np.testing.assert_allclose(naive_max, 0.4, atol=0.01)  # analytical spurious magnitude
+    np.testing.assert_allclose(periodic_max, 0.1, atol=0.01)  # physical drift magnitude
+
+
+def test_rejects_periodic_boundary_conditions_wrong_length(tmp_path: Path) -> None:
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, True, True])  # D=3 != 2
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    with pytest.raises(ValueError, match=r"periodic_boundary_conditions"):
+        convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
 
 
 def test_write_every_source_default_when_missing(tmp_path: Path) -> None:
