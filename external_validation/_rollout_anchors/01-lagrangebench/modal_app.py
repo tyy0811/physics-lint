@@ -72,9 +72,13 @@ def jax_micro_gate() -> dict:
     Returns a dict with the device list, default backend, and a derived
     ``has_gpu`` boolean. Caller (``main``) classifies against the
     D0-10 + D0-13 spirit-reading: any CUDA-compatible GPU device passes;
-    CPU-only return triggers the D0-10 pivot.
+    CPU-only return triggers the D0-10 pivot. Also returns the resolved
+    jax + jaxlib versions so the audit trail captures *which* JAX-CUDA
+    stack passed the gate (matters when the Python pin or upstream
+    constraints change which versions pip resolves to).
     """
     import jax
+    import jaxlib
 
     devices = jax.devices()
     backend = jax.default_backend()
@@ -85,6 +89,7 @@ def jax_micro_gate() -> dict:
         "has_gpu": has_gpu,
         "device_count": len(devices),
         "jax_version": jax.__version__,
+        "jaxlib_version": jaxlib.__version__,
     }
 
 
@@ -95,6 +100,7 @@ def main() -> None:
     print("=== JAX micro-gate verdict (D0-10 + D0-13) ===")
     print(f"  gpu_class:       {MICRO_GATE_GPU_CLASS}")
     print(f"  jax_version:     {result['jax_version']}")
+    print(f"  jaxlib_version:  {result['jaxlib_version']}")
     print(f"  default_backend: {result['default_backend']}")
     print(f"  device_count:    {result['device_count']}")
     print(f"  devices:         {result['devices']}")
@@ -159,6 +165,7 @@ def lagrangebench_install_smoke() -> dict:
 
     # Sub-check 2: JAX still sees GPU after the LagrangeBench import
     import jax
+    import jaxlib
 
     devices = jax.devices()
     has_gpu = any(d.platform == "gpu" for d in devices)
@@ -191,6 +198,7 @@ def lagrangebench_install_smoke() -> dict:
         "lagrangebench_file": lb_file,
         "lagrangebench_import_error": lb_import_error,
         "jax_version_after_lb_import": jax.__version__,
+        "jaxlib_version_after_lb_import": jaxlib.__version__,
         "jax_has_gpu_after_lb_import": has_gpu,
         "jax_devices_after_lb_import": [str(d) for d in devices],
         "smoke_returncode": smoke_returncode,
@@ -210,9 +218,10 @@ def lagrangebench_smoke() -> None:
     print(f"  lagrangebench_file:            {result['lagrangebench_file']}")
     if result["lagrangebench_import_error"]:
         print(f"  lagrangebench_import_error:    {result['lagrangebench_import_error']}")
-    print(f"  jax_version_after_lb_import:   {result['jax_version_after_lb_import']}")
-    print(f"  jax_has_gpu_after_lb_import:   {result['jax_has_gpu_after_lb_import']}")
-    print(f"  jax_devices_after_lb_import:   {result['jax_devices_after_lb_import']}")
+    print(f"  jax_version_after_lb_import:    {result['jax_version_after_lb_import']}")
+    print(f"  jaxlib_version_after_lb_import: {result['jaxlib_version_after_lb_import']}")
+    print(f"  jax_has_gpu_after_lb_import:    {result['jax_has_gpu_after_lb_import']}")
+    print(f"  jax_devices_after_lb_import:    {result['jax_devices_after_lb_import']}")
     print(f"  smoke_returncode:              {result['smoke_returncode']}")
     print("  --- smoke stdout (last 2 KB) ---")
     print(result["smoke_stdout_tail"] or "(empty)")
