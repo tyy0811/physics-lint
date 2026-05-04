@@ -44,6 +44,8 @@ Day 0.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -177,6 +179,242 @@ def mass_defect(
     m1 = total_mass(snapshot_t1)
     eps = 1e-12
     return float(abs(m1 - m0) / max(abs(m0), eps))
+
+
+# ---------------------------------------------------------------------------
+# Rollout-level read-only path (Day 0.5)
+# ---------------------------------------------------------------------------
+#
+# Time-resolved analogues of PH-CON-001/002/003 on cached `.npz` rollouts,
+# computed directly from particle positions, velocities, and per-particle
+# mass — no JAX dependency. Emission forms mirror the public rules so the
+# harness output is comparable in scalar shape:
+#
+#   PH-CON-001 (mass)        → max |M(t) - M(0)| / max(|M(0)|, eps)
+#   PH-CON-002 (energy)      → max |E(t) - E(0)| / max(|E(0)|, eps)
+#   PH-CON-003 (dE/dt sign)  → max(0, max(dE/dt)) / max(|E_max|, eps)
+#
+# Caveat per `physics-lint-validation/DECISIONS.md` D0-03: the public
+# PH-CON-001/002/003 rules are heat-or-wave-only in V1 (return SKIPPED on
+# `pde != "heat"`/"wave"). The harness's rollout-level functions below
+# *reapply the structural-conservation identities* on particle data —
+# this is structural-identity reapplication, not a public-API rule
+# invocation. The cross-stack table in `_rollout_anchors/README.md`
+# captures the routing.
+
+
+@dataclass(frozen=True)
+class ParticleRollout:
+    """A trajectory of T snapshots, in harness-internal form.
+
+    Decoupled from the on-disk `.npz` schema (`SCHEMA.md` §1) so synthetic
+    fixtures can construct rollouts in-memory and consumers can construct
+    them from cached files via :func:`load_rollout_npz`.
+
+    Particle count and per-particle mass / type are constant across the
+    trajectory; particle creation / destruction is not supported in V1.
+    """
+
+    positions: np.ndarray  # (T, N_particles, D)  fp64 internal
+    velocities: np.ndarray  # (T, N_particles, D)  fp64 internal
+    particle_type: np.ndarray  # (N_particles,)
+    particle_mass: np.ndarray  # (N_particles,)
+    dt: float
+    domain_box: np.ndarray  # (2, D)  [[xmin,...], [xmax,...]]
+    metadata: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        if self.positions.shape != self.velocities.shape:
+            raise ValueError(
+                f"positions {self.positions.shape} != velocities {self.velocities.shape}"
+            )
+        if self.positions.ndim != 3:
+            raise ValueError(f"positions must be (T, N, D); got shape {self.positions.shape}")
+        n_particles = self.positions.shape[1]
+        if self.particle_type.shape != (n_particles,):
+            raise ValueError(
+                f"particle_type shape {self.particle_type.shape} must be ({n_particles},)"
+            )
+        if self.particle_mass.shape != (n_particles,):
+            raise ValueError(
+                f"particle_mass shape {self.particle_mass.shape} must be ({n_particles},)"
+            )
+        if self.domain_box.shape != (2, self.positions.shape[2]):
+            raise ValueError(
+                f"domain_box shape {self.domain_box.shape} must be (2, D={self.positions.shape[2]})"
+            )
+
+    @property
+    def n_timesteps(self) -> int:
+        return int(self.positions.shape[0])
+
+    @property
+    def n_particles(self) -> int:
+        return int(self.positions.shape[1])
+
+    def snapshot_at(self, t_idx: int) -> ParticleSnapshot:
+        """Return the t_idx-th timestep as a snapshot-shaped view."""
+        return ParticleSnapshot(
+            positions=self.positions[t_idx],
+            velocities=self.velocities[t_idx],
+            particle_type=self.particle_type,
+            particle_mass=self.particle_mass,
+        )
+
+
+def load_rollout_npz(path: Path | str) -> ParticleRollout:
+    """Read a `particle_rollout.npz` file per `SCHEMA.md` §1.
+
+    Uses ``np.load(allow_pickle=True)`` to round-trip the metadata dict;
+    metadata is validated only loosely (presence of required keys per
+    `SCHEMA.md`, types not deeply checked). The caller is expected to
+    have already validated checkpoint hashes / git SHAs / framework
+    versions out-of-band.
+
+    Returns
+    -------
+    ParticleRollout
+
+    Raises
+    ------
+    KeyError
+        If required schema fields are missing from the .npz.
+    ValueError
+        If shapes / dtypes are inconsistent with the schema.
+    """
+    p = Path(path)
+    with np.load(p, allow_pickle=True) as data:
+        required = {
+            "positions",
+            "velocities",
+            "particle_type",
+            "particle_mass",
+            "dt",
+            "domain_box",
+            "metadata",
+        }
+        missing = required - set(data.files)
+        if missing:
+            raise KeyError(f"particle_rollout.npz {p} missing required fields: {sorted(missing)}")
+        positions = np.asarray(data["positions"], dtype=float)
+        velocities = np.asarray(data["velocities"], dtype=float)
+        particle_type = np.asarray(data["particle_type"])
+        particle_mass = np.asarray(data["particle_mass"], dtype=float)
+        dt_arr = data["dt"]
+        dt = float(dt_arr.item() if hasattr(dt_arr, "item") else dt_arr)
+        domain_box = np.asarray(data["domain_box"], dtype=float)
+        meta_obj = data["metadata"]
+        metadata: dict[str, Any] = meta_obj.item() if hasattr(meta_obj, "item") else dict(meta_obj)
+    return ParticleRollout(
+        positions=positions,
+        velocities=velocities,
+        particle_type=particle_type,
+        particle_mass=particle_mass,
+        dt=dt,
+        domain_box=domain_box,
+        metadata=metadata,
+    )
+
+
+def save_rollout_npz(rollout: ParticleRollout, path: Path | str) -> Path:
+    """Write a `ParticleRollout` to disk per `SCHEMA.md` §1.
+
+    Round-trippable with :func:`load_rollout_npz`. Used by the synthetic
+    fixture builders under `_harness/tests/synthetic_rollouts.py` to
+    produce real on-disk `.npz` files for round-trip tests.
+    """
+    out = Path(path).resolve()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(
+        out,
+        positions=rollout.positions.astype(np.float32),
+        velocities=rollout.velocities.astype(np.float32),
+        particle_type=rollout.particle_type.astype(np.int32),
+        particle_mass=rollout.particle_mass.astype(np.float64),
+        dt=np.float64(rollout.dt),
+        domain_box=rollout.domain_box.astype(np.float64),
+        metadata=np.array(rollout.metadata, dtype=object),
+    )
+    return out
+
+
+def total_mass_series(rollout: ParticleRollout) -> np.ndarray:
+    """(T,) array of M(t) = Σ m_i across all particles at each timestep.
+
+    Particle masses are time-invariant in V1, so this is constant. The
+    function exists for symmetry with :func:`kinetic_energy_series` and
+    so future versions that admit particle creation / destruction can
+    populate a non-trivial series without changing the consumer surface.
+    """
+    return np.broadcast_to(np.sum(rollout.particle_mass), (rollout.n_timesteps,)).astype(float)
+
+
+def kinetic_energy_series(rollout: ParticleRollout) -> np.ndarray:
+    """(T,) array of KE(t) = Σ (1/2) m_i ||v_i(t)||²."""
+    # rollout.velocities is (T, N, D); per-particle KE_i(t) = 0.5 m_i |v_i(t)|^2.
+    speeds_sq = np.sum(rollout.velocities**2, axis=2)  # (T, N)
+    weighted = 0.5 * speeds_sq * rollout.particle_mass[None, :]  # (T, N)
+    return np.sum(weighted, axis=1).astype(float)  # (T,)
+
+
+def mass_conservation_defect(rollout: ParticleRollout) -> float:
+    """max |M(t) - M(0)| / max(|M(0)|, eps).
+
+    Mirrors PH-CON-001's emitted `relative_drift` form. Zero for
+    closed-system rollouts (LagrangeBench TGV / dam break with fixed
+    particle count and time-invariant per-particle mass).
+    """
+    m_series = total_mass_series(rollout)
+    m0 = float(m_series[0])
+    drift = float(np.max(np.abs(m_series - m0)))
+    eps = 1e-12
+    return drift / max(abs(m0), eps)
+
+
+def energy_drift(rollout: ParticleRollout) -> float:
+    """max |E(t) - E(0)| / max(|E(0)|, eps).
+
+    Mirrors PH-CON-002's emitted `drift` form on E = kinetic energy
+    (potential energy lives in inter-particle interactions and is not
+    accessible from positions+velocities alone — this is the "what
+    physics-lint did NOT catch" caveat for KE-only rollouts; see
+    `_rollout_anchors/README.md`).
+
+    Zero for conservative rollouts; non-zero and growing for dissipative
+    rollouts. The harness emits the raw drift; downstream interpretation
+    against PH-CON-002's tristate floor classification is left to the
+    test harness or to Day 1+'s SARIF emitter.
+    """
+    e_series = kinetic_energy_series(rollout)
+    e0 = float(e_series[0])
+    drift = float(np.max(np.abs(e_series - e0)))
+    eps = 1e-12
+    return drift / max(abs(e0), eps)
+
+
+def dissipation_sign_violation(rollout: ParticleRollout) -> float:
+    """max(0, max(dE/dt)) / max(|E_max|, eps).
+
+    Mirrors PH-CON-003's emitted `violation` form. Zero for strictly
+    dissipative or strictly conservative rollouts (dE/dt ≤ 0 or = 0
+    everywhere); non-zero for rollouts where the model spuriously gains
+    energy at any timestep.
+
+    Uses forward differences ``np.diff(E) / dt`` to match PH-CON-003's
+    Week-2 endpoint-pathology fix verbatim — second-order ``np.gradient``
+    edge-extrapolation produces spurious positive endpoint slopes on
+    fast-decaying signals; forward differences sample at nt - 1 step
+    boundaries and have no such pathology.
+    """
+    if rollout.n_timesteps < 2:
+        raise ValueError(
+            f"dissipation_sign_violation needs at least 2 timesteps; got {rollout.n_timesteps}"
+        )
+    e_series = kinetic_energy_series(rollout)
+    de_dt = np.diff(e_series) / rollout.dt
+    max_growth = float(np.max(de_dt))
+    e_scale = max(float(np.max(e_series)), 1e-12)
+    return max(0.0, max_growth) / e_scale
 
 
 # ---------------------------------------------------------------------------
