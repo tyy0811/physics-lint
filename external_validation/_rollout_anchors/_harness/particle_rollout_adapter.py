@@ -194,6 +194,13 @@ def mass_defect(
 #   PH-CON-002 (energy)      → max |E(t) - E(0)| / max(|E(0)|, eps)
 #   PH-CON-003 (dE/dt sign)  → max(0, max(dE/dt)) / max(|E_max|, eps)
 #
+# All three functions return a HarnessDefect dataclass that is either
+# (value=numeric, skip_reason=None) for a computed defect or
+# (value=None, skip_reason=str) for an input-domain mismatch — see
+# DECISIONS.md D0-08 for the KE-rest skip threshold pre-registration.
+# This polymorphic shape mirrors physics_lint.report.RuleResult's
+# (status="PASS"/"WARN"/"FAIL"/"SKIPPED", raw_value=...) idiom.
+#
 # Caveat per `physics-lint-validation/DECISIONS.md` D0-03: the public
 # PH-CON-001/002/003 rules are heat-or-wave-only in V1 (return SKIPPED on
 # `pde != "heat"`/"wave"). The harness's rollout-level functions below
@@ -201,6 +208,40 @@ def mass_defect(
 # this is structural-identity reapplication, not a public-API rule
 # invocation. The cross-stack table in `_rollout_anchors/README.md`
 # captures the routing.
+
+# Pre-registered KE-rest skip-with-reason threshold per
+# DECISIONS.md D0-08. Absolute, in the dataset's natural KE units; v1
+# scope. v1.1 may switch to a relative-within-rollout form once
+# cross-dataset comparison becomes load-bearing. If a real dataset
+# surfaces KE(0) within an order of magnitude of this threshold, log a
+# new D0-09+ entry and amend; do not silently shift.
+KE_REST_THRESHOLD: float = 1e-10
+
+
+@dataclass(frozen=True)
+class HarnessDefect:
+    """Result of a rollout-level defect computation.
+
+    Mirrors the polymorphic shape of ``physics_lint.report.RuleResult``:
+    either ``value`` is set (computed numeric defect, ready for the
+    SARIF properties.raw_value field) or ``value is None`` and
+    ``skip_reason`` is set (input-domain mismatch — analogous to
+    ``RuleResult.status = "SKIPPED"``).
+
+    Exactly one of ``value`` / ``skip_reason`` must be populated; the
+    constructor enforces this so downstream consumers can branch on
+    ``defect.value is None`` without ambiguity.
+    """
+
+    value: float | None = None
+    skip_reason: str | None = None
+
+    def __post_init__(self) -> None:
+        if (self.value is None) == (self.skip_reason is None):
+            raise ValueError(
+                "HarnessDefect must have exactly one of value, skip_reason set; "
+                f"got value={self.value!r}, skip_reason={self.skip_reason!r}"
+            )
 
 
 @dataclass(frozen=True)
@@ -357,22 +398,27 @@ def kinetic_energy_series(rollout: ParticleRollout) -> np.ndarray:
     return np.sum(weighted, axis=1).astype(float)  # (T,)
 
 
-def mass_conservation_defect(rollout: ParticleRollout) -> float:
+def mass_conservation_defect(rollout: ParticleRollout) -> HarnessDefect:
     """max |M(t) - M(0)| / max(|M(0)|, eps).
 
     Mirrors PH-CON-001's emitted `relative_drift` form. Zero for
     closed-system rollouts (LagrangeBench TGV / dam break with fixed
     particle count and time-invariant per-particle mass).
+
+    Always returns a numeric value (never skips): M(0) = sum(particle_mass)
+    is strictly positive in any physical configuration. The HarnessDefect
+    return type is preserved for downstream SARIF emission symmetry with
+    energy_drift / dissipation_sign_violation per DECISIONS.md D0-08.
     """
     m_series = total_mass_series(rollout)
     m0 = float(m_series[0])
     drift = float(np.max(np.abs(m_series - m0)))
     eps = 1e-12
-    return drift / max(abs(m0), eps)
+    return HarnessDefect(value=drift / max(abs(m0), eps))
 
 
-def energy_drift(rollout: ParticleRollout) -> float:
-    """max |E(t) - E(0)| / max(|E(0)|, eps).
+def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
+    """max |E(t) - E(0)| / max(|E(0)|, eps), or SKIP if KE(0) below threshold.
 
     Mirrors PH-CON-002's emitted `drift` form on E = kinetic energy
     (potential energy lives in inter-particle interactions and is not
@@ -381,24 +427,39 @@ def energy_drift(rollout: ParticleRollout) -> float:
     `_rollout_anchors/README.md`).
 
     Zero for conservative rollouts; non-zero and growing for dissipative
-    rollouts. The harness emits the raw drift; downstream interpretation
-    against PH-CON-002's tristate floor classification is left to the
-    test harness or to Day 1+'s SARIF emitter.
+    rollouts. SKIPS with reason when KE(0) < ``KE_REST_THRESHOLD``
+    (pre-registered in DECISIONS.md D0-08): a near-zero KE(0) makes the
+    relative drift undefined, and the eps-floored denominator otherwise
+    inflates the emitted value to a meaningless large number.
+
+    The harness emits the raw drift (or a SKIP); downstream
+    interpretation against PH-CON-002's tristate floor classification
+    is left to the test harness or to Day 1+'s SARIF emitter.
     """
     e_series = kinetic_energy_series(rollout)
     e0 = float(e_series[0])
+    if abs(e0) < KE_REST_THRESHOLD:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"KE(0)={e0:.3e} < {KE_REST_THRESHOLD:.0e} (rollout starts at "
+                f"rest; relative drift undefined; see DECISIONS.md D0-08)"
+            ),
+        )
     drift = float(np.max(np.abs(e_series - e0)))
-    eps = 1e-12
-    return drift / max(abs(e0), eps)
+    return HarnessDefect(value=drift / abs(e0))
 
 
-def dissipation_sign_violation(rollout: ParticleRollout) -> float:
-    """max(0, max(dE/dt)) / max(|E_max|, eps).
+def dissipation_sign_violation(rollout: ParticleRollout) -> HarnessDefect:
+    """max(0, max(dE/dt)) / max(|E_max|, eps), or SKIP if max(KE) below threshold.
 
     Mirrors PH-CON-003's emitted `violation` form. Zero for strictly
     dissipative or strictly conservative rollouts (dE/dt ≤ 0 or = 0
     everywhere); non-zero for rollouts where the model spuriously gains
-    energy at any timestep.
+    energy at any timestep. SKIPS with reason when ``max(KE) <
+    KE_REST_THRESHOLD`` (the trajectory has effectively no kinetic
+    energy at any timestep, so the dissipation question is meaningless;
+    pre-registered in DECISIONS.md D0-08).
 
     Uses forward differences ``np.diff(E) / dt`` to match PH-CON-003's
     Week-2 endpoint-pathology fix verbatim — second-order ``np.gradient``
@@ -411,10 +472,19 @@ def dissipation_sign_violation(rollout: ParticleRollout) -> float:
             f"dissipation_sign_violation needs at least 2 timesteps; got {rollout.n_timesteps}"
         )
     e_series = kinetic_energy_series(rollout)
+    e_max = float(np.max(e_series))
+    if e_max < KE_REST_THRESHOLD:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"max(KE)={e_max:.3e} < {KE_REST_THRESHOLD:.0e} (trajectory "
+                f"has no kinetic energy; dissipation question undefined; "
+                f"see DECISIONS.md D0-08)"
+            ),
+        )
     de_dt = np.diff(e_series) / rollout.dt
     max_growth = float(np.max(de_dt))
-    e_scale = max(float(np.max(e_series)), 1e-12)
-    return max(0.0, max_growth) / e_scale
+    return HarnessDefect(value=max(0.0, max_growth) / e_max)
 
 
 # ---------------------------------------------------------------------------

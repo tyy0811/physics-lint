@@ -217,7 +217,7 @@ trajectories for ``eval.n_trajs > 1``). The same form applies to
 Pre-registered before SEGNN/GNS runs. If pilot data shows SEGNN at, e.g.,
 10⁻⁴ instead of 10⁻⁶, the threshold is **not** silently amended; the
 divergence is logged in `physics-lint-validation/DECISIONS.md` as a
-D0-08+ entry citing the discrepancy explicitly, and the band may be
+D0-09+ entry citing the discrepancy explicitly, and the band may be
 amended only with the discrepancy reproduced verbatim in the writeup.
 
 ### 4.3 §4.2 fixture-construction tolerance distinction
@@ -234,6 +234,54 @@ The fixture-construction tolerance does NOT gate Gate B. Gate B is gated
 by ε_harness_vs_public (§4.1), the *cross-path* difference, not the
 absolute-error of either path alone.
 
+### 4.4 KE-rest skip-with-reason threshold (read-only path)
+
+Pre-registered in `physics-lint-validation/DECISIONS.md` D0-08. The
+particle harness's read-only-path defect functions
+(``energy_drift``, ``dissipation_sign_violation``) skip with a string
+reason rather than emit a numeric defect when the rollout's reference
+KE is below the threshold:
+
+    KE_REST_THRESHOLD = 1e-10   # absolute, in the dataset's natural KE units
+
+- ``energy_drift(rollout)`` SKIPS when ``KE(t=0) < KE_REST_THRESHOLD``:
+  the relative drift ``max|KE(t) − KE(0)| / |KE(0)|`` is undefined for
+  rollouts that start at rest, and the eps-floored denominator
+  otherwise inflates the emitted value to a meaningless large finite
+  number.
+- ``dissipation_sign_violation(rollout)`` SKIPS when ``max_t KE(t) <
+  KE_REST_THRESHOLD``: the trajectory has effectively no kinetic
+  energy at any timestep, so the dissipation question is meaningless.
+- ``mass_conservation_defect(rollout)`` is **not** subject to a skip
+  threshold (M(0) > 0 in any physical configuration); the
+  ``HarnessDefect`` return type is preserved for downstream SARIF
+  emission symmetry.
+
+Both functions return a ``HarnessDefect`` dataclass that is either
+``(value=numeric, skip_reason=None)`` or ``(value=None, skip_reason=str)``;
+the constructor enforces exactly-one-set so consumers can branch on
+``defect.value is None`` without ambiguity. The SARIF emitter renders
+``skip_reason``-set defects as ``result.kind = "informational"``
+entries with the reason in ``result.message.text`` — analogous to
+physics-lint's ``RuleResult.status = "SKIPPED"`` rendering.
+
+Threshold form is **absolute** (1e-10 in the dataset's natural KE
+units), not relative-within-rollout (``KE(0) < 1e-10 * max(KE)``).
+The absolute form is dataset-specific and acknowledged as such; a
+v1.1 escape hatch may switch to the relative-within-rollout form
+when cross-dataset comparison becomes load-bearing. The simpler
+absolute form is fine for v1 because (a) physical SPH rollouts have
+KE(0) of order unity in their natural units, well above 1e-10; (b)
+the only failure mode this catches at v1 is "all particles at rest
+at t=0", which is a categorical input-domain mismatch rather than a
+calibration gradient.
+
+If pilot data on Day 1 surfaces KE(0) within an order of magnitude
+of the threshold, log a new DECISIONS.md D0-09+ entry citing the
+discrepancy and amend the threshold — do not silently shift in
+code. The test ``test_ke_rest_threshold_matches_pre_registration``
+in ``test_read_only_path.py`` enforces this discipline.
+
 ---
 
 ## 5. Versioning
@@ -242,3 +290,6 @@ Schema version: `1.0`. Bumps land here first, with a one-line changelog
 below; adapters follow.
 
 - **1.0** (2026-05-04): initial schema, Day 0.
+- **1.1** (2026-05-04): §4.4 KE-rest skip-with-reason threshold pre-registered;
+  ``HarnessDefect`` polymorphic return type for read-only-path defects
+  (DECISIONS.md D0-08).

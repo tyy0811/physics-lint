@@ -27,6 +27,8 @@ import numpy as np
 import pytest
 
 from external_validation._rollout_anchors._harness.particle_rollout_adapter import (
+    KE_REST_THRESHOLD,
+    HarnessDefect,
     ParticleRollout,
     dissipation_sign_violation,
     energy_drift,
@@ -80,20 +82,28 @@ def test_load_rollout_npz_missing_field_raises(tmp_path):
 
 def test_constant_velocity_mass_conservation_zero():
     case = build_constant_velocity_rollout()
-    assert mass_conservation_defect(case.rollout) == case.expected_mass_conservation_defect == 0.0
+    result = mass_conservation_defect(case.rollout)
+    assert result.skip_reason is None
+    assert result.value == case.expected_mass_conservation_defect == 0.0
 
 
 def test_constant_velocity_energy_drift_zero():
     case = build_constant_velocity_rollout()
-    drift = energy_drift(case.rollout)
+    result = energy_drift(case.rollout)
+    assert result.skip_reason is None, f"unexpected skip: {result.skip_reason}"
     # Floating-point sum may pick up ~ machine epsilon; the analytical
     # value is exactly 0, so allow a tight bound rather than ==.
-    assert drift < 1e-12, f"constant-velocity energy_drift={drift:.6e} should be ~ machine epsilon"
+    assert result.value is not None
+    assert result.value < 1e-12, (
+        f"constant-velocity energy_drift={result.value:.6e} should be ~ machine epsilon"
+    )
 
 
 def test_constant_velocity_dissipation_zero():
     case = build_constant_velocity_rollout()
-    assert dissipation_sign_violation(case.rollout) == 0.0
+    result = dissipation_sign_violation(case.rollout)
+    assert result.skip_reason is None
+    assert result.value == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +113,9 @@ def test_constant_velocity_dissipation_zero():
 
 def test_damped_decay_mass_conservation_zero():
     case = build_damped_decay_rollout()
-    assert mass_conservation_defect(case.rollout) == 0.0
+    result = mass_conservation_defect(case.rollout)
+    assert result.skip_reason is None
+    assert result.value == 0.0
 
 
 def test_damped_decay_energy_drift_matches_analytic():
@@ -114,19 +126,22 @@ def test_damped_decay_energy_drift_matches_analytic():
     analytic value to a tight floating-point bound.
     """
     case = build_damped_decay_rollout()
-    drift = energy_drift(case.rollout)
+    result = energy_drift(case.rollout)
+    assert result.skip_reason is None
+    assert result.value is not None
     assert case.expected_energy_drift is not None
-    assert math.isclose(drift, case.expected_energy_drift, rel_tol=1e-6, abs_tol=1e-9), (
-        f"damped-decay energy_drift={drift:.6e} != analytic {case.expected_energy_drift:.6e}"
+    assert math.isclose(result.value, case.expected_energy_drift, rel_tol=1e-6, abs_tol=1e-9), (
+        f"damped-decay energy_drift={result.value:.6e} != analytic {case.expected_energy_drift:.6e}"
     )
 
 
 def test_damped_decay_dissipation_zero():
     """Strictly dissipative rollout: dE/dt < 0 always ⇒ violation = 0."""
     case = build_damped_decay_rollout()
-    violation = dissipation_sign_violation(case.rollout)
-    assert violation == 0.0, (
-        f"damped-decay dissipation_sign_violation={violation:.6e} should be 0 "
+    result = dissipation_sign_violation(case.rollout)
+    assert result.skip_reason is None
+    assert result.value == 0.0, (
+        f"damped-decay dissipation_sign_violation={result.value:.6e} should be 0 "
         f"(dE/dt < 0 at every step)"
     )
 
@@ -148,34 +163,49 @@ def test_damped_decay_kinetic_energy_series_monotone():
 
 
 def test_energy_growth_dissipation_violation_nonzero():
-    """Particle 0 accelerates linearly ⇒ violation > 0."""
+    """Particle 0 accelerates linearly ⇒ max(KE) > threshold ⇒ violation > 0.
+
+    KE(t) = 0.5 * (growth_rate * t)^2; for the default fixture this
+    grows from 0 to a moderate positive value, so max(KE) > KE_REST_THRESHOLD
+    ⇒ the dissipation rule does not skip.
+    """
     case = build_energy_growth_rollout()
-    violation = dissipation_sign_violation(case.rollout)
-    assert violation > 0.0, (
-        f"energy-growth rollout dissipation_sign_violation={violation:.6e} "
+    result = dissipation_sign_violation(case.rollout)
+    assert result.skip_reason is None, (
+        f"unexpected skip: {result.skip_reason} — synthetic rollout's KE grows "
+        f"to a non-trivial value; threshold tuning may be off"
+    )
+    assert result.value is not None
+    assert result.value > 0.0, (
+        f"energy-growth rollout dissipation_sign_violation={result.value:.6e} "
         f"should be strictly positive (dE/dt > 0 at every step)"
     )
 
 
-def test_energy_growth_energy_drift_nonzero():
-    """Linearly-growing speed ⇒ KE grows ⇒ drift = max|E - E(0)|/|E(0)| > 0.
+def test_energy_growth_energy_drift_skipped():
+    """KE(0) = 0 below KE_REST_THRESHOLD ⇒ energy_drift SKIPS with reason.
 
-    For the energy-growth synthetic, E(0) = 0 (all particles at rest).
-    The denominator-stabilisation in energy_drift falls back to eps =
-    1e-12, so the emitted drift is |E_max| / 1e-12 = a large finite
-    number. The test asserts non-zero but not a specific magnitude
-    because the eps-fallback floor is implementation detail, not
-    methodologically meaningful.
+    Per DECISIONS.md D0-08, the relative-drift quantity is undefined
+    when KE(0) is below 1e-10. The harness emits a HarnessDefect with
+    value=None and a string skip_reason that the SARIF emitter renders
+    as a SARIF result.kind = "informational" entry.
     """
     case = build_energy_growth_rollout()
-    drift = energy_drift(case.rollout)
-    assert drift > 0.0
+    result = energy_drift(case.rollout)
+    assert result.value is None, (
+        f"energy-growth rollout has KE(0) = 0; expected SKIP, got value={result.value:.6e}"
+    )
+    assert result.skip_reason is not None
+    assert "rest" in result.skip_reason or "KE(0)" in result.skip_reason
+    assert "D0-08" in result.skip_reason
 
 
 def test_energy_growth_mass_conservation_zero():
     """Mass is still conserved even when KE is not."""
     case = build_energy_growth_rollout()
-    assert mass_conservation_defect(case.rollout) == 0.0
+    result = mass_conservation_defect(case.rollout)
+    assert result.skip_reason is None
+    assert result.value == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -241,3 +271,33 @@ def test_snapshot_at_returns_consistent_view():
     np.testing.assert_array_equal(snap.velocities, case.rollout.velocities[5])
     np.testing.assert_array_equal(snap.particle_type, case.rollout.particle_type)
     np.testing.assert_array_equal(snap.particle_mass, case.rollout.particle_mass)
+
+
+# ---------------------------------------------------------------------------
+# HarnessDefect / skip-with-reason contract (DECISIONS.md D0-08)
+# ---------------------------------------------------------------------------
+
+
+def test_harness_defect_rejects_both_set():
+    """Constructor must reject defects with both value and skip_reason."""
+    with pytest.raises(ValueError, match=r"exactly one"):
+        HarnessDefect(value=0.42, skip_reason="oops")
+
+
+def test_harness_defect_rejects_neither_set():
+    """Constructor must reject defects with neither value nor skip_reason."""
+    with pytest.raises(ValueError, match=r"exactly one"):
+        HarnessDefect()
+
+
+def test_ke_rest_threshold_matches_pre_registration():
+    """KE_REST_THRESHOLD must equal the pre-registered value in DECISIONS.md D0-08.
+
+    If this assertion fires, the threshold has been silently amended
+    in code without an accompanying DECISIONS.md D0-09+ entry. Either
+    revert the code change or land the DECISIONS.md update first.
+    """
+    assert KE_REST_THRESHOLD == 1e-10, (
+        f"KE_REST_THRESHOLD={KE_REST_THRESHOLD!r} != pre-registered 1e-10 "
+        f"(DECISIONS.md D0-08); land a D0-09+ entry before amending"
+    )
