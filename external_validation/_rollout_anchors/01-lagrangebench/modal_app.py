@@ -555,7 +555,7 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
         ),
     },
     {
-        "ref": "physics-lint <this commit>",
+        "ref": "physics-lint 7254193",
         "layer": "library-internal",
         "relevance": "non-load-bearing",
         "summary": (
@@ -564,6 +564,21 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
             "forwards sinkhorn_kwargs to Geometry.__init__() which "
             "doesn't accept it; Sinkhorn is not consumed by any "
             "in-scope physics-lint rule)"
+        ),
+    },
+    {
+        "ref": "physics-lint <this commit>",
+        "layer": "config",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "eval.infer.n_trajs=20 (replacing plan's eval.n_trajs=20): "
+            "current upstream rollout.py:351 reads "
+            "cfg.eval.infer.n_trajs in infer mode, NOT the plan's "
+            "top-level cfg.eval.n_trajs (which is a no-op for our "
+            "mode); without this fix the checkpoint's default 200 "
+            "trajectories was in effect, causing the 7254193 "
+            "subprocess timeout. The pre-registered value (20) is "
+            "unchanged; only the CLI key path updates"
         ),
     },
 ]
@@ -718,45 +733,73 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     os.makedirs(rollout_dir, exist_ok=True)
 
     os.chdir("/opt/lagrangebench")
+    inf_args = [
+        "python",
+        "main.py",
+        "mode=infer",
+        "eval.test=True",
+        f"load_ckp={ckpt_dir}",
+        "eval.n_rollout_steps=100",
+        # eval.infer.n_trajs (NOT eval.n_trajs): current upstream
+        # rollout.py:351 reads cfg.eval.infer.n_trajs in infer mode.
+        # The plan's literal eval.n_trajs=20 was a no-op for our
+        # mode and left the checkpoint default of 200 in effect,
+        # causing the 2400-sec timeout at 7254193. Pre-registered in
+        # DECISIONS D0-15 (amendment 3); methodology-relevant value
+        # (20) is unchanged from the plan, only the CLI key updates.
+        "eval.infer.n_trajs=20",
+        f"dataset.src={dataset_dir}",
+        # dataset.name=tgv2d (no underscore): required by current
+        # upstream runner.py:148 — the publicly distributed SEGNN-
+        # TGV2D checkpoint's bundled config doesn't carry
+        # dataset.name (older runner inferred from path; current
+        # HEAD doesn't). Pre-registered in DECISIONS D0-15
+        # (amendment 1). Valid name space per upstream data.py:
+        # {tgv2d, tgv3d, rpf2d, rpf3d, ldc2d, ldc3d, dam2d}.
+        "dataset.name=tgv2d",
+        # eval.infer.metrics=[mse,e_kin]: drops Sinkhorn divergence
+        # from the per-rollout evaluation list. ott-jax 0.4.9 is
+        # internally self-inconsistent — sinkhorn_divergence
+        # forwards sinkhorn_kwargs to Geometry.__init__() which
+        # doesn't accept it. Default eval.infer.metrics is
+        # [mse, sinkhorn, e_kin]; this drops Sinkhorn. Sinkhorn is
+        # NOT consumed by any in-scope physics-lint rule, so the
+        # methodology cost of the drop is zero (DECISIONS D0-15
+        # amendment 2 carries the full reasoning).
+        "eval.infer.metrics=[mse,e_kin]",
+    ]
+    # subprocess.run wrapped in try/except for TimeoutExpired and
+    # general Exception (coverage extension; previously missed during
+    # the bf3741d structured-manifest refactor — the third rung-3
+    # attempt at 7254193 hit TimeoutExpired which propagated as
+    # uncaught traceback rather than landing in the manifest). Same
+    # discipline as the rung-2 smoke function and the rung-3
+    # checkpoint/dataset steps.
     inf_start = time.monotonic()
-    inf_proc = subprocess.run(
-        [
-            "python",
-            "main.py",
-            "mode=infer",
-            "eval.test=True",
-            f"load_ckp={ckpt_dir}",
-            "eval.n_rollout_steps=100",
-            "eval.n_trajs=20",
-            f"dataset.src={dataset_dir}",
-            # dataset.name=tgv2d (no underscore): required by current
-            # upstream runner.py:148 — the publicly distributed SEGNN-
-            # TGV2D checkpoint's bundled config doesn't carry
-            # dataset.name (older runner inferred from path; current
-            # HEAD doesn't). Pre-registered in DECISIONS D0-15
-            # (amendment 1). Valid name space per upstream data.py:
-            # {tgv2d, tgv3d, rpf2d, rpf3d, ldc2d, ldc3d, dam2d}.
-            "dataset.name=tgv2d",
-            # eval.infer.metrics=[mse,e_kin]: drops Sinkhorn divergence
-            # from the per-rollout evaluation list. ott-jax 0.4.9 is
-            # internally self-inconsistent — sinkhorn_divergence
-            # forwards sinkhorn_kwargs to Geometry.__init__() which
-            # doesn't accept it. Default eval.infer.metrics is
-            # [mse, sinkhorn, e_kin]; this drops Sinkhorn. Sinkhorn is
-            # NOT consumed by any in-scope physics-lint rule, so the
-            # methodology cost of the drop is zero (DECISIONS D0-15
-            # amendment 2 carries the full reasoning).
-            "eval.infer.metrics=[mse,e_kin]",
-        ],
-        capture_output=True,
-        text=True,
-        timeout=2400,
-    )
+    try:
+        inf_proc = subprocess.run(
+            inf_args,
+            capture_output=True,
+            text=True,
+            timeout=2400,
+        )
+        manifest["inference_returncode"] = inf_proc.returncode
+        manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
+        manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
+    except subprocess.TimeoutExpired as e:
+        manifest["inference_returncode"] = -1
+        manifest["inference_stdout_tail"] = (
+            e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
+        )[-3000:]
+        manifest["inference_stderr_tail"] = (
+            f"TimeoutExpired after {e.timeout}s. Stderr tail: "
+            + ((e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or ""))[-2500:])
+        )
+    except Exception as e:
+        manifest["inference_returncode"] = -2
+        manifest["inference_stderr_tail"] = f"Uncaught {type(e).__name__}: {e}"
     manifest["inference_wall_seconds"] = round(time.monotonic() - inf_start, 1)
-    manifest["inference_returncode"] = inf_proc.returncode
-    manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
-    manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
-    if inf_proc.returncode != 0:
+    if manifest["inference_returncode"] != 0:
         manifest["aborted_at_step"] = "inference"
         # Still walk for files written (partial rollouts can be
         # informative); don't return early here.
