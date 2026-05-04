@@ -70,6 +70,14 @@ signal that matters for Audience A reviewers (Munich/Stuttgart SciML).
   the harness computes global-finite multi-output equivariance. The
   harness emits a different quantity than `PH-SYM-003` and labels it
   accordingly via SARIF `properties.source = "rollout-anchor-harness"`.
+- `PH-CON-001` as shipped in physics-lint v0.0.0.dev0 returns SKIPPED on
+  `pde != "heat"`. On the NS side (PhysicsNeMo MGN vortex shedding), the
+  harness reapplies the structural mass-conservation identity via the
+  same mechanism used for the particle-side rules — this is a
+  structural-identity reapplication, not a public-API rule invocation.
+  Extending `PH-CON-001`'s V1 implementation to NS-applicable input
+  domains is a separate physics-lint v1.0-resolution task and is out of
+  scope for this branch.
 - Plasticity / irreversibility rules are not yet implemented (PH-CSH-*
   roadmap, separate issue).
 - Contact-non-penetration on deforming meshes is not tested (no public

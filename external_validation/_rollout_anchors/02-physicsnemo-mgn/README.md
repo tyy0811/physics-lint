@@ -27,3 +27,21 @@ materialization) plus the public `physics-lint check` CLI per timestep.
 Inference must pass `test_inference_matches_ngc_sample` (max-abs-error
 ≤ 10⁻³ on velocity components vs NGC's shipped sample) before rollouts
 proceed; this is the gate-determining test for Gate D (spec §6).
+
+## PH-CON-001 routing — harness, not public rule
+
+Per `physics-lint-validation/DECISIONS.md` D0-03 (2026-05-04 audit),
+`PH-CON-001` as shipped in physics-lint v0.0.0.dev0 returns SKIPPED on
+`pde != "heat"`. NS data is `pde = "navier_stokes"` (or analogue), so
+the public-API rule cannot be invoked directly on NS rollouts. The
+mesh case study therefore routes `PH-CON-001` through the mesh harness
+in the same way the LagrangeBench-side particle adapter reapplies the
+PH-SYM-001/002 structural identities — *the structural mass-conservation
+identity (∫ρ over the domain, ∇·v on incompressible NS) is reapplied by
+the harness, validated against the analytical mass-conservation fixture*
+(see `_rollout_anchors/_harness/tests/fixtures/mass_conservation_fixture.py`).
+
+This is **structural-identity reapplication**, not "rule ran without
+modification." See the matching bullet in `_rollout_anchors/README.md`
+"What physics-lint did NOT catch" and the v3 plan §6 risk-register
+class-level entry on V1 rules with input-domain restrictions.

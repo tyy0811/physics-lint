@@ -125,6 +125,14 @@ sync with the public emitter on this field.
 
 ## 4. Tolerances
 
+§4.1 and §4.2 below are pre-registered tolerances that **answer different
+questions**: §4.1 measures *agreement between two implementations of the
+same metric* (the harness vs the public rule on a controlled fixture);
+§4.2 measures *the trained model's own equivariance defect* on rotated
+rollouts. The thresholds are not interchangeable. See §4.1 Reader's note
+and `physics-lint-validation/DECISIONS.md` D0-04a / D0-07 for the full
+framing.
+
 ### 4.1 Gate B — controlled-fixture harness-vs-public-API tolerance
 
 Spec §4.3 / plan §7 Gate B.
@@ -139,22 +147,78 @@ The 10⁻⁴ tolerance is **pre-registered** before fixtures are run; it is
 not retroactively tuned to match observed values. Methodological-honesty
 discipline applied to the validation-of-validation step.
 
-### 4.2 §4.4 — trained-model equivariance band
+#### Reader's note — what Gate B is and is not
 
-Spec §4.4. *Separate from §4.1.* This band interprets the ε_C4 / ε_refl
-the harness emits when running rotated-input rollouts of trained SEGNN /
-GNS checkpoints (Day 1 work).
+Gate B is a **regression test on the gridify+rot90 pipeline**, not a
+cross-method epistemic check. Both the harness path
+(`c4_static_defect`, `reflection_static_defect`) and the public-API path
+(`ph_sym_001.check`, `ph_sym_002.check`) consume the same gridded scalar
+field produced by `gridify` and apply the same `np.rot90` / `np.flip`
+transform plus the same denominator-stabilised relative L^2 — so on Day
+0's fixtures the two paths emit bit-identical floating-point output by
+design. ε_harness_vs_public = 0.000e+00 is the *expected* outcome under
+this design, not surprising agreement between independent computations.
 
-| ε_rot or ε_refl | Verdict |
-|-----------------|---------|
+The reason Gate B is set up this way is documented in
+`physics-lint-validation/DECISIONS.md` D0-04a: spec §4.2's instruction
+to "apply C4 to particle positions and velocities, compute ε_C4
+directly" reads naturally as a per-index computation, but per-index
+``||R x − x|| / ||x||`` gives O(1) on any honest C4 orbit because the
+rotation permutes particle indices. Routing both paths through the
+gridded-density representation is the harness's resolution: it makes ε
+permutation-invariant, agree numerically with the public rule's
+emission on the gridded equivalent, and computable on a static fixture
+where there is no trained model to apply.
+
+The genuine cross-method check — *does the harness's emitted ε agree
+with what the rule would emit on an independent computation?* — is the
+Day 1 model-loading path's per-index ε on ``f(x_0)`` vs ``R^{-1} f(R
+x_0)``, computed on trained-model rollouts. There the per-index
+comparison is well-defined because trained-model rollouts preserve
+particle identity across the identity-vs-rotated pair. That check
+answers a different question than Gate B (the model's own equivariance
+defect, not the harness's faithfulness to the rule), and uses the
+threshold structure pre-registered in §4.2.
+
+A reader of Gate B's PASS verdict should therefore *not* read it as
+"the harness reproduces the rule's emission on independent
+computations" (overclaim) or as "the harness is degenerate"
+(under-trust). The correct reading is "the gridify+rot90 pipeline has
+no implementation-level regressions, and both the harness and the
+public rule produce the same answer when handed the same gridified
+input — which is the input the harness produces from a particle
+configuration."
+
+### 4.2 Trained-model equivariance band — Day 1 model-loading path
+
+Spec §4.4. *Separate from §4.1.* This band interprets the per-index,
+trajectory-aligned ε_rot / ε_refl the harness emits when running
+rotated-input rollouts of trained SEGNN / GNS checkpoints (Day 1 work).
+Pre-registered in `physics-lint-validation/DECISIONS.md` D0-07; the
+per-index, trajectory-aligned framing is what makes the band testable
+on actual model output as opposed to the static fixtures of §4.1.
+
+Concretely: with rollout ``f(x_0)`` from initial conditions ``x_0`` and
+rollout ``f(R x_0)`` from rotated initial conditions, the harness
+computes
+
+    ε_rot(R) = || R^{-1} f(R x_0) − f(x_0) || / max(|| f(x_0) ||, eps)
+
+per-particle-index across the full trajectory (or the union of
+trajectories for ``eval.n_trajs > 1``). The same form applies to
+``ε_refl`` with ``R`` replaced by the reflection matrix.
+
+| ε_rot or ε_refl (per-index, trajectory-aligned) | Verdict |
+|-------------------------------------------------|---------|
 | ≤ 10⁻⁵ | PASS — machine-precision equivariance. SEGNN expected. |
 | 10⁻⁵ < ε ≤ 10⁻² | APPROXIMATE — flagged, in approximate-equivariance band. GNS expected. |
 | > 10⁻² | FAIL — equivariance broken. |
 
 Pre-registered before SEGNN/GNS runs. If pilot data shows SEGNN at, e.g.,
 10⁻⁴ instead of 10⁻⁶, the threshold is **not** silently amended; the
-divergence is logged in `physics-lint-validation/DECISIONS.md` and the
-band may be amended only with the discrepancy explicitly cited.
+divergence is logged in `physics-lint-validation/DECISIONS.md` as a
+D0-08+ entry citing the discrepancy explicitly, and the band may be
+amended only with the discrepancy reproduced verbatim in the writeup.
 
 ### 4.3 §4.2 fixture-construction tolerance distinction
 
