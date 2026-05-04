@@ -218,6 +218,47 @@ def mass_defect(
 KE_REST_THRESHOLD: float = 1e-10
 
 
+# DECISIONS.md D0-18: PH-CON-002 skip-with-reason gate for
+# dissipative-by-design systems. The harness's `energy_drift` measures
+# max|KE(t) - KE(0)| / |KE(0)|, which is zero for conservative rollouts
+# and grows toward 1 for dissipative ones (TGV2D under viscous decay
+# dissipates ~99.99% of initial KE over one viscous time scale; the
+# spot-check on SEGNN-TGV2D traj00 surfaced this at 0.9999). The numeric
+# value is a correct measurement of dissipation magnitude; the
+# rule-semantics interpretation as "drift = FAIL" is wrong for
+# dissipative systems. Skip-with-reason restores the right semantics by
+# emitting SKIPPED + a reason string instead of a numeric defect that
+# downstream PASS/FAIL classification will misread.
+#
+# v1 implementation: hardcoded mapping of LagrangeBench dataset names
+# to system_class. v1.1 promotes to a metadata field on the npz so
+# non-LB datasets can declare their class without requiring an update
+# here. All five SPH datasets in the LB corpus are dissipative:
+# TGV2D / RPF2D viscous Navier-Stokes; LDC2D wall-bounded forced
+# convection but still viscously dissipative without sustained
+# forcing; DAM2D free-surface dam break (gravity-driven, viscous
+# dissipation in the SPH solver). DOM3D / TGV3D / RPF3D / LDC3D
+# inherit from their 2D analogs (P3 stretch only per plan §3.1).
+#
+# Two-half positive-evidence gate (D0-18): skip ONLY when both
+# (a) system_class hint says "dissipative" AND
+# (b) KE(t) is monotone-non-increasing across the rollout.
+# Either alone is insufficient: monotone-decreasing-without-hint
+# could be a buggy supposed-conservative surrogate; hint-without-
+# monotonicity could be a buggy "dissipative" model that's actually
+# gaining energy somewhere. Both required → defaults to existing
+# fire-raw-value behavior absent positive evidence on either axis.
+LAGRANGEBENCH_DATASET_SYSTEM_CLASS: dict[str, str] = {
+    "tgv2d": "dissipative",
+    "rpf2d": "dissipative",
+    "ldc2d": "dissipative",
+    "dam2d": "dissipative",
+    "tgv3d": "dissipative",
+    "rpf3d": "dissipative",
+    "ldc3d": "dissipative",
+}
+
+
 @dataclass(frozen=True)
 class HarnessDefect:
     """Result of a rollout-level defect computation.
@@ -418,7 +459,7 @@ def mass_conservation_defect(rollout: ParticleRollout) -> HarnessDefect:
 
 
 def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
-    """max |E(t) - E(0)| / max(|E(0)|, eps), or SKIP if KE(0) below threshold.
+    """max |E(t) - E(0)| / max(|E(0)|, eps), or SKIP if input-domain mismatch.
 
     Mirrors PH-CON-002's emitted `drift` form on E = kinetic energy
     (potential energy lives in inter-particle interactions and is not
@@ -427,10 +468,23 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
     `_rollout_anchors/README.md`).
 
     Zero for conservative rollouts; non-zero and growing for dissipative
-    rollouts. SKIPS with reason when KE(0) < ``KE_REST_THRESHOLD``
-    (pre-registered in DECISIONS.md D0-08): a near-zero KE(0) makes the
-    relative drift undefined, and the eps-floored denominator otherwise
-    inflates the emitted value to a meaningless large number.
+    rollouts. Two skip-with-reason paths:
+
+    1. **KE-rest** (DECISIONS.md D0-08): SKIPS when KE(0) <
+       ``KE_REST_THRESHOLD``. A near-zero KE(0) makes the relative
+       drift undefined, and the eps-floored denominator otherwise
+       inflates the emitted value to a meaningless large number.
+
+    2. **Dissipative-by-design** (DECISIONS.md D0-18): SKIPS when both
+       (a) ``rollout.metadata["dataset"]`` resolves to a known
+       dissipative system via ``LAGRANGEBENCH_DATASET_SYSTEM_CLASS``,
+       AND (b) ``KE(t)`` is monotone-non-increasing across the rollout.
+       The dissipation magnitude IS the physics for these systems
+       (TGV2D under viscous decay dissipates ~99.99% of initial KE);
+       the relative-drift form is a meaningful conservation test for
+       conservative PDEs (wave, Schrödinger) but a misfire for
+       dissipative ones. Both halves of the gate required to avoid
+       masking buggy supposed-conservative surrogates.
 
     The harness emits the raw drift (or a SKIP); downstream
     interpretation against PH-CON-002's tristate floor classification
@@ -444,6 +498,23 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
             skip_reason=(
                 f"KE(0)={e0:.3e} < {KE_REST_THRESHOLD:.0e} (rollout starts at "
                 f"rest; relative drift undefined; see DECISIONS.md D0-08)"
+            ),
+        )
+    # D0-18 skip-with-reason gate: positive evidence on both axes.
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = LAGRANGEBENCH_DATASET_SYSTEM_CLASS.get(dataset_name)
+    is_monotone_decreasing = bool(np.all(np.diff(e_series) <= 0))
+    if system_class == "dissipative" and is_monotone_decreasing:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"system_class='dissipative' (dataset={dataset_name!r}) and "
+                f"KE(t) monotone-non-increasing across the rollout (KE(0)={e0:.3e}, "
+                f"KE(end)={float(e_series[-1]):.3e}); relative drift is a "
+                f"misfire for dissipative-by-design systems where the "
+                f"dissipation magnitude IS the physics. See "
+                f"DECISIONS.md D0-18; consult dissipation_sign_violation "
+                f"for the load-bearing test on this system class."
             ),
         )
     drift = float(np.max(np.abs(e_series - e0)))
