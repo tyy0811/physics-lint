@@ -421,11 +421,23 @@ def lagrangebench_smoke() -> None:
         )
 
 
-# Rung-3 image: lagrangebench_image + gdown (for Google-Drive checkpoint
-# download) + unzip (for unpacking the zipped checkpoint archives). Layered
+# Rung-3 image: lagrangebench_image + gdown (Google-Drive checkpoint
+# download) + unzip (unpack zipped checkpoint archives) + wget (used by
+# upstream's download_data.sh to fetch datasets from Zenodo). Layered
 # on top of lagrangebench_image so cached layers (jax + lagrangebench
 # install + torch CPU) are reused; this is a thin extension.
-rollout_image = lagrangebench_image.apt_install("unzip").pip_install("gdown")
+#
+# wget specifically: discovered missing at rung-3's first fire (c2e3bc3)
+# when bash download_data.sh tgv_2d /vol/... returned 1 because wget
+# wasn't on the image. download_data.sh has no `set -e`, so wget's
+# "command not found" doesn't halt the script — it continues to the
+# python3 unzip step which fails on the non-existent zipfile. The
+# resulting returncode 1 carried no specific signal about wget being
+# the cause; we needed to pull the script from upstream to confirm.
+# Adding wget to apt_install + the structured returncode capture in
+# the function below means the next class of similar failures surfaces
+# cleanly via the manifest without needing to pull upstream sources.
+rollout_image = lagrangebench_image.apt_install("unzip", "wget").pip_install("gdown")
 
 
 # Modal Volume: persistent storage for rollout-anchors artifacts. Layout
@@ -523,8 +535,15 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     manifest: dict = {
         "git_sha": git_sha,
         "full_git_sha": full_git_sha,
+        "aborted_at_step": None,
         "checkpoint_download_skipped": False,
+        "checkpoint_gdown_returncode": None,
+        "checkpoint_gdown_stderr_tail": "",
+        "checkpoint_unzip_returncode": None,
+        "checkpoint_unzip_stderr_tail": "",
         "dataset_download_skipped": False,
+        "dataset_download_returncode": None,
+        "dataset_download_stderr_tail": "",
         "inference_returncode": None,
         "inference_wall_seconds": None,
         "inference_stdout_tail": "",
@@ -532,7 +551,16 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         "files_written": [],  # list of {path, size, sha256}
     }
 
-    # Step 1: checkpoint
+    # All subprocess.run calls in this function use check=False (no
+    # automatic raise) and capture stdout/stderr explicitly. Same
+    # discipline as the rung-2 try/except fix at 91d3ce7: structured
+    # failure-reporting through the manifest, not via uncaught
+    # exception that bypasses the verdict logic. Each step records its
+    # returncode + stderr tail; on non-zero, manifest["aborted_at_step"]
+    # is set and the function returns early so downstream steps don't
+    # run on a broken predecessor.
+
+    # Step 1: checkpoint download (gdown) + unzip
     ckpt_root = "/vol/checkpoints/lagrangebench/segnn_tgv2d"
     ckpt_dir = f"{ckpt_root}/best"
     if os.path.isdir(ckpt_dir):
@@ -541,18 +569,31 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         os.makedirs(ckpt_root, exist_ok=True)
         zip_path = f"{ckpt_root}/segnn_tgv2d.zip"
         gdown_id = LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["segnn_tgv2d"]
-        subprocess.run(
+
+        gdown_proc = subprocess.run(
             ["gdown", gdown_id, "-O", zip_path],
-            check=True,
             capture_output=True,
             text=True,
+            timeout=600,
         )
-        subprocess.run(
+        manifest["checkpoint_gdown_returncode"] = gdown_proc.returncode
+        manifest["checkpoint_gdown_stderr_tail"] = gdown_proc.stderr[-2000:]
+        if gdown_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_gdown"
+            return manifest
+
+        unzip_proc = subprocess.run(
             ["unzip", "-o", zip_path, "-d", ckpt_root],
-            check=True,
             capture_output=True,
             text=True,
+            timeout=300,
         )
+        manifest["checkpoint_unzip_returncode"] = unzip_proc.returncode
+        manifest["checkpoint_unzip_stderr_tail"] = unzip_proc.stderr[-2000:]
+        if unzip_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_unzip"
+            return manifest
+
         # Some checkpoint zips unpack into a subdir named like the zip;
         # the README's load_ckp= pattern expects /best directly under
         # ckpt_root. Walk one level if needed.
@@ -560,12 +601,11 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
             for entry in os.listdir(ckpt_root):
                 candidate = os.path.join(ckpt_root, entry, "best")
                 if os.path.isdir(candidate):
-                    # Move <entry>/best to <ckpt_root>/best
                     os.rename(candidate, ckpt_dir)
                     break
         rollout_volume.commit()
 
-    # Step 2: dataset
+    # Step 2: dataset download via upstream's download_data.sh
     dataset_root = "/vol/datasets/lagrangebench"
     dataset_dir = f"{dataset_root}/{LAGRANGEBENCH_DATASET_DIRS['tgv_2d']}"
     if os.path.isdir(dataset_dir):
@@ -573,13 +613,24 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     else:
         os.makedirs(dataset_root, exist_ok=True)
         os.chdir("/opt/lagrangebench")
-        subprocess.run(
+        ds_proc = subprocess.run(
             ["bash", "download_data.sh", "tgv_2d", dataset_root + "/"],
-            check=True,
             capture_output=True,
             text=True,
-            timeout=900,
+            timeout=1800,
         )
+        manifest["dataset_download_returncode"] = ds_proc.returncode
+        # download_data.sh writes wget progress to stderr even on success;
+        # capture both streams so we can distinguish "wget not found" from
+        # "wget ran but Zenodo timed out" without needing a re-fire.
+        manifest["dataset_download_stderr_tail"] = (
+            (ds_proc.stdout[-1000:] + "\n--- stderr ---\n" + ds_proc.stderr[-1500:])
+            if ds_proc.stderr
+            else ds_proc.stdout[-2000:]
+        )
+        if ds_proc.returncode != 0:
+            manifest["aborted_at_step"] = "dataset_download"
+            return manifest
         rollout_volume.commit()
 
     # Step 3: inference
@@ -607,10 +658,12 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     manifest["inference_returncode"] = inf_proc.returncode
     manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
     manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
+    if inf_proc.returncode != 0:
+        manifest["aborted_at_step"] = "inference"
+        # Still walk for files written (partial rollouts can be
+        # informative); don't return early here.
 
     # Step 4: walk for files written
-    # LagrangeBench's eval saves rollouts under outputs/ or wandb/ or
-    # similar; capture any file written under known candidate roots.
     candidate_roots = [
         "/opt/lagrangebench/outputs",
         "/opt/lagrangebench/rollouts",
@@ -626,8 +679,6 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
                 try:
                     size = os.path.getsize(fp)
                     if size > 50 * 1024 * 1024:
-                        # Skip SHA-256 on large files (>50 MB) to keep
-                        # the manifest cheap; record size only.
                         manifest["files_written"].append(
                             {"path": fp, "size": size, "sha256": "<skipped_large>"}
                         )
@@ -671,11 +722,27 @@ def rollout_p0_segnn_tgv2d() -> None:
         git_sha=git_sha_short, full_git_sha=git_sha_full
     )
     print("--- manifest ---")
-    print(f"  checkpoint_download_skipped: {result['checkpoint_download_skipped']}")
-    print(f"  dataset_download_skipped:    {result['dataset_download_skipped']}")
-    print(f"  inference_returncode:        {result['inference_returncode']}")
-    print(f"  inference_wall_seconds:      {result['inference_wall_seconds']}")
+    print(f"  aborted_at_step:                {result['aborted_at_step'] or '<none>'}")
+    print(f"  checkpoint_download_skipped:    {result['checkpoint_download_skipped']}")
+    print(f"  checkpoint_gdown_returncode:    {result['checkpoint_gdown_returncode']}")
+    print(f"  checkpoint_unzip_returncode:    {result['checkpoint_unzip_returncode']}")
+    print(f"  dataset_download_skipped:       {result['dataset_download_skipped']}")
+    print(f"  dataset_download_returncode:    {result['dataset_download_returncode']}")
+    print(f"  inference_returncode:           {result['inference_returncode']}")
+    print(f"  inference_wall_seconds:         {result['inference_wall_seconds']}")
     print()
+    if result["checkpoint_gdown_stderr_tail"]:
+        print("--- checkpoint gdown stderr (last 2 KB) ---")
+        print(result["checkpoint_gdown_stderr_tail"])
+        print()
+    if result["checkpoint_unzip_stderr_tail"]:
+        print("--- checkpoint unzip stderr (last 2 KB) ---")
+        print(result["checkpoint_unzip_stderr_tail"])
+        print()
+    if result["dataset_download_stderr_tail"]:
+        print("--- dataset download stdout/stderr (last 2 KB) ---")
+        print(result["dataset_download_stderr_tail"])
+        print()
     print("--- inference stdout (last 3 KB) ---")
     print(result["inference_stdout_tail"] or "(empty)")
     print()
