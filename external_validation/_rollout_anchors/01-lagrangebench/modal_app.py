@@ -605,7 +605,7 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
         ),
     },
     {
-        "ref": "physics-lint <this commit>",
+        "ref": "physics-lint 334cafd",
         "layer": "config",
         "relevance": "non-load-bearing",
         "summary": (
