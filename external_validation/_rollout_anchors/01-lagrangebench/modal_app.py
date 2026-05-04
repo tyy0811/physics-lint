@@ -1132,6 +1132,20 @@ def lagrangebench_convert_pkls_in_volume(
     conversion_error, lagrangebench_sha) for verdict-printer reuse.
     """
     import os
+
+    # JAX_PLATFORMS=cpu before any pickle.load: LB rollout pkls contain
+    # jnp.ndarray references, so pickle.load transitively imports jax,
+    # which on this CPU-only function (no gpu= arg, runs on CPU
+    # instance) tries to init the CUDA backend and raises
+    # FAILED_PRECONDITION. The standalone-conversion function doesn't
+    # need GPU compute at all (pure numpy float64 ops); telling jax to
+    # use CPU avoids the spurious init failure. Discovered when
+    # convert_pkls_p0_segnn_tgv2d's first fire FAILed at this exact
+    # shape on a CPU Modal instance — the inference-side conversion
+    # never hit this because that function runs on A10G (jax CUDA init
+    # succeeds there).
+    os.environ.setdefault("JAX_PLATFORMS", "cpu")
+
     import subprocess
     import sys as _sys
 
