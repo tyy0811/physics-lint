@@ -65,6 +65,22 @@ MICRO_GATE_GPU_CLASS = (
 )
 
 
+def _package_version(name: str) -> str:
+    """Return the installed version of ``name`` or ``"<not_installed>"``.
+
+    Used inside Modal functions to capture cross-image dependency stack
+    identity for the audit trail. ``importlib.metadata`` is stdlib and
+    available on both the local entrypoint side and inside Modal
+    containers, so this helper does not require any extra image deps.
+    """
+    from importlib import metadata
+
+    try:
+        return metadata.version(name)
+    except metadata.PackageNotFoundError:
+        return "<not_installed>"
+
+
 @app.function(image=jax_image, gpu=MICRO_GATE_GPU_CLASS, timeout=600)
 def jax_micro_gate() -> dict:
     """Hour-2 micro-gate per plan §7 / D0-10 (refined by D0-13).
@@ -73,9 +89,11 @@ def jax_micro_gate() -> dict:
     ``has_gpu`` boolean. Caller (``main``) classifies against the
     D0-10 + D0-13 spirit-reading: any CUDA-compatible GPU device passes;
     CPU-only return triggers the D0-10 pivot. Also returns the resolved
-    jax + jaxlib versions so the audit trail captures *which* JAX-CUDA
-    stack passed the gate (matters when the Python pin or upstream
-    constraints change which versions pip resolves to).
+    jax + jaxlib + cuda12 plugin + cuda12 pjrt versions so the audit
+    trail captures *which* JAX-CUDA stack passed the gate (matters when
+    the Python pin or upstream constraints change which versions pip
+    resolves to, and when downstream images downgrade jax/jaxlib but
+    leave the plugin/pjrt versions unchanged).
     """
     import jax
     import jaxlib
@@ -90,6 +108,8 @@ def jax_micro_gate() -> dict:
         "device_count": len(devices),
         "jax_version": jax.__version__,
         "jaxlib_version": jaxlib.__version__,
+        "jax_cuda12_plugin_version": _package_version("jax-cuda12-plugin"),
+        "jax_cuda12_pjrt_version": _package_version("jax-cuda12-pjrt"),
     }
 
 
@@ -98,13 +118,15 @@ def main() -> None:
     """Fire the JAX micro-gate; classify against D0-10 + D0-13."""
     result = jax_micro_gate.remote()
     print("=== JAX micro-gate verdict (D0-10 + D0-13) ===")
-    print(f"  gpu_class:       {MICRO_GATE_GPU_CLASS}")
-    print(f"  jax_version:     {result['jax_version']}")
-    print(f"  jaxlib_version:  {result['jaxlib_version']}")
-    print(f"  default_backend: {result['default_backend']}")
-    print(f"  device_count:    {result['device_count']}")
-    print(f"  devices:         {result['devices']}")
-    print(f"  has_gpu:         {result['has_gpu']}")
+    print(f"  gpu_class:                  {MICRO_GATE_GPU_CLASS}")
+    print(f"  jax_version:                {result['jax_version']}")
+    print(f"  jaxlib_version:             {result['jaxlib_version']}")
+    print(f"  jax_cuda12_plugin_version:  {result['jax_cuda12_plugin_version']}")
+    print(f"  jax_cuda12_pjrt_version:    {result['jax_cuda12_pjrt_version']}")
+    print(f"  default_backend:            {result['default_backend']}")
+    print(f"  device_count:               {result['device_count']}")
+    print(f"  devices:                    {result['devices']}")
+    print(f"  has_gpu:                    {result['has_gpu']}")
     if result["has_gpu"]:
         print(
             f"  -> verdict: PASS — CUDA GPU ({MICRO_GATE_GPU_CLASS}) visible "
@@ -220,6 +242,8 @@ def lagrangebench_install_smoke() -> dict:
         "lagrangebench_import_error": lb_import_error,
         "jax_version_after_lb_import": jax.__version__,
         "jaxlib_version_after_lb_import": jaxlib.__version__,
+        "jax_cuda12_plugin_version_after_lb_import": _package_version("jax-cuda12-plugin"),
+        "jax_cuda12_pjrt_version_after_lb_import": _package_version("jax-cuda12-pjrt"),
         "jax_has_gpu_after_lb_import": has_gpu,
         "jax_devices_after_lb_import": [str(d) for d in devices],
         "smoke_returncode": smoke_returncode,
@@ -239,10 +263,20 @@ def lagrangebench_smoke() -> None:
     print(f"  lagrangebench_file:            {result['lagrangebench_file']}")
     if result["lagrangebench_import_error"]:
         print(f"  lagrangebench_import_error:    {result['lagrangebench_import_error']}")
-    print(f"  jax_version_after_lb_import:    {result['jax_version_after_lb_import']}")
-    print(f"  jaxlib_version_after_lb_import: {result['jaxlib_version_after_lb_import']}")
-    print(f"  jax_has_gpu_after_lb_import:    {result['jax_has_gpu_after_lb_import']}")
-    print(f"  jax_devices_after_lb_import:    {result['jax_devices_after_lb_import']}")
+    print(f"  jax_version_after_lb_import:               {result['jax_version_after_lb_import']}")
+    print(
+        f"  jaxlib_version_after_lb_import:            {result['jaxlib_version_after_lb_import']}"
+    )
+    print(
+        f"  jax_cuda12_plugin_version_after_lb_import: "
+        f"{result['jax_cuda12_plugin_version_after_lb_import']}"
+    )
+    print(
+        f"  jax_cuda12_pjrt_version_after_lb_import:   "
+        f"{result['jax_cuda12_pjrt_version_after_lb_import']}"
+    )
+    print(f"  jax_has_gpu_after_lb_import:               {result['jax_has_gpu_after_lb_import']}")
+    print(f"  jax_devices_after_lb_import:               {result['jax_devices_after_lb_import']}")
     print(f"  smoke_returncode:              {result['smoke_returncode']}")
     print("  --- smoke stdout (last 2 KB) ---")
     print(result["smoke_stdout_tail"] or "(empty)")
