@@ -649,6 +649,14 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
             "eval.n_rollout_steps=100",
             "eval.n_trajs=20",
             f"dataset.src={dataset_dir}",
+            # dataset.name=tgv2d (no underscore): required by current
+            # upstream runner.py:148 — the publicly distributed SEGNN-
+            # TGV2D checkpoint's bundled config doesn't carry
+            # dataset.name (older runner inferred from path; current
+            # HEAD doesn't). Pre-registered in DECISIONS D0-15
+            # (amendment). Valid name space per upstream data.py:
+            # {tgv2d, tgv3d, rpf2d, rpf3d, ldc2d, ldc3d, dam2d}.
+            "dataset.name=tgv2d",
         ],
         capture_output=True,
         text=True,
