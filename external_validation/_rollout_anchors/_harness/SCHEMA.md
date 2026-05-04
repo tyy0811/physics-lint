@@ -24,18 +24,21 @@ Spec §3.2.
     "positions":     ndarray,  # (T, N_particles, D)  fp32
     "velocities":    ndarray,  # (T, N_particles, D)  fp32
     "particle_type": ndarray,  # (N_particles,)       int32   fluid/wall/...
+    "particle_mass": ndarray,  # (N_particles,)       fp64
     "dt":            float64,
     "domain_box":    ndarray,  # (2, D)               fp64    [[xmin,...], [xmax,...]]
     "metadata": {                                      # serialized via numpy structured array or pickle-as-allow_pickle=True
-        "ckpt_hash":         str,   # SHA-256 of checkpoint file
-        "ckpt_path":         str,
-        "git_sha":           str,   # physics-lint commit at time of generation
-        "lagrangebench_sha": str,   # external repo commit
-        "dataset":           str,   # "tgv2d" | "dam2d" | "rpf2d" | ...
-        "model":             str,   # "segnn" | "gns"
-        "seed":              int,
-        "framework":         str,   # "jax+haiku"
-        "framework_version": str,
+        "ckpt_hash":          str,   # SHA-256 of checkpoint directory (sorted-relpath digest of file contents)
+        "ckpt_path":          str,
+        "git_sha":            str,   # physics-lint commit at time of generation
+        "lagrangebench_sha":  str,   # external repo commit
+        "dataset":            str,   # "tgv2d" | "dam2d" | "rpf2d" | ...
+        "model":              str,   # "segnn" | "gns"
+        "seed":               int,
+        "framework":          str,   # "jax+haiku"
+        "framework_version":  str,
+        "write_every":        int,   # rollout dt = dataset.dt * write_every (LagrangeBench convention)
+        "write_every_source": str,   # "dataset" if read from dataset metadata.json; "default" if defaulted to 1
     },
 }
 ```
@@ -43,6 +46,28 @@ Spec §3.2.
 `particle_type` integer codes follow LagrangeBench's convention; the adapter
 does not relabel them. `domain_box[0]` is the per-axis minimum, `domain_box[1]`
 the maximum.
+
+`particle_mass` is per-particle mass. For datasets where per-particle mass
+is not specified by the source (e.g., LagrangeBench SPH datasets, where
+mass is folded into the smoothing-length normalization), the conversion
+populates uniform unit mass. The conservation rules (PH-CON-001, PH-CON-002)
+and dissipation rule (PH-CON-003) check temporal *changes* in mass and
+energy, which are invariant to a global mass-scale choice; uniform unit
+mass is therefore methodologically equivalent to the dataset's implicit
+normalization for these tests. Datasets that *do* carry per-particle mass
+should pass it through unchanged; the harness consumes whatever mass field
+is present.
+
+`metadata.write_every` and `metadata.write_every_source` exist because
+LagrangeBench dataset metadata.json conditionally carries `write_every`
+(present in production datasets like `2D_TGV_2500_10kevery100`; absent in
+the `tests/3D_LJ_3_1214every1` tutorial fixture). The conversion records
+both the value used (defaulting to 1 when the key is missing) and the
+source of that value, so future audit-trail reconstruction can distinguish
+a dataset-specified dt from a defaulted dt without re-reading the original
+metadata.json. This is the same shape of instrumentation as the
+``UPSTREAM_COMPAT_PATCHES`` ledger in ``01-lagrangebench/modal_app.py``:
+record the choice at the moment it's made, not at reconstruction time.
 
 Both halves of the particle adapter (read-only and model-loading) consume
 this schema. The model-loading half additionally consults `ckpt_path` to
@@ -286,10 +311,21 @@ in ``test_read_only_path.py`` enforces this discipline.
 
 ## 5. Versioning
 
-Schema version: `1.0`. Bumps land here first, with a one-line changelog
+Schema version: `1.2`. Bumps land here first, with a one-line changelog
 below; adapters follow.
 
 - **1.0** (2026-05-04): initial schema, Day 0.
 - **1.1** (2026-05-04): §4.4 KE-rest skip-with-reason threshold pre-registered;
   ``HarnessDefect`` polymorphic return type for read-only-path defects
   (DECISIONS.md D0-08).
+- **1.2** (2026-05-04): §1 ``particle_mass`` field documented (was already
+  required by ``load_rollout_npz`` but undocumented; SCHEMA-vs-code drift
+  surfaced and closed during DECISIONS.md D0-15 amendment 4 / rung-3.5
+  conversion-module work). ``metadata.write_every`` and
+  ``metadata.write_every_source`` added to capture LagrangeBench's
+  conditional dt-stride convention with explicit source-of-truth
+  instrumentation. Additive only; existing v1.0 / v1.1 npz files cannot
+  be read by post-1.2 ``load_rollout_npz`` (the field was already required;
+  v1.0 / v1.1 npz files written without ``particle_mass`` were already
+  un-readable, so v1.2 regularises documentation rather than introducing
+  a new compatibility break).

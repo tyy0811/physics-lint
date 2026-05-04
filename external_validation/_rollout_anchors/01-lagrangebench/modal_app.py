@@ -43,6 +43,8 @@ Run with:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import modal
 
 app = modal.App("rollout-anchors-lagrangebench")
@@ -437,7 +439,28 @@ def lagrangebench_smoke() -> None:
 # Adding wget to apt_install + the structured returncode capture in
 # the function below means the next class of similar failures surfaces
 # cleanly via the manifest without needing to pull upstream sources.
-rollout_image = lagrangebench_image.apt_install("unzip", "wget").pip_install("gdown")
+#
+# add_local_file shipping the conversion module (rung 3.5, D0-15
+# amendment 4): the post-inference conversion from LagrangeBench's
+# native pkl shape to SCHEMA.md §1 particle_rollout.npz lives in the
+# pure-Python module ``_harness/lagrangebench_pkl_to_npz.py``. Adding
+# it via add_local_file (rather than building it into the image)
+# means edits to the conversion don't trigger an image rebuild — the
+# file is sent over the wire each function invocation. Same
+# reuse-across-rungs reasoning as the harness package itself
+# (P1 GNS-TGV2D will reuse the conversion verbatim; P2/P3 likewise).
+_HARNESS_CONVERSION_MODULE = (
+    Path(__file__).resolve().parent.parent / "_harness" / "lagrangebench_pkl_to_npz.py"
+)
+_REMOTE_HARNESS_DIR = "/opt/physics_lint_harness"
+rollout_image = (
+    lagrangebench_image.apt_install("unzip", "wget")
+    .pip_install("gdown")
+    .add_local_file(
+        str(_HARNESS_CONVERSION_MODULE),
+        f"{_REMOTE_HARNESS_DIR}/lagrangebench_pkl_to_npz.py",
+    )
+)
 
 
 # Modal Volume: persistent storage for rollout-anchors artifacts. Layout
@@ -567,7 +590,7 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
         ),
     },
     {
-        "ref": "physics-lint <this commit>",
+        "ref": "physics-lint 9f7df91",
         "layer": "config",
         "relevance": "non-load-bearing",
         "summary": (
@@ -581,6 +604,20 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
             "unchanged; only the CLI key path updates"
         ),
     },
+    {
+        "ref": "physics-lint <this commit>",
+        "layer": "config",
+        "relevance": "non-load-bearing",
+        "summary": (
+            "LagrangeBench's eval.rollout_dir defaults to null "
+            "(metrics-only mode); enabling rollout persistence "
+            "requires both eval.rollout_dir=<path> (top-level per "
+            "rollout.py:319) and eval.infer.out_type=pkl (nested "
+            "per rollout.py:396), reflecting LB's split config "
+            "layout. One feature-toggle, two CLI args at two "
+            "different config-key paths because of LB's layout"
+        ),
+    },
 ]
 
 
@@ -591,7 +628,7 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
     timeout=3600,
 )
 def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dict:
-    """Rung 3 P0: SEGNN-10-64 inference on TGV 2D test split (D0-15).
+    """Rung 3 + 3.5 P0: SEGNN-10-64 inference + SCHEMA.md npz materialization (D0-15).
 
     Steps:
     1. Ensure SEGNN-TGV2D checkpoint is unpacked under
@@ -607,20 +644,28 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
        deterministic and avoids the auto-download running inside the
        inference subprocess on every invocation.)
     3. Run ``python main.py mode=infer eval.test=True
-       load_ckp=<ckpt>/best eval.n_rollout_steps=100 eval.n_trajs=20
-       dataset.src=<dataset>`` per D0-15.
-    4. Walk /opt/lagrangebench (and /vol/rollouts) for any files
+       load_ckp=<ckpt>/best eval.n_rollout_steps=100
+       eval.infer.n_trajs=20 dataset.src=<dataset>
+       dataset.name=tgv2d eval.infer.metrics=[mse,e_kin]
+       eval.rollout_dir=<rollout_subdir>
+       eval.infer.out_type=pkl seed=0`` per D0-15 (incl. amendment 4).
+       The two-arg ``eval.rollout_dir`` (top-level) +
+       ``eval.infer.out_type=pkl`` (nested) toggle persists native
+       per-trajectory rollout pkls into the volume; ``seed=0``
+       pre-registers the inference seed so the rung-4 regeneration
+       test asserts byte-identical contents-SHA-256.
+    4. Capture lagrangebench_sha (``git -C /opt/lagrangebench
+       rev-parse HEAD``) for the rollout metadata audit trail.
+    5. Convert each ``rollout_*.pkl`` LagrangeBench wrote to a
+       SCHEMA.md §1 ``particle_rollout_traj{j:02d}.npz`` via the
+       ``lagrangebench_pkl_to_npz`` harness module (added to the
+       image via ``add_local_file``; pure-Python; the five
+       validation assertions enumerated in DECISIONS.md D0-15
+       amendment 4 fire here, not at rung 4 read time).
+    6. Walk /opt/lagrangebench (and /vol/rollouts) for any files
        written during inference. Compute SHA-256 of each. Return a
        manifest of (path, size, sha256) tuples plus stdout/stderr
        tails so future-me can reconstruct what got written.
-
-    The ``.npz`` materialization in the SCHEMA.md particle_rollout.npz
-    shape is NOT done in this rung. If LagrangeBench's native output
-    is already schema-conformant, rung 4 (the harness adapter
-    invocation) consumes it directly. If not, a thin materialization
-    rung 3.5 lands between this and rung 4. Don't pre-emptively
-    write that materializer until rung-3's actual output shape is
-    known empirically.
     """
     import hashlib
     import os
@@ -630,6 +675,8 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     manifest: dict = {
         "git_sha": git_sha,
         "full_git_sha": full_git_sha,
+        "lagrangebench_sha": None,
+        "inference_seed": 0,  # pre-registered per D0-15 amendment 4
         "aborted_at_step": None,
         "checkpoint_download_skipped": False,
         "checkpoint_gdown_returncode": None,
@@ -643,6 +690,12 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         "inference_wall_seconds": None,
         "inference_stdout_tail": "",
         "inference_stderr_tail": "",
+        "rollout_subdir": None,
+        # Rung 3.5 conversion-step fields (D0-15 amendment 4):
+        "conversion_attempted": False,
+        "conversion_returncode": None,  # 0 success, 1 failure
+        "conversion_error": None,
+        "converted_npz_paths": [],
         "files_written": [],  # list of {path, size, sha256}
     }
 
@@ -729,8 +782,15 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         rollout_volume.commit()
 
     # Step 3: inference
-    rollout_dir = "/vol/rollouts/lagrangebench"
-    os.makedirs(rollout_dir, exist_ok=True)
+    # Per-checkpoint per-git_sha subdirectory under the D0-14 layout.
+    # eval.rollout_dir (top-level per rollout.py:319) writes LB's
+    # native rollout_*.pkl files here; the rung-3.5 conversion step
+    # below reads them and writes particle_rollout_traj{j:02d}.npz
+    # files alongside per the D0-15 amendment 4 directory layout.
+    rollout_dir_root = "/vol/rollouts/lagrangebench"
+    rollout_subdir = f"{rollout_dir_root}/segnn_tgv2d_{git_sha}"
+    os.makedirs(rollout_subdir, exist_ok=True)
+    manifest["rollout_subdir"] = rollout_subdir
 
     os.chdir("/opt/lagrangebench")
     inf_args = [
@@ -767,6 +827,24 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         # methodology cost of the drop is zero (DECISIONS D0-15
         # amendment 2 carries the full reasoning).
         "eval.infer.metrics=[mse,e_kin]",
+        # Rung-3.5 rollout-persistence enablement (DECISIONS D0-15
+        # amendment 4). Two args at two different config-key paths
+        # because of LagrangeBench's split layout: eval.rollout_dir
+        # is top-level (rollout.py:319 reads defaults.eval.rollout_dir)
+        # while eval.infer.out_type is nested (rollout.py:396 reads
+        # cfg_eval_infer.out_type). LB's default out_type=none
+        # discards rollouts after metric computation; we need
+        # out_type=pkl to persist them for the conversion step
+        # below.
+        f"eval.rollout_dir={rollout_subdir}",
+        "eval.infer.out_type=pkl",
+        # Pre-registered seed=0 per DECISIONS D0-15 amendment 4.
+        # The rung-4 regeneration test asserts that re-invoking with
+        # the same checkpoint and seed produces particle_rollout_*.npz
+        # with bit-identical contents-SHA-256, validating that the
+        # full pipeline (LagrangeBench inference -> pkl -> npz
+        # conversion) is end-to-end deterministic.
+        "seed=0",
     ]
     # subprocess.run wrapped in try/except for TimeoutExpired and
     # general Exception (coverage extension; previously missed during
@@ -804,12 +882,70 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
         # Still walk for files written (partial rollouts can be
         # informative); don't return early here.
 
-    # Step 4: walk for files written
+    # Step 4: capture lagrangebench_sha for the rollout metadata
+    # audit trail. The image's /opt/lagrangebench is a --depth 1
+    # clone, so .git is present and `git rev-parse HEAD` is the
+    # source-of-truth identity for the upstream code that produced
+    # the rollouts in this run.
+    lb_sha_proc = subprocess.run(
+        ["git", "-C", "/opt/lagrangebench", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if lb_sha_proc.returncode == 0:
+        manifest["lagrangebench_sha"] = lb_sha_proc.stdout.strip()
+    else:
+        manifest["lagrangebench_sha"] = f"<git_rev_parse_failed_rc={lb_sha_proc.returncode}>"
+
+    # Step 5: rung-3.5 conversion — LagrangeBench rollout_*.pkl ->
+    # SCHEMA.md §1 particle_rollout_traj{j:02d}.npz. Only attempt if
+    # inference returned 0 (partial rollouts may have malformed pkls
+    # that surface as conversion failures, which would obscure the
+    # real inference-step failure). Conversion failures are recorded
+    # in manifest fields rather than raised — the LB native pkls are
+    # still on volume and the failure is reproducible from the
+    # captured manifest.
+    if manifest["inference_returncode"] == 0:
+        manifest["conversion_attempted"] = True
+        try:
+            import sys as _sys
+
+            if _REMOTE_HARNESS_DIR not in _sys.path:
+                _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+            from lagrangebench_pkl_to_npz import (
+                RolloutMetadata,
+                convert_rollout_dir,
+            )
+
+            converted = convert_rollout_dir(
+                rollout_dir=rollout_subdir,
+                dataset_metadata_path=os.path.join(dataset_dir, "metadata.json"),
+                ckpt_dir=ckpt_dir,
+                metadata=RolloutMetadata(
+                    git_sha=full_git_sha,
+                    lagrangebench_sha=manifest["lagrangebench_sha"],
+                    dataset="tgv2d",
+                    model="segnn",
+                    seed=manifest["inference_seed"],
+                    framework="jax+haiku",
+                    framework_version=_package_version("jax"),
+                ),
+            )
+            manifest["conversion_returncode"] = 0
+            manifest["converted_npz_paths"] = [str(p) for p in converted]
+        except Exception as e:
+            manifest["conversion_returncode"] = 1
+            manifest["conversion_error"] = f"{type(e).__name__}: {e}"
+            manifest["aborted_at_step"] = "conversion"
+
+    # Step 6: walk for files written
     candidate_roots = [
         "/opt/lagrangebench/outputs",
         "/opt/lagrangebench/rollouts",
         "/opt/lagrangebench/wandb",
-        rollout_dir,
+        rollout_subdir,
     ]
     for root in candidate_roots:
         if not os.path.isdir(root):
@@ -864,6 +1000,9 @@ def rollout_p0_segnn_tgv2d() -> None:
     )
     print("--- manifest ---")
     print(f"  aborted_at_step:                {result['aborted_at_step'] or '<none>'}")
+    print(f"  lagrangebench_sha:              {result['lagrangebench_sha']}")
+    print(f"  inference_seed:                 {result['inference_seed']}")
+    print(f"  rollout_subdir:                 {result['rollout_subdir']}")
     print(f"  checkpoint_download_skipped:    {result['checkpoint_download_skipped']}")
     print(f"  checkpoint_gdown_returncode:    {result['checkpoint_gdown_returncode']}")
     print(f"  checkpoint_unzip_returncode:    {result['checkpoint_unzip_returncode']}")
@@ -871,7 +1010,19 @@ def rollout_p0_segnn_tgv2d() -> None:
     print(f"  dataset_download_returncode:    {result['dataset_download_returncode']}")
     print(f"  inference_returncode:           {result['inference_returncode']}")
     print(f"  inference_wall_seconds:         {result['inference_wall_seconds']}")
+    print(f"  conversion_attempted:           {result['conversion_attempted']}")
+    print(f"  conversion_returncode:          {result['conversion_returncode']}")
+    if result["conversion_error"]:
+        print(f"  conversion_error:               {result['conversion_error']}")
+    print(f"  converted_npz_count:            {len(result['converted_npz_paths'])}")
     print()
+    if result["converted_npz_paths"]:
+        print("--- converted npz paths (rung 3.5) ---")
+        for p in result["converted_npz_paths"][:25]:
+            print(f"  {p}")
+        if len(result["converted_npz_paths"]) > 25:
+            print(f"  ... ({len(result['converted_npz_paths']) - 25} more)")
+        print()
     if result["checkpoint_gdown_stderr_tail"]:
         print("--- checkpoint gdown stderr (last 2 KB) ---")
         print(result["checkpoint_gdown_stderr_tail"])
@@ -914,12 +1065,25 @@ def rollout_p0_segnn_tgv2d() -> None:
     print(f"  distribution: {_layer_summary} | {_relevance_summary}")
     print()
     print("--- verdict ---")
-    if result["inference_returncode"] == 0:
-        print("  -> rung 3 P0 verdict: PASS — inference returncode 0.")
-        print("     Next: inspect 'files written' for rollout artifact location;")
-        print("     rung 3.5 (schema materialization) or rung 4 (harness invoke) follows.")
+    inf_ok = result["inference_returncode"] == 0
+    conv_ok = result["conversion_returncode"] == 0
+    if inf_ok and conv_ok:
+        n = len(result["converted_npz_paths"])
+        print(
+            f"  -> rung 3 + 3.5 P0 verdict: PASS — inference returncode 0; "
+            f"conversion produced {n} schema-conformant npz file(s)."
+        )
+        print("     Next: rung 4 (particle_rollout_adapter invocation against the npzs).")
+    elif inf_ok and not conv_ok:
+        print(
+            f"  -> rung 3 PASS / rung 3.5 FAIL — inference returncode 0 but "
+            f"conversion failed: {result['conversion_error']}. Native pkls "
+            f"persisted at {result['rollout_subdir']}; reproduce conversion "
+            f"locally with the captured manifest."
+        )
     else:
         print(
             f"  -> rung 3 P0 verdict: FAIL — inference returncode "
-            f"{result['inference_returncode']}. Inspect stderr above."
+            f"{result['inference_returncode']}. Inspect stderr above; "
+            f"conversion not attempted (skipped on inference failure)."
         )
