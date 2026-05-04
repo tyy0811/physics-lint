@@ -1087,3 +1087,178 @@ def rollout_p0_segnn_tgv2d() -> None:
             f"{result['inference_returncode']}. Inspect stderr above; "
             f"conversion not attempted (skipped on inference failure)."
         )
+
+
+# --- Standalone rung-3.5 conversion (D0-17 amendment 1) ---
+# CPU-only re-conversion against existing pkls in the Volume. Use when:
+# (a) a prior rung-3 inference PASSed but rung-3.5 conversion FAILed
+#     (e.g. the post-D0-17 regen at 8c3d080397 hit the strict PBC
+#     length validation; D0-17 amendment 1 fixes it; this function
+#     re-runs conversion against the persisted pkls without re-firing
+#     inference);
+# (b) the conversion module changes and existing rollouts need fresh
+#     npzs without re-firing GPU inference.
+#
+# Methodology motivation (per DECISIONS.md D0-17 amendment 1): keeps
+# P0 and P1 conversion environments identical (both Modal-side, same
+# image, same numpy version) so the eventual SEGNN-vs-GNS cross-stack
+# table doesn't mix conversion environments.
+
+
+@app.function(
+    image=rollout_image,
+    volumes={"/vol": rollout_volume},
+    timeout=600,  # CPU-only, 20 pkls -> 20 npzs is fast
+)
+def lagrangebench_convert_pkls_in_volume(
+    rollout_subdir_name: str,
+    dataset_lb_dirname: str,
+    dataset_logical_name: str,
+    checkpoint_subdir: str,
+    model_name: str,
+    git_sha_full: str,
+    inference_seed: int = 0,
+) -> dict:
+    """Re-run rung-3.5 conversion against existing pkls in the Volume.
+
+    Pulls pkls from /vol/rollouts/lagrangebench/<rollout_subdir_name>/,
+    reads dataset metadata from /vol/datasets/lagrangebench/<dataset_lb_dirname>/,
+    hashes checkpoint at /vol/checkpoints/lagrangebench/<checkpoint_subdir>/best/,
+    invokes convert_rollout_dir, writes npzs back to the same rollout
+    subdir.
+
+    Returns the same manifest shape as the inference function's
+    conversion-step subset (conversion_returncode, converted_npz_paths,
+    conversion_error, lagrangebench_sha) for verdict-printer reuse.
+    """
+    import os
+    import subprocess
+    import sys as _sys
+
+    if _REMOTE_HARNESS_DIR not in _sys.path:
+        _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+    from lagrangebench_pkl_to_npz import RolloutMetadata, convert_rollout_dir
+
+    rollout_subdir = f"/vol/rollouts/lagrangebench/{rollout_subdir_name}"
+    dataset_dir = f"/vol/datasets/lagrangebench/{dataset_lb_dirname}"
+    ckpt_dir = f"/vol/checkpoints/lagrangebench/{checkpoint_subdir}/best"
+
+    manifest: dict = {
+        "rollout_subdir": rollout_subdir,
+        "lagrangebench_sha": None,
+        "conversion_returncode": None,
+        "conversion_error": None,
+        "converted_npz_paths": [],
+    }
+
+    # Capture lagrangebench_sha for the rollout metadata audit trail
+    # (parity with the inference-side function).
+    lb_sha_proc = subprocess.run(
+        ["git", "-C", "/opt/lagrangebench", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    manifest["lagrangebench_sha"] = (
+        lb_sha_proc.stdout.strip()
+        if lb_sha_proc.returncode == 0
+        else f"<git_rev_parse_failed_rc={lb_sha_proc.returncode}>"
+    )
+
+    if not os.path.isdir(rollout_subdir):
+        manifest["conversion_returncode"] = 1
+        manifest["conversion_error"] = f"rollout_subdir {rollout_subdir} does not exist"
+        return manifest
+    if not os.path.isdir(dataset_dir):
+        manifest["conversion_returncode"] = 1
+        manifest["conversion_error"] = f"dataset_dir {dataset_dir} does not exist"
+        return manifest
+    if not os.path.isdir(ckpt_dir):
+        manifest["conversion_returncode"] = 1
+        manifest["conversion_error"] = f"ckpt_dir {ckpt_dir} does not exist"
+        return manifest
+
+    try:
+        converted = convert_rollout_dir(
+            rollout_dir=rollout_subdir,
+            dataset_metadata_path=os.path.join(dataset_dir, "metadata.json"),
+            ckpt_dir=ckpt_dir,
+            metadata=RolloutMetadata(
+                git_sha=git_sha_full,
+                lagrangebench_sha=manifest["lagrangebench_sha"],
+                dataset=dataset_logical_name,
+                model=model_name,
+                seed=inference_seed,
+                framework="jax+haiku",
+                framework_version=_package_version("jax"),
+            ),
+        )
+        manifest["conversion_returncode"] = 0
+        manifest["converted_npz_paths"] = [str(p) for p in converted]
+        rollout_volume.commit()
+    except Exception as e:
+        manifest["conversion_returncode"] = 1
+        manifest["conversion_error"] = f"{type(e).__name__}: {e}"
+
+    return manifest
+
+
+@app.local_entrypoint()
+def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
+    """Standalone rung-3.5 conversion for P0 SEGNN-TGV2D pkls (D0-17 amendment 1).
+
+    Use after a rung-3 inference PASSes but the embedded conversion
+    step FAILs (e.g. the f75e22d / 8c3d080397 runs hit pre-D0-17 /
+    pre-amendment-1 conversion bugs but the inference output is fine
+    and persisted to Volume). Hardcodes the SEGNN-TGV2D dataset/
+    checkpoint mappings; sibling functions land for P1 GNS-TGV2D and
+    P2/P3 when needed.
+
+    Usage:
+        modal run external_validation/.../modal_app.py::convert_pkls_p0_segnn_tgv2d \\
+            --rollout-subdir-name segnn_tgv2d_8c3d080397
+    """
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Standalone rung-3.5 conversion: P0 SEGNN-TGV2D (D0-17 amendment 1) ===")
+    print(f"  rollout_subdir_name: {rollout_subdir_name}")
+    print(f"  git_sha (full):      {git_sha_full}")
+    print()
+
+    result = lagrangebench_convert_pkls_in_volume.remote(
+        rollout_subdir_name=rollout_subdir_name,
+        dataset_lb_dirname="2D_TGV_2500_10kevery100",
+        dataset_logical_name="tgv2d",
+        checkpoint_subdir="segnn_tgv2d",
+        model_name="segnn",
+        git_sha_full=git_sha_full,
+    )
+
+    print("--- manifest ---")
+    print(f"  rollout_subdir:        {result['rollout_subdir']}")
+    print(f"  lagrangebench_sha:     {result['lagrangebench_sha']}")
+    print(f"  conversion_returncode: {result['conversion_returncode']}")
+    if result["conversion_error"]:
+        print(f"  conversion_error:      {result['conversion_error']}")
+    print(f"  converted_npz_count:   {len(result['converted_npz_paths'])}")
+    print()
+    if result["converted_npz_paths"]:
+        print("--- converted npz paths ---")
+        for p in sorted(result["converted_npz_paths"]):
+            print(f"  {p}")
+        print()
+    print("--- verdict ---")
+    if result["conversion_returncode"] == 0:
+        n = len(result["converted_npz_paths"])
+        print(
+            f"  -> standalone rung-3.5 conversion: PASS — produced {n} "
+            f"schema-conformant npz file(s) at {result['rollout_subdir']}."
+        )
+    else:
+        print(f"  -> standalone rung-3.5 conversion: FAIL — {result['conversion_error']}")

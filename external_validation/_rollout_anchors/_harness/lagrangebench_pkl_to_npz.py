@@ -65,8 +65,8 @@ metadata. This module performs the four reconciliations:
 ## Validation surface
 
 Every load-bearing field has a shape / dtype / value-range check at
-conversion time. Six assertions total (five from DECISIONS.md D0-15
-amendment 4 + one added by D0-17):
+conversion time. Eight assertions total (five from DECISIONS.md D0-15
+amendment 4 + one from D0-17 + two from D0-17 amendment 1):
 
 - ``particle_mass.shape == (N_particles,)``
 - ``particle_mass.dtype == np.float64``
@@ -75,8 +75,13 @@ amendment 4 + one added by D0-17):
 - ``RolloutMetadata.write_every_source`` set to ``"dataset"`` or
   ``"default"`` (no other values; populated by this module from the
   conversion's read of dataset metadata.json)
-- ``periodic_boundary_conditions`` length equals D (D0-17; rejected
-  if dataset metadata.json carries a length-mismatched array)
+- ``periodic_boundary_conditions`` length equals D after truncation
+  (D0-17; rejected if upstream length < D — no silent zero-padding)
+- ``periodic_boundary_conditions`` truncated trailing entries all True
+  (D0-17 amendment 1; matches LB's stable upstream convention of
+  vestigial-axes-always-periodic; trailing False fires hard error)
+- ``RolloutMetadata.periodic_boundary_conditions_source`` set to
+  ``"dataset"``, ``"truncated_from_oversize"``, or ``"default"``
 
 The assertions raise ``ValueError`` with the rollout filename in the
 message, so a failure surfaces both the rule violated and the file
@@ -141,11 +146,28 @@ class RolloutMetadata:
     # always populates it with len-D bools (defaulting to all-False per axis
     # if the dataset metadata omits the key).
     periodic_boundary_conditions: tuple[bool, ...] = ()
+    # D0-17 amendment 1 (post-D0-17 regen FAIL on real TGV2D metadata):
+    # LagrangeBench's stable upstream convention is "PBC field is always
+    # length 3 regardless of dim" (verified: 2D TGV and 3D LJ tutorial
+    # fixture both have [True, True, True] PBC; explicit ``dim`` field
+    # disambiguates intended dimensionality). Conversion truncates PBC
+    # to D entries when len > D; audit fields below capture the original
+    # upstream vector + the source classification so future readers can
+    # verify the truncation was sensible without re-reading LB's
+    # metadata.json. Same shape as ``write_every_source`` from D0-15
+    # amendment 4.
+    periodic_boundary_conditions_upstream: tuple[bool, ...] = ()
+    periodic_boundary_conditions_source: str = (
+        "default"  # "dataset" | "truncated_from_oversize" | "default"
+    )
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         # asdict converts tuple to list — keep as list for JSON / npz round-trip.
         d["periodic_boundary_conditions"] = list(self.periodic_boundary_conditions)
+        d["periodic_boundary_conditions_upstream"] = list(
+            self.periodic_boundary_conditions_upstream
+        )
         return d
 
 
@@ -406,19 +428,60 @@ def convert_rollout_dir(
         )
     domain_extent = domain_box[1] - domain_box[0]  # (D,) per-axis extent for periodic wrap
 
-    # D0-17: periodic_boundary_conditions threaded through from LB
-    # dataset metadata.json. Defaults to all-False per axis if the
-    # dataset metadata omits the key (non-periodic fallback). The
+    # D0-17 + amendment 1: periodic_boundary_conditions threaded through
+    # from LB dataset metadata.json. Defaults to all-False per axis if
+    # the dataset metadata omits the key (non-periodic fallback). The
     # periodic-distance correction in _central_diff_velocities is a
     # no-op when periodic_axes is all-False (regression-guarded by
     # test_central_diff_no_op_when_non_periodic).
+    #
+    # D0-17 amendment 1: LagrangeBench's stable upstream convention is
+    # "PBC field is always length 3 regardless of dim" (verified across
+    # 2D TGV2D production dataset and 3D LJ tutorial fixture). When
+    # len(pbc_raw) > D, truncate to first D entries; trailing entries
+    # are vestigial-axes-which-are-always-True per the upstream
+    # convention, so a trailing False is a methodologically suspicious
+    # signal (either upstream changed convention, or the dataset
+    # metadata is corrupted) and the conversion fires a hard error.
+    # Length-D-exact and length-< D paths preserved as before
+    # (length-< D rejected; no silent zero-padding).
+    pbc_key_present = "periodic_boundary_conditions" in ds_meta
     pbc_raw = ds_meta.get("periodic_boundary_conditions", [False] * d_dim)
-    periodic_axes = np.asarray(pbc_raw, dtype=bool)
-    if periodic_axes.shape != (d_dim,):
+    pbc_raw_arr = np.asarray(pbc_raw, dtype=bool)
+    if pbc_raw_arr.ndim != 1:
         raise ValueError(
-            f"{dataset_metadata_path} 'periodic_boundary_conditions' must have "
-            f"length D={d_dim}; got {pbc_raw!r}"
+            f"{dataset_metadata_path} 'periodic_boundary_conditions' must be a 1-D "
+            f"array; got shape {pbc_raw_arr.shape}"
         )
+    pbc_upstream_len = int(pbc_raw_arr.shape[0])
+    if pbc_upstream_len < d_dim:
+        # Genuine bug: length < D cannot be silently zero-padded since the
+        # missing entries are unspecified, not implicitly any value.
+        raise ValueError(
+            f"{dataset_metadata_path} 'periodic_boundary_conditions' length "
+            f"{pbc_upstream_len} is less than dataset dimension D={d_dim}; "
+            f"cannot silently zero-pad. Got {pbc_raw!r}"
+        )
+    if pbc_upstream_len > d_dim:
+        # D0-17 amendment 1: truncate to D, sanity-check the trailing
+        # entries are all True (matches upstream's vestigial-axes
+        # convention).
+        truncated_tail = pbc_raw_arr[d_dim:]
+        if not np.all(truncated_tail):
+            raise ValueError(
+                f"{dataset_metadata_path} 'periodic_boundary_conditions' length "
+                f"{pbc_upstream_len} > D={d_dim} is expected (upstream LB "
+                f"convention is length 3 regardless of dim), but the truncated "
+                f"trailing entries {truncated_tail.tolist()} are not all True. "
+                f"Stable upstream convention is 'vestigial axes are always "
+                f"periodic'; a trailing False here means either the convention "
+                f"changed or the dataset metadata is corrupted. Got {pbc_raw!r}"
+            )
+        periodic_axes = pbc_raw_arr[:d_dim]
+        pbc_source = "truncated_from_oversize"
+    else:  # pbc_upstream_len == d_dim
+        periodic_axes = pbc_raw_arr
+        pbc_source = "dataset" if pbc_key_present else "default"
 
     ckpt_hash = _hash_directory(ckpt_dir)
     runtime_metadata = replace(
@@ -428,6 +491,8 @@ def convert_rollout_dir(
         write_every=write_every,
         write_every_source=write_every_source,
         periodic_boundary_conditions=tuple(bool(x) for x in periodic_axes.tolist()),
+        periodic_boundary_conditions_upstream=tuple(bool(x) for x in pbc_raw_arr.tolist()),
+        periodic_boundary_conditions_source=pbc_source,
     )
     if runtime_metadata.write_every_source not in {"dataset", "default"}:
         raise ValueError(
@@ -438,6 +503,16 @@ def convert_rollout_dir(
         raise ValueError(
             f"periodic_boundary_conditions length "
             f"{len(runtime_metadata.periodic_boundary_conditions)} must equal D={d_dim}"
+        )
+    if runtime_metadata.periodic_boundary_conditions_source not in {
+        "dataset",
+        "truncated_from_oversize",
+        "default",
+    }:
+        raise ValueError(
+            f"periodic_boundary_conditions_source must be 'dataset', "
+            f"'truncated_from_oversize', or 'default'; got "
+            f"{runtime_metadata.periodic_boundary_conditions_source!r}"
         )
 
     written: list[Path] = []

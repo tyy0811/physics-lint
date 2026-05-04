@@ -495,16 +495,90 @@ def test_periodic_correction_changes_velocities_for_wraparound_trajectory(tmp_pa
     np.testing.assert_allclose(periodic_max, 0.1, atol=0.01)  # physical drift magnitude
 
 
-def test_rejects_periodic_boundary_conditions_wrong_length(tmp_path: Path) -> None:
+# --- D0-17 amendment 1: PBC length-3 truncation for LB upstream convention ---
+
+
+def test_pbc_oversize_all_true_truncates_with_audit_fields(tmp_path: Path) -> None:
+    """LB convention: PBC always length 3 regardless of dim.
+    Length-3 [True, True, True] on dim-2 dataset truncates to [True, True];
+    audit fields capture the original upstream vector + the source classification.
+    """
     rollout_dir = tmp_path / "rollouts"
     rollout_dir.mkdir()
     _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
     metadata_path = tmp_path / "metadata.json"
-    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, True, True])  # D=3 != 2
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, True, True])
     ckpt_dir = _make_ckpt_dir(tmp_path)
 
-    with pytest.raises(ValueError, match=r"periodic_boundary_conditions"):
+    written = convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+    rollout = load_rollout_npz(written[0])
+    assert rollout.metadata["periodic_boundary_conditions"] == [True, True]
+    assert rollout.metadata["periodic_boundary_conditions_upstream"] == [True, True, True]
+    assert rollout.metadata["periodic_boundary_conditions_source"] == "truncated_from_oversize"
+
+
+def test_pbc_oversize_with_trailing_false_fires_sanity_check(tmp_path: Path) -> None:
+    """Length-3 [True, True, False] on dim-2 dataset: trailing False violates LB's
+    vestigial-axes-always-periodic convention. Hard error (not silent truncation).
+    """
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, True, False])
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    with pytest.raises(ValueError, match=r"truncated trailing entries .* not all True"):
         convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+
+
+def test_pbc_length_d_exact_no_truncation(tmp_path: Path) -> None:
+    """Regression guard: length-D PBC must not enter the truncate path.
+    Source classification stays at "dataset"; upstream field equals working field.
+    """
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True, False])
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    written = convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+    rollout = load_rollout_npz(written[0])
+    assert rollout.metadata["periodic_boundary_conditions"] == [True, False]
+    assert rollout.metadata["periodic_boundary_conditions_upstream"] == [True, False]
+    assert rollout.metadata["periodic_boundary_conditions_source"] == "dataset"
+
+
+def test_pbc_length_below_d_rejected_no_zero_padding(tmp_path: Path) -> None:
+    """Length < D is a genuine bug: cannot silently zero-pad missing axes.
+    Distinct from oversize, which truncates per upstream convention.
+    """
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=[True])  # D=1 < 2
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    with pytest.raises(ValueError, match=r"length 1 is less than dataset dimension D=2"):
+        convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+
+
+def test_pbc_default_path_marks_source_default(tmp_path: Path) -> None:
+    """Missing PBC key in metadata.json → source classification is "default" (not "dataset")."""
+    rollout_dir = tmp_path / "rollouts"
+    rollout_dir.mkdir()
+    _write_lb_rollout_pkl(rollout_dir / "rollout_0.pkl")
+    metadata_path = tmp_path / "metadata.json"
+    _write_metadata_json(metadata_path, periodic_boundary_conditions=None)
+    ckpt_dir = _make_ckpt_dir(tmp_path)
+
+    written = convert_rollout_dir(rollout_dir, metadata_path, ckpt_dir, metadata=_caller_metadata())
+    rollout = load_rollout_npz(written[0])
+    assert rollout.metadata["periodic_boundary_conditions"] == [False, False]
+    assert rollout.metadata["periodic_boundary_conditions_upstream"] == [False, False]
+    assert rollout.metadata["periodic_boundary_conditions_source"] == "default"
 
 
 def test_write_every_source_default_when_missing(tmp_path: Path) -> None:

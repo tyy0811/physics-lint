@@ -40,6 +40,8 @@ Spec §3.2.
         "write_every":        int,   # rollout dt = dataset.dt * write_every (LagrangeBench convention)
         "write_every_source": str,   # "dataset" if read from dataset metadata.json; "default" if defaulted to 1
         "periodic_boundary_conditions": list[bool],  # length D; True axes get minimum-image distance for derived velocities
+        "periodic_boundary_conditions_upstream": list[bool],  # original len-N PBC from LB metadata.json (N may be > D per LB convention)
+        "periodic_boundary_conditions_source": str,   # "dataset" | "truncated_from_oversize" | "default"
     },
 }
 ```
@@ -61,19 +63,37 @@ is present.
 
 `metadata.periodic_boundary_conditions` is a length-D boolean list
 mirroring LagrangeBench dataset metadata.json's `periodic_boundary_conditions`
-key; `True` indicates the axis has periodic BC and the conversion
-applied minimum-image distance correction when deriving velocities
-from positions. Without this correction, particles crossing periodic
-boundaries produce spurious O(L/dt) velocities under naive central
-differences (rung-3.5 spot-check on f75e22d8dd surfaced 5+-order-of-
-magnitude KE inflation on SEGNN-TGV2D from this exact failure mode;
-see DECISIONS.md D0-17). Datasets where the key is missing from
-metadata.json get all-False per axis and the conversion is no-op
-(non-periodic fallback). Consumers that compute distances directly
-from positions (rather than from velocities) should also consult this
-field — the harness's `gridify` already does, but any future consumer
-of the npz that does e.g. ``np.linalg.norm(p1 - p2)`` on TGV2D would
-need to apply the same correction.
+key (post-truncation; see below); `True` indicates the axis has
+periodic BC and the conversion applied minimum-image distance
+correction when deriving velocities from positions. Without this
+correction, particles crossing periodic boundaries produce spurious
+O(L/dt) velocities under naive central differences (rung-3.5
+spot-check on f75e22d8dd surfaced 5+-order-of-magnitude KE inflation
+on SEGNN-TGV2D from this exact failure mode; see DECISIONS.md D0-17).
+Datasets where the key is missing from metadata.json get all-False
+per axis and the conversion is no-op (non-periodic fallback).
+Consumers that compute distances directly from positions (rather
+than from velocities) should also consult this field — the harness's
+`gridify` already does, but any future consumer of the npz that does
+e.g. ``np.linalg.norm(p1 - p2)`` on TGV2D would need to apply the
+same correction.
+
+`metadata.periodic_boundary_conditions_upstream` and
+`metadata.periodic_boundary_conditions_source` exist because
+LagrangeBench's stable upstream convention is "PBC field is always
+length 3 regardless of `dim`" (verified across 2D TGV2D production
+and 3D LJ tutorial fixture). When the upstream PBC vector is longer
+than D, the conversion truncates to the first D entries and records
+both the original upstream vector and the source classification
+(`"truncated_from_oversize"` for the truncate path; `"dataset"` for
+length-D-exact; `"default"` when the key was missing). Trailing
+truncated entries are sanity-checked to be all True (matches the
+upstream vestigial-axes-always-periodic convention); a trailing
+False fires a hard error since it would mean either the convention
+changed upstream or the dataset metadata is corrupted. See
+DECISIONS.md D0-17 amendment 1 for the full reasoning. Pre-amendment-1
+npzs (none on Volume; the post-D0-17 regen at 8c3d080397 failed the
+length validation before writing any npz) lack these fields.
 
 `metadata.write_every` and `metadata.write_every_source` exist because
 LagrangeBench dataset metadata.json conditionally carries `write_every`
@@ -328,7 +348,7 @@ in ``test_read_only_path.py`` enforces this discipline.
 
 ## 5. Versioning
 
-Schema version: `1.3`. Bumps land here first, with a one-line changelog
+Schema version: `1.4`. Bumps land here first, with a one-line changelog
 below; adapters follow.
 
 - **1.0** (2026-05-04): initial schema, Day 0.
@@ -353,3 +373,15 @@ below; adapters follow.
   Required for any LagrangeBench dataset with periodic BC (TGV2D,
   RPF2D, ...); pre-1.3 npzs on these datasets had spurious wraparound
   velocities and should be regenerated.
+- **1.4** (2026-05-04): ``metadata.periodic_boundary_conditions_upstream``
+  and ``metadata.periodic_boundary_conditions_source`` fields added
+  (DECISIONS.md D0-17 amendment 1). Surface the upstream-vs-truncated
+  PBC asymmetry for audit trail; same shape as ``write_every_source``
+  from D0-15 amendment 4. Required because LagrangeBench's stable
+  upstream convention is "PBC field is always length 3 regardless of
+  ``dim``" — the post-D0-17 regen at 8c3d080397 hit this and rung 3.5
+  conversion FAILed under v1.3's strict length check. v1.4 truncates
+  to D, sanity-checks trailing entries are all True, and records both
+  the post-truncation working vector and the original upstream
+  vector. Additive only; v1.3 npzs (none persisted) would lack the
+  two new fields.
