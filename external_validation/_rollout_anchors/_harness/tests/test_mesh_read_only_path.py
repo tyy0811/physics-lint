@@ -30,6 +30,7 @@ import numpy as np
 import pytest
 
 from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+    MESH_FD_NOISE_TOLERANCE,
     MeshRollout,
     dissipation_sign_violation_on_mesh,
     energy_drift_on_mesh,
@@ -79,16 +80,20 @@ def test_load_mesh_rollout_npz_missing_field_raises(tmp_path):
 
 
 def test_uniform_channel_mass_conservation_zero():
-    """∂u/∂x = 0, ∂v/∂y = 0 ⇒ ∇·v = 0 ⇒ defect ~ machine epsilon."""
+    """∂u/∂x = 0, ∂v/∂y = 0 ⇒ ∇·v = 0 ⇒ defect below MESH_FD_NOISE_TOLERANCE.
+
+    Bound is the pre-registered MESH_FD_NOISE_TOLERANCE per DECISIONS.md
+    D0-09 — np.gradient's second-order edge stencil produces ~1e-15
+    noise on constant input; 1e-10 sits five orders of magnitude above
+    that floor.
+    """
     case = build_uniform_channel_flow()
     result = mass_conservation_defect_on_mesh(case.rollout)
     assert result.skip_reason is None, f"unexpected skip: {result.skip_reason}"
     assert result.value is not None
-    # FD gradient on a constant field gives zero modulo numpy edge handling;
-    # allow generous floating-point bound.
-    assert result.value < 1e-10, (
+    assert result.value < MESH_FD_NOISE_TOLERANCE, (
         f"uniform-channel mass_conservation_defect_on_mesh={result.value:.6e} "
-        f"should be ~ machine epsilon"
+        f"exceeds pre-registered MESH_FD_NOISE_TOLERANCE={MESH_FD_NOISE_TOLERANCE:.0e}"
     )
 
 
@@ -284,3 +289,23 @@ def test_kinetic_energy_series_shape():
     case = build_uniform_channel_flow(nx=4, ny=4, n_timesteps=11)
     e_series = kinetic_energy_series_on_mesh(case.rollout)
     assert e_series.shape == (11,)
+
+
+# ---------------------------------------------------------------------------
+# Pre-registration drift guard (DECISIONS.md D0-09)
+# ---------------------------------------------------------------------------
+
+
+def test_mesh_fd_noise_tolerance_matches_pre_registration():
+    """MESH_FD_NOISE_TOLERANCE must match the pre-registered value in DECISIONS.md D0-09.
+
+    If this assertion fires, the threshold has been silently amended in
+    code without an accompanying DECISIONS.md D0-12+ entry. Either
+    revert the code change or land the DECISIONS.md update first —
+    same discipline as test_ke_rest_threshold_matches_pre_registration
+    on the particle side.
+    """
+    assert MESH_FD_NOISE_TOLERANCE == 1e-10, (
+        f"MESH_FD_NOISE_TOLERANCE={MESH_FD_NOISE_TOLERANCE!r} != pre-registered 1e-10 "
+        f"(DECISIONS.md D0-09); land a D0-12+ entry before amending"
+    )

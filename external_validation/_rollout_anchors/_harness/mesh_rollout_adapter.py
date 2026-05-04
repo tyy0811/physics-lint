@@ -53,6 +53,23 @@ from external_validation._rollout_anchors._harness.particle_rollout_adapter impo
 )
 from physics_lint import GridField
 
+# Pre-registered FD-noise upper bound on `mass_conservation_defect_on_mesh`
+# for divergence-free input fields. See `physics-lint-validation/DECISIONS.md`
+# D0-09 for rationale: numpy `np.gradient`'s second-order edge stencil
+# produces ~1e-15 noise on a constant input, so 1e-10 is a five-orders-of-
+# magnitude headroom bound that absorbs implementation-level FD variation
+# without masking real divergence violations (the deliberate-violation
+# fixture at alpha=0.1 produces 0.01-0.5).
+#
+# This constant is consumed by `test_uniform_channel_mass_conservation_zero`
+# in `tests/test_mesh_read_only_path.py` and guarded against silent drift
+# by `test_mesh_fd_noise_tolerance_matches_pre_registration`. If a future
+# numpy release changes `np.gradient`'s edge-stencil behaviour and the
+# noise floor moves, log a DECISIONS.md D0-12+ entry citing the
+# discrepancy and amend; do not silently shift in code.
+MESH_FD_NOISE_TOLERANCE: float = 1e-10
+
+
 # ---------------------------------------------------------------------------
 # Materialization path
 # ---------------------------------------------------------------------------
@@ -299,10 +316,16 @@ def save_mesh_rollout_npz(rollout: MeshRollout, path: Path | str) -> Path:
 
 
 def _expect_velocity(rollout: MeshRollout) -> HarnessDefect | np.ndarray:
-    """Common precondition check: rollout has a ``velocity`` field.
+    """Returns the velocity array if present, or a HarnessDefect describing the skip if absent.
 
-    Returns a SKIP HarnessDefect if absent; otherwise returns the
-    velocity array as ``(T, N_nodes, D)`` (D inferred from the array).
+    Callers must isinstance-check the return value before using it as
+    an array — see the union-return contract documented in
+    `physics-lint-validation/DECISIONS.md` D0-04 / Day-0.5 review hand-back.
+    Convention: ``if isinstance(result, HarnessDefect): return result``
+    at the call site, then proceed with the ndarray.
+
+    Returns the velocity array shaped ``(T, N_nodes, D)`` (D inferred
+    from the field; scalar (T, N_nodes) velocity is lifted to (T, N_nodes, 1)).
     """
     if "velocity" not in rollout.node_values:
         return HarnessDefect(
