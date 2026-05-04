@@ -365,6 +365,29 @@ def lagrangebench_smoke() -> None:
     print(
         f"  pjrt_api_version_after_lb_import:          {result['pjrt_api_version_after_lb_import']}"
     )
+    # Cross-image matched-stack assertion: the load-bearing claim that
+    # explains why sub-check 2 PASSes (or, if it FAILs, why) is whether
+    # all four jax-cuda12 packages observed inside lagrangebench_image
+    # agree on a single version. Capturing this as a derived line in
+    # the verdict log preserves the claim in the audit trail rather
+    # than leaving it implicit in the four version lines above.
+    _stack_versions = [
+        result["jax_version_after_lb_import"],
+        result["jaxlib_version_after_lb_import"],
+        result["jax_cuda12_plugin_version_after_lb_import"],
+        result["jax_cuda12_pjrt_version_after_lb_import"],
+    ]
+    if len(set(_stack_versions)) == 1:
+        print(
+            f"  cross-image stack:                         MATCHED at "
+            f"{_stack_versions[0]} (jax + jaxlib + plugin + pjrt agree)"
+        )
+    else:
+        print(
+            f"  cross-image stack:                         MISMATCHED — "
+            f"jax={_stack_versions[0]}, jaxlib={_stack_versions[1]}, "
+            f"plugin={_stack_versions[2]}, pjrt={_stack_versions[3]}"
+        )
     print(f"  jax_has_gpu_after_lb_import:               {result['jax_has_gpu_after_lb_import']}")
     print(f"  jax_devices_after_lb_import:               {result['jax_devices_after_lb_import']}")
     if result["gpu_init_error_after_lb_import"]:
