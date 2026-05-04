@@ -114,14 +114,35 @@ def main() -> None:
         print("  -> verdict: FAIL — no GPU device returned; pivot per D0-10:")
         print("     JAX-CPU read-only path (synthetic rollouts already landed);")
         print("     no Modal-image debugging without explicit user re-auth.")
+    # Build-phase observation: under Modal's eager-build behaviour, reaching
+    # this print means the lagrangebench_image build also succeeded as part
+    # of the unified build phase. This is NOT the rung-1 verdict (which is
+    # printed above and concerns only jax_image's runtime path); it is a
+    # separate audit-trail record so future-me reading the logs knows that
+    # the rung-2 image was buildable at the moment rung-1 PASSed, even
+    # though rung-2's smoke function had not yet been invoked.
+    print(
+        "  build-phase observed: lagrangebench_image built clean (Modal "
+        "eager-build corollary; runtime verdict pending rung 2)."
+    )
 
 
 # Rung-2 image: jax_image + LagrangeBench clone + ``pip install -e ".[dev]"``.
 # Layered on top of jax_image so the cached JAX layer (~95s build) is reused.
 # `--depth 1` keeps the clone small; the working tree only needs HEAD.
+#
+# --extra-index-url for torch CPU wheels: LagrangeBench pins
+# ``torch==2.3.1+cpu`` (a CPU-only build hosted on PyTorch's wheel index,
+# not Modal's default PyPI mirror). The ``+cpu`` local-version-segment
+# suffix is PyPA's mechanism for "this version comes from a different
+# index"; --extra-index-url is the canonical response. We do NOT pass
+# --ignore-requires-python here — that would defeat the exact mechanism
+# upstream uses to communicate "tested only on these interpreters".
 lagrangebench_image = jax_image.apt_install("git").run_commands(
     "git clone --depth 1 https://github.com/tumaer/lagrangebench.git /opt/lagrangebench",
-    "cd /opt/lagrangebench && pip install -e '.[dev]'",
+    "cd /opt/lagrangebench && pip install"
+    " --extra-index-url https://download.pytorch.org/whl/cpu"
+    " -e '.[dev]'",
 )
 
 
