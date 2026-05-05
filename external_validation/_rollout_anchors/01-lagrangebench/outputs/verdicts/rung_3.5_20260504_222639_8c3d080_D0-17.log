@@ -1,0 +1,180 @@
+✓ Initialized. View run at 
+https://modal.com/apps/janedoraemon/main/ap-cuSiTyq9zBzRd86lkYr0JT
+✓ Created objects.
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/01-l
+│   agrangebench/modal_app.py
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/_har
+│   ness/lagrangebench_pkl_to_npz.py
+├── 🔨 Created function jax_micro_gate.
+├── 🔨 Created function lagrangebench_install_smoke.
+└── 🔨 Created function lagrangebench_rollout_p0_segnn_tgv2d.
+=== Rung 3 P0 SEGNN-TGV2D rollout (D0-15) ===
+  gpu_class:           A10G
+  git_sha (short):     8c3d080397
+  git_sha (full):      8c3d080397316edd390609cf02e828823b745470
+  checkpoint gdown id: 1llGtakiDmLfarxk6MUAtqj6sLleMQ7RL
+
+--- manifest ---
+  aborted_at_step:                conversion
+  lagrangebench_sha:              b880a6c84a93792d2499d2a9b8ba3a077ddf44e2
+  inference_seed:                 0
+  rollout_subdir:                 /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397
+  checkpoint_download_skipped:    True
+  checkpoint_gdown_returncode:    None
+  checkpoint_unzip_returncode:    None
+  dataset_download_skipped:       True
+  dataset_download_returncode:    None
+  inference_returncode:           0
+  inference_wall_seconds:         1386.1
+  conversion_attempted:           True
+  conversion_returncode:          1
+  conversion_error:               ValueError: /vol/datasets/lagrangebench/2D_TGV_2500_10kevery100/metadata.json 'periodic_boundary_conditions' must have length D=2; got [True, True, True]
+  converted_npz_count:            0
+
+--- inference stdout (last 3 KB) ---
+############################################################################### 
+Starting a LagrangeBench run with the following configs:
+config: configs/tgv_2d/segnn.yaml
+load_ckp: /vol/checkpoints/lagrangebench/segnn_tgv2d/best
+mode: infer
+dataset_path: datasets/2D_TGV_2500_10kevery100
+seed: 0
+dtype: float64
+gpu: -1
+xla_mem_fraction: 0.75
+model:
+  name: segnn
+  input_seq_length: 6
+  num_mp_steps: 10
+  num_mlp_layers: 2
+  latent_dim: 64
+  magnitude_features: false
+  isotropic_norm: true
+  lmax_attributes: 1
+  lmax_hidden: 1
+  segnn_norm: none
+  velocity_aggregate: avg
+train:
+  batch_size: 1
+  step_max: 500000
+  num_workers: 4
+  noise_std: 0.0003
+  optimizer:
+    lr_start: 0.0005
+    lr_final: 1.0e-06
+    lr_decay_rate: 0.1
+    lr_decay_steps: 100000.0
+  pushforward:
+    steps:
+    - -1
+    - 200000
+    - 300000
+    - 400000
+    unrolls:
+    - 0
+    - 1
+    - 2
+    - 3
+    probs:
+    - 18
+    - 2
+    - 1
+    - 1
+  loss_weight:
+    acc: 1.0
+    vel: 0.0
+    pos: 0.0
+eval:
+  n_rollout_steps: 100
+  test: true
+  rollout_dir: /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397
+  train:
+    n_trajs: 50
+    metrics_stride: 10
+    batch_size: 1
+    metrics:
+    - mse
+    out_type: none
+  infer:
+    n_trajs: 20
+    metrics_stride: 1
+    batch_size: 2
+    metrics:
+    - mse
+    - e_kin
+    out_type: pkl
+    n_extrap_steps: 0
+logging:
+  log_steps: 1000
+  eval_steps: 10000
+  wandb: true
+  wandb_project: tgv_2d
+  wandb_entity: lagrangebench
+  ckp_dir: ckp/
+  run_name: segnn_tgv2d_20240207-051241
+neighbors:
+  backend: jaxmd_vmap
+  multiplier: 1.25
+dataset:
+  src: /vol/datasets/lagrangebench/2D_TGV_2500_10kevery100
+  name: tgv2d
+
+###############################################################################
+Start inference...
+Loaded model from /vol/checkpoints/lagrangebench/segnn_tgv2d/best at step 220000
+Metrics of /vol/checkpoints/lagrangebench/segnn_tgv2d/best on test split:
+{'val/e_kin': 5.596845492039463e-07, 'val/loss': 0.0003419883475926025, 'val/mse1': 1.4716385533577033e-07, 'val/mse10': 2.8721033669530177e-06, 'val/mse20': 1.56994097757451e-05, 'val/mse5': 7.766098019685921e-07, 'val/mse50': 0.00012853643394042215, 'val/stde_kin': 4.073763015758524e-07, 'val/stdloss': 5.499135988761215e-05, 'val/stdmse1': 3.764612084502192e-08, 'val/stdmse10': 3.9403473192556036e-07, 'val/stdmse20': 2.393224273922014e-06, 'val/stdmse5': 1.2982322105424986e-07, 'val/stdmse50': 2.07296498165968e-05}
+
+
+--- inference stderr (last 3 KB) ---
+/usr/local/lib/python3.10/site-packages/jax/_src/ops/scatter.py:96: FutureWarning: scatter inputs have incompatible types: cannot safely cast value from dtype=int64 to dtype=int32 with jax_numpy_dtype_promotion='standard'. In future JAX releases this will result in an error.
+  warnings.warn(
+
+
+--- files written (21 entries) ---
+         71315  f73519174b276f2c...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/metrics2026_05_04_20_49_54.pkl
+       6780482  1aafdf45451d54d1...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_0.pkl
+       6780482  ba74fd062a24d5a1...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_1.pkl
+       6780482  841caa5342eb1c88...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_10.pkl
+       6780482  ffece638a1279557...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_11.pkl
+       6780482  86cf7990da91738b...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_12.pkl
+       6780482  c60d79b857bd3482...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_13.pkl
+       6780482  115d46b0be7ddaf4...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_14.pkl
+       6780482  c1597c7f8a103fb1...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_15.pkl
+       6780482  c4425672687ae4fd...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_16.pkl
+       6780482  669e23768b12672a...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_17.pkl
+       6780482  84b53c3e3cdea400...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_18.pkl
+       6780482  a056d227069f3031...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_19.pkl
+       6780482  5e5d53c152c976cb...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_2.pkl
+       6780482  12b375a8d95d64f5...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_3.pkl
+       6780482  ff1ce8177acbf47a...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_4.pkl
+       6780482  40b8fbeceb44684d...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_5.pkl
+       6780482  752fb4461fd6ec45...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_6.pkl
+       6780482  1ec9ce8ab0b82ec0...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_7.pkl
+       6780482  5da1f37e5b3b5d53...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_8.pkl
+       6780482  f80673a5dc9bc5bb...  /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/rollout_9.pkl
+
+--- patches required to reach this verdict (7 entries) ---
+  [  infrastructure] [non-load-bearing] physics-lint 9276596
+    Python pin 3.11.x -> 3.10 (LagrangeBench pyproject <=3.11 normalises to <=3.11.0 under PEP 440, excluding Modal debian_slim:3.11's 3.11.x patch level)
+  [  infrastructure] [non-load-bearing] physics-lint 32b6b79
+    torch CPU index --extra-index-url for torch==2.3.1+cpu (LagrangeBench pins +cpu local-version-segment hosted on PyTorch's wheel index, not Modal's default PyPI mirror)
+  [  infrastructure] [non-load-bearing] physics-lint 91d3ce7
+    jax[cuda12]==0.4.29 + jaxlib==0.4.29 matched-stack pin (without it, jax_image's plugin/pjrt at 0.6.x carry PJRT API 0.70 vs LagrangeBench's pinned jax 0.4.29 framework PJRT API 0.54; mismatch breaks GPU access)
+  [          config] [non-load-bearing] physics-lint 63e33e9
+    dataset.name=tgv2d CLI arg (older SEGNN-TGV2D checkpoint config doesn't carry dataset.name; current LagrangeBench runner.py:148 reads cfg.dataset.name with no auto-inference fallback)
+  [library-internal] [non-load-bearing] physics-lint 7254193
+    Sinkhorn metric drop via eval.infer.metrics=[mse,e_kin] (ott-jax 0.4.9 self-inconsistency: sinkhorn_divergence forwards sinkhorn_kwargs to Geometry.__init__() which doesn't accept it; Sinkhorn is not consumed by any in-scope physics-lint rule)
+  [          config] [non-load-bearing] physics-lint 9f7df91
+    eval.infer.n_trajs=20 (replacing plan's eval.n_trajs=20): current upstream rollout.py:351 reads cfg.eval.infer.n_trajs in infer mode, NOT the plan's top-level cfg.eval.n_trajs (which is a no-op for our mode); without this fix the checkpoint's default 200 trajectories was in effect, causing the 7254193 subprocess timeout. The pre-registered value (20) is unchanged; only the CLI key path updates
+  [          config] [non-load-bearing] physics-lint 334cafd
+    LagrangeBench's eval.rollout_dir defaults to null (metrics-only mode); enabling rollout persistence requires both eval.rollout_dir=<path> (top-level per rollout.py:319) and eval.infer.out_type=pkl (nested per rollout.py:396), reflecting LB's split config layout. One feature-toggle, two CLI args at two different config-key paths because of LB's layout
+  distribution: 3 infrastructure, 3 config, 1 library-internal | 7 non-load-bearing
+
+--- verdict ---
+  -> rung 3 PASS / rung 3.5 FAIL — inference returncode 0 but conversion failed: ValueError: /vol/datasets/lagrangebench/2D_TGV_2500_10kevery100/metadata.json 'periodic_boundary_conditions' must have length D=2; got [True, True, True]. Native pkls persisted at /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397; reproduce conversion locally with the captured manifest.
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/janedoraemon/main/ap-cuSiTyq9zBzRd86lkYr0JT
