@@ -132,7 +132,8 @@ def test_renderer_golden_output_matches_expected_table() -> None:
         f"Renderer output diverged from expected_table.md.\n"
         f"--- expected ---\n{expected}\n"
         f"--- actual ---\n{actual}\n"
-        f"Regenerate by re-running:\n"
-        f"  python methodology/tools/render_cross_stack_table.py "
-        f"--sarif-dir methodology/tests/fixtures/ > methodology/tests/fixtures/expected_table.md"
+        f"Regenerate (preserving SEGNN-first column order; CLI's "
+        f"alphabetical glob would reverse this) by re-running:\n"
+        f"  python external_validation/_rollout_anchors/methodology/tools/"
+        f"regenerate_expected_table.py"
     )
