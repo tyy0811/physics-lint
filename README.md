@@ -176,6 +176,10 @@ source .venv/bin/activate && pytest --import-mode=importlib external_validation/
 
 **Resolution path.** v1.2 regularizes the relative-mode denominator with `max(avg|ref|, absolute_floor)` where `absolute_floor` is a calibrated per-problem-class floor (not machine epsilon), making the ratio meaningful on homogeneous-Dirichlet problems. Tracked in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
 
+**`PH-CON-002` evaluates `raw_value` on dissipative systems, producing FAIL on physically-correct dissipative-by-design behavior.** TGV2D, RPF2D, LDC2D, DAM2D and analogous viscous-SPH systems dissipate energy as a property of the physics; PH-CON-002's relative-drift form (`max|E(t) - E(0)| / |E(0)|`) trips the FAIL threshold on rollouts where ~99% of initial KE has correctly dissipated to viscosity. This is the primary use case for ML PDE surrogates (most ML targets are dissipative); a writeup footnote saying "ignore those FAILs" is harder to defend than the right rule semantics.
+
+The harness layer (currently on the `feature/rollout-anchors` branch pending merge to master, at `external_validation/_rollout_anchors/_harness/`) demonstrates a skip-with-reason mechanism that addresses this — a two-half positive-evidence gate (system_class hint AND KE-monotone-non-increasing) avoids masking buggy supposed-conservative surrogates while restoring correct semantics on dissipative-by-design rollouts. The harness layer is the prototype for v1.x graduation; the v1.0 public PH-CON-002 rule is preserved as-shipped here pending that future D-entry. See physics-lint-validation `DECISIONS.md` D0-18 + the rung 4a writeup at `external_validation/_rollout_anchors/methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md` (post-merge) for the full discussion.
+
 ## Rule catalog (v1.0)
 
 Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documented input-mode compatibility, and a doc page with math justification and citation. v1.0 ships **18 rules**.
