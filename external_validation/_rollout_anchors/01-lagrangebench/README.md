@@ -28,3 +28,8 @@ Lint driver: `lint_rollouts.py` — invokes
 
 Checkpoints, hashes, and git SHAs commit to the SARIF metadata per the
 schema in [`../_harness/SCHEMA.md`](../_harness/SCHEMA.md).
+
+## Cross-references
+
+- **Cross-stack writeup (rung 4a):** [`../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md`](../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md) — methodology writeup over the SARIF artifacts in `outputs/sarif/`.
+- **Methodology decisions (D0-19, D0-20):** [`../methodology/DECISIONS.md`](../methodology/DECISIONS.md).
