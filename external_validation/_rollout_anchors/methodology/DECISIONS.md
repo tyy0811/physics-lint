@@ -1763,6 +1763,8 @@ to per-rollout metadata field is the natural follow-on.
 
 **Post-merge cleanup TODO (rung 4a, 2026-05-04).** The rung-4a v1.0 docs amendment on physics-lint `master` (commit `514c5af`, see `methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-design.md` §1.3 deferral #4 + the master README's `## v1.0 known limitations` section) embeds a cross-branch qualifier: *"the harness layer (currently on the `feature/rollout-anchors` branch pending merge to master, at `external_validation/_rollout_anchors/_harness/`)"*. **When `feature/rollout-anchors` merges to `master`, this qualifier becomes stale and must be edited out** — the merge resolves the qualifier's premise. The cleanup is a small README edit + a one-line commit on master post-merge; trigger named here so it gets caught at merge PR review rather than living forever as a fossil.
 
+**Realized — post-merge cleanup landed.** PR #6 merged at `68d84c7a` on 2026-05-05. README.md cross-branch qualifier dropped in the same commit as this Realized note; the `physics-lint-validation DECISIONS.md` reference also rewritten to the in-tree `external_validation/_rollout_anchors/methodology/DECISIONS.md` path (the methodology lives in physics-lint post-migration `971b8fc`), and the "(post-merge)" qualifier on the writeup link removed since the writeup is now in master.
+
 ---
 
 ## Day 0+ status — Modal session unblocked from documentation gates
