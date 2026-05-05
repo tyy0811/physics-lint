@@ -1838,3 +1838,110 @@ read-only path on synthetic `.npz` rollouts (PH-CON-001/002/003) —
 no JAX, no Modal. Per the user's scoping clarification: synthetic
 first as a rule-plumbing regression test (~2–3h), pre-recorded
 LagrangeBench `.npz` only if available without JAX install.
+
+---
+
+## D0-19 — 2026-05-04 — Harness SARIF result schema (rung 4a pre-registration)
+
+**Question.** Rung 4a will package the 40 npzs from rung 3.5 PASS into
+committed SARIF artifacts via the existing `_harness/sarif_emitter.py`.
+The artifact's contract — what fields are at the run level vs the result
+level, what fields are guaranteed-identical across rows vs allowed to
+vary, what the schema_version is, what the renderer can assume — is
+load-bearing for the rung 4a writeup's "20 identical fires across both
+stacks" claim. That claim is defensible only if the schema enforces the
+identity, not if a grep happens to find it on this run's data.
+
+**Decision (pre-registered before any code change).**
+
+The harness SARIF schema gets formal field-level guarantees. Run-level
+properties (`runs[0].properties`) carry constants per artifact. Result-
+level properties (`runs[0].results[*].properties`) carry per-row data,
+explicitly classified as guaranteed-identical-across-rows-within-stack
+or may-vary.
+
+Run-level fields (10 total):
+
+- `source` (literal `"rollout-anchor-harness"` — discriminator vs public-API SARIF)
+- `harness_sarif_schema_version` (string, e.g., `"1.0"`; renderer asserts on equality)
+- `physics_lint_sha_pkl_inference` (sha at which LB CLI ran on Modal to produce pkls)
+- `physics_lint_sha_npz_conversion` (sha at which pkl→npz conversion ran)
+- `physics_lint_sha_sarif_emission` (sha at which the lint code emitted this SARIF)
+- `lagrangebench_sha` (LB upstream sha — the inference engine producing the pkls)
+- `checkpoint_id` (LB gdown identifier or symbolic name)
+- `model_name` (LB CLI key, e.g., `"segnn"` / `"gns"`)
+- `dataset_name` (LB dataset identifier, e.g., `"tgv2d"`)
+- `rollout_subdir` (Volume artifact location at npz-genesis time)
+
+The three `physics_lint_sha_*` fields **may be identical** (single-shot
+run where inference + conversion + emission collapse to one sha) or
+**distinct** (multi-session, as production SEGNN demonstrates: pkl
+inference at `8c3d080`, npz conversion at `5857144`, SARIF emission at
+post-`d03df3e`). Equality is allowed but never required. Renderer
+assertion logic does NOT impose equality across stages.
+
+`harness_sarif_schema_version` co-evolves with `physics_lint_sha_sarif_emission`
+by construction (any schema change is a sha change), but is denormalized
+into the SARIF for renderer assertion-locality.
+
+Result-level fields:
+- `traj_index` (int 0..19; may-vary)
+- `npz_filename` (e.g., `"particle_rollout_traj00.npz"`; may-vary)
+- `raw_value` (float, when defect emits a value; guaranteed-identical
+  iff value is load-bearing-identical, as it is for the four 0.0 cells
+  in 4a's data)
+- `skip_reason` (string, when defect SKIPs; guaranteed-identical —
+  template constant after the energy_drift change below)
+- `ke_initial` (float; present only on `harness:energy_drift` SKIP rows; may-vary)
+- `ke_final` (float; present only on `harness:energy_drift` SKIP rows; may-vary)
+
+For a fixed (rule, stack), all 20 result rows MUST have identical
+`ruleId`, `level`, `message.text`, plus either identical `raw_value` or
+identical `skip_reason` (the existing `HarnessDefect` invariant: rule
+emits exactly one of the two on every row).
+
+Consumers MAY assert these invariants at render time. The schema makes
+them checkable, not mandatory-to-check.
+
+**Energy_drift skip_reason template change (forced by the contract).**
+
+Current emission interpolates per-row varying KE values into the
+skip_reason string:
+
+    f"...KE(0)={e0:.3e}, KE(end)={float(e_series[-1]):.3e}..."
+
+This makes skip_reason per-row varying, violating the "guaranteed-identical"
+classification. D0-19 mandates a template-constant skip_reason; the
+varying values move to dedicated `properties.ke_initial` / `ke_final`
+fields on the SARIF row, attached by the new `lint_npz_dir.py` module.
+
+New skip_reason template (interpolates `dataset_name` only, which is
+constant per stack):
+
+    f"system_class='dissipative' (dataset={dataset_name!r}); "
+    "KE(t) monotone-non-increasing across the rollout; "
+    "see properties.ke_initial / ke_final for values; "
+    "consult dissipation_sign_violation as load-bearing alternative."
+
+`HarnessDefect` itself stays unchanged (only `value` and `skip_reason`
+fields). Other rules don't get `ke_initial` / `ke_final`.
+
+**Schema version:** v1.0 (this entry pins it).
+
+**Forward-flag (v1.x graduation question).** If a future D-entry
+proposes graduating D0-18's dissipative-system handling into physics-
+lint v1.x core, the SARIF convention divergence (harness-style emits
+`level: "note"` for PASS-equivalent rows; public-v1.0 suppresses PASS
+rows) must be revisited explicitly: either drop the note-level rows
+(matching v1.0 PASS-suppression) or retain them as a deliberate two-
+tier convention (harness-derived rules emit informational findings;
+pure-v1.0 rules emit only on findings). Recorded here so the question
+doesn't get rediscovered cold.
+
+**Realized.** This entry now. SCHEMA.md §3.x extension lands at the
+same sequencing position; D0-20 follows immediately as the consumer-
+side counterpart. Implementation lands per the 14-step sequence in
+`methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-design.md`
+§4.
+
+---
