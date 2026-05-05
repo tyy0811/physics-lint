@@ -1,0 +1,222 @@
+✓ Initialized. View run at 
+https://modal.com/apps/janedoraemon/main/ap-Dbj8F5cG7j8llyYhY6vcIu
+✓ Created objects.
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/01-l
+│   agrangebench/modal_app.py
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/_har
+│   ness/lagrangebench_pkl_to_npz.py
+├── 🔨 Created function lagrangebench_rollout_p0_segnn_tgv2d.
+├── 🔨 Created function jax_micro_gate.
+└── 🔨 Created function lagrangebench_install_smoke.
+=== Rung 3 P0 SEGNN-TGV2D rollout (D0-15) ===
+  gpu_class:           A10G
+  git_sha (short):     f75e22d8dd
+  git_sha (full):      f75e22d8ddebbdd77a4df004c45c1a6e1536c0c3
+  checkpoint gdown id: 1llGtakiDmLfarxk6MUAtqj6sLleMQ7RL
+
+--- manifest ---
+  aborted_at_step:                <none>
+  lagrangebench_sha:              b880a6c84a93792d2499d2a9b8ba3a077ddf44e2
+  inference_seed:                 0
+  rollout_subdir:                 /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd
+  checkpoint_download_skipped:    True
+  checkpoint_gdown_returncode:    None
+  checkpoint_unzip_returncode:    None
+  dataset_download_skipped:       True
+  dataset_download_returncode:    None
+  inference_returncode:           0
+  inference_wall_seconds:         759.5
+  conversion_attempted:           True
+  conversion_returncode:          0
+  converted_npz_count:            20
+
+--- converted npz paths (rung 3.5) ---
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj00.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj01.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj02.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj03.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj04.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj05.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj06.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj07.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj08.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj09.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj10.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj11.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj12.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj13.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj14.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj15.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj16.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj17.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj18.npz
+  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj19.npz
+
+--- inference stdout (last 3 KB) ---
+############################################################################### 
+Starting a LagrangeBench run with the following configs:
+config: configs/tgv_2d/segnn.yaml
+load_ckp: /vol/checkpoints/lagrangebench/segnn_tgv2d/best
+mode: infer
+dataset_path: datasets/2D_TGV_2500_10kevery100
+seed: 0
+dtype: float64
+gpu: -1
+xla_mem_fraction: 0.75
+model:
+  name: segnn
+  input_seq_length: 6
+  num_mp_steps: 10
+  num_mlp_layers: 2
+  latent_dim: 64
+  magnitude_features: false
+  isotropic_norm: true
+  lmax_attributes: 1
+  lmax_hidden: 1
+  segnn_norm: none
+  velocity_aggregate: avg
+train:
+  batch_size: 1
+  step_max: 500000
+  num_workers: 4
+  noise_std: 0.0003
+  optimizer:
+    lr_start: 0.0005
+    lr_final: 1.0e-06
+    lr_decay_rate: 0.1
+    lr_decay_steps: 100000.0
+  pushforward:
+    steps:
+    - -1
+    - 200000
+    - 300000
+    - 400000
+    unrolls:
+    - 0
+    - 1
+    - 2
+    - 3
+    probs:
+    - 18
+    - 2
+    - 1
+    - 1
+  loss_weight:
+    acc: 1.0
+    vel: 0.0
+    pos: 0.0
+eval:
+  n_rollout_steps: 100
+  test: true
+  rollout_dir: /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd
+  train:
+    n_trajs: 50
+    metrics_stride: 10
+    batch_size: 1
+    metrics:
+    - mse
+    out_type: none
+  infer:
+    n_trajs: 20
+    metrics_stride: 1
+    batch_size: 2
+    metrics:
+    - mse
+    - e_kin
+    out_type: pkl
+    n_extrap_steps: 0
+logging:
+  log_steps: 1000
+  eval_steps: 10000
+  wandb: true
+  wandb_project: tgv_2d
+  wandb_entity: lagrangebench
+  ckp_dir: ckp/
+  run_name: segnn_tgv2d_20240207-051241
+neighbors:
+  backend: jaxmd_vmap
+  multiplier: 1.25
+dataset:
+  src: /vol/datasets/lagrangebench/2D_TGV_2500_10kevery100
+  name: tgv2d
+
+###############################################################################
+Start inference...
+Loaded model from /vol/checkpoints/lagrangebench/segnn_tgv2d/best at step 220000
+Metrics of /vol/checkpoints/lagrangebench/segnn_tgv2d/best on test split:
+{'val/e_kin': 5.596039638744116e-07, 'val/loss': 0.00034209837096667165, 'val/mse1': 1.4716385947596075e-07, 'val/mse10': 2.8721005065594487e-06, 'val/mse20': 1.5699394099060264e-05, 'val/mse5': 7.766098271294825e-07, 'val/mse50': 0.00012853919224247568, 'val/stde_kin': 4.074106661531209e-07, 'val/stdloss': 5.4961890116682304e-05, 'val/stdmse1': 3.7646118982955216e-08, 'val/stdmse10': 3.9403383994114783e-07, 'val/stdmse20': 2.393235277229425e-06, 'val/stdmse5': 1.298231752665465e-07, 'val/stdmse50': 2.0729450267854873e-05}
+
+
+--- inference stderr (last 3 KB) ---
+/usr/local/lib/python3.10/site-packages/jax/_src/ops/scatter.py:96: FutureWarning: scatter inputs have incompatible types: cannot safely cast value from dtype=int64 to dtype=int32 with jax_numpy_dtype_promotion='standard'. In future JAX releases this will result in an error.
+  warnings.warn(
+
+
+--- files written (41 entries) ---
+         71315  e28752036af550b9...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/metrics2026_05_04_19_54_34.pkl
+       4272357  ab7b6a534a004a9a...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj00.npz
+       4272357  57c9c16b8d9ea2a5...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj01.npz
+       4272357  5cb75b3cb8521e29...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj02.npz
+       4272357  0deeacc8a55fa57c...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj03.npz
+       4272357  7eae8a96e47d169f...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj04.npz
+       4272357  f5f791099e0b92e2...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj05.npz
+       4272357  8b245aae437ebe31...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj06.npz
+       4272357  a0b6562f740b5431...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj07.npz
+       4272357  aca8d2a97e9d87c0...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj08.npz
+       4272357  5644cbaed5bb5f4d...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj09.npz
+       4272357  35fde86bf5452941...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj10.npz
+       4272357  0fdd46a04854e5ff...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj11.npz
+       4272357  1f6b929ec6997c82...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj12.npz
+       4272357  5b9a1e71da638e93...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj13.npz
+       4272357  a4e0f09057ced43b...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj14.npz
+       4272357  5fd63d561de6ef58...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj15.npz
+       4272357  1066a0de6ede4d66...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj16.npz
+       4272357  51b587d5160d789f...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj17.npz
+       4272357  478c00e076158287...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj18.npz
+       4272357  d5fcd3a08ff6275e...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/particle_rollout_traj19.npz
+       6780482  e938b81f9383c0dd...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_0.pkl
+       6780482  3841c0466815897f...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_1.pkl
+       6780482  17ea383d9cd9236a...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_10.pkl
+       6780482  ca9d5cd9a2fac908...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_11.pkl
+       6780482  abed31f74976ed63...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_12.pkl
+       6780482  0db0fe1060884464...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_13.pkl
+       6780482  08c017e5ca5de67e...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_14.pkl
+       6780482  f8799d74423c778c...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_15.pkl
+       6780482  8acdd2cb174fd849...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_16.pkl
+       6780482  cbba456b11c86492...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_17.pkl
+       6780482  5136db77c0df420a...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_18.pkl
+       6780482  74b5ce7558796104...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_19.pkl
+       6780482  a0b3c588edbb22d1...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_2.pkl
+       6780482  5e72b8a601198503...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_3.pkl
+       6780482  869fcd4e690834e0...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_4.pkl
+       6780482  98043ff30a4c29a6...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_5.pkl
+       6780482  cfb4eeecce5929ef...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_6.pkl
+       6780482  f1e51869c3ad3f8e...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_7.pkl
+       6780482  abe155903f282bf3...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_8.pkl
+       6780482  ac616fe7032f43e0...  /vol/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/rollout_9.pkl
+
+--- patches required to reach this verdict (7 entries) ---
+  [  infrastructure] [non-load-bearing] physics-lint 9276596
+    Python pin 3.11.x -> 3.10 (LagrangeBench pyproject <=3.11 normalises to <=3.11.0 under PEP 440, excluding Modal debian_slim:3.11's 3.11.x patch level)
+  [  infrastructure] [non-load-bearing] physics-lint 32b6b79
+    torch CPU index --extra-index-url for torch==2.3.1+cpu (LagrangeBench pins +cpu local-version-segment hosted on PyTorch's wheel index, not Modal's default PyPI mirror)
+  [  infrastructure] [non-load-bearing] physics-lint 91d3ce7
+    jax[cuda12]==0.4.29 + jaxlib==0.4.29 matched-stack pin (without it, jax_image's plugin/pjrt at 0.6.x carry PJRT API 0.70 vs LagrangeBench's pinned jax 0.4.29 framework PJRT API 0.54; mismatch breaks GPU access)
+  [          config] [non-load-bearing] physics-lint 63e33e9
+    dataset.name=tgv2d CLI arg (older SEGNN-TGV2D checkpoint config doesn't carry dataset.name; current LagrangeBench runner.py:148 reads cfg.dataset.name with no auto-inference fallback)
+  [library-internal] [non-load-bearing] physics-lint 7254193
+    Sinkhorn metric drop via eval.infer.metrics=[mse,e_kin] (ott-jax 0.4.9 self-inconsistency: sinkhorn_divergence forwards sinkhorn_kwargs to Geometry.__init__() which doesn't accept it; Sinkhorn is not consumed by any in-scope physics-lint rule)
+  [          config] [non-load-bearing] physics-lint 9f7df91
+    eval.infer.n_trajs=20 (replacing plan's eval.n_trajs=20): current upstream rollout.py:351 reads cfg.eval.infer.n_trajs in infer mode, NOT the plan's top-level cfg.eval.n_trajs (which is a no-op for our mode); without this fix the checkpoint's default 200 trajectories was in effect, causing the 7254193 subprocess timeout. The pre-registered value (20) is unchanged; only the CLI key path updates
+  [          config] [non-load-bearing] physics-lint 334cafd
+    LagrangeBench's eval.rollout_dir defaults to null (metrics-only mode); enabling rollout persistence requires both eval.rollout_dir=<path> (top-level per rollout.py:319) and eval.infer.out_type=pkl (nested per rollout.py:396), reflecting LB's split config layout. One feature-toggle, two CLI args at two different config-key paths because of LB's layout
+  distribution: 3 infrastructure, 3 config, 1 library-internal | 7 non-load-bearing
+
+--- verdict ---
+  -> rung 3 + 3.5 P0 verdict: PASS — inference returncode 0; conversion produced 20 schema-conformant npz file(s).
+     Next: rung 4 (particle_rollout_adapter invocation against the npzs).
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/janedoraemon/main/ap-Dbj8F5cG7j8llyYhY6vcIu

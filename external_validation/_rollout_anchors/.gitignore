@@ -1,0 +1,8 @@
+01-lagrangebench/outputs/rollouts/*.npz
+02-physicsnemo-mgn/outputs/rollouts/*.npz
+01-lagrangebench/outputs/figures/*
+02-physicsnemo-mgn/outputs/figures/*
+!01-lagrangebench/outputs/rollouts/.gitkeep
+!02-physicsnemo-mgn/outputs/rollouts/.gitkeep
+!01-lagrangebench/outputs/figures/.gitkeep
+!02-physicsnemo-mgn/outputs/figures/.gitkeep

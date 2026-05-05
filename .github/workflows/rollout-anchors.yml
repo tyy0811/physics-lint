@@ -1,0 +1,77 @@
+name: rollout-anchors
+
+# Rollout-domain F3 anchor extension to external_validation/. Day-0
+# scope (this file): controlled-fixture harness validation only —
+# Gate B per spec §6 / SCHEMA.md §4.1. Day 3 swaps the trigger surface
+# to push / pull_request once cached .npz rollouts exist; until then,
+# the workflow is workflow_dispatch only so per-PR CI runtime is not
+# inflated by anchor work that is still pre-Gate-A / pre-Gate-D.
+#
+# Path note. The spec / plan reference path is
+#   external_validation/_rollout_anchors/.github/workflows/rollout-anchors.yml
+# but GitHub Actions only reads workflows from the repository root's
+# .github/workflows/ directory. The actual workflow lives here; the
+# spec's nested path is a documentation organisational choice that
+# does not match the platform's lookup rule. See
+# physics-lint-validation/DECISIONS.md (rollout-anchors branch) for
+# the full rationale; the nested directory under _rollout_anchors/
+# is intentionally absent so future readers do not assume there is a
+# second workflow there.
+#
+# Mirrors the pattern of .github/workflows/external-validation.yml:
+# Python 3.11 pin, pip install -e ".[dev,mesh]", pytest with
+# --import-mode=importlib.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate-b-controlled-fixture:
+    runs-on: ubuntu-latest
+    name: Gate B controlled-fixture validation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with dev + mesh extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,mesh]"
+      - name: Run Gate B harness-vs-public-API fixtures
+        run: |
+          pytest --import-mode=importlib \
+            external_validation/_rollout_anchors/_harness/tests/fixtures \
+            -v
+
+  case-study-tests:
+    runs-on: ubuntu-latest
+    name: Case-study adapter contract tests
+    strategy:
+      fail-fast: false
+      matrix:
+        case_study:
+          - 01-lagrangebench
+          - 02-physicsnemo-mgn
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install physics-lint with dev + mesh extras
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,mesh]"
+      - name: Run ${{ matrix.case_study }} tests (no-op until Day 1+)
+        run: |
+          # Per Day 0 acceptance, the case-study tests directory exists
+          # but is empty; pytest exits 5 (no tests collected) which the
+          # || true tolerates. Day 1 (LagrangeBench) and Day 2
+          # (PhysicsNeMo / FNO fallback) populate ≥3 unit tests on the
+          # adapter contract per spec §9 item 3 / plan §10 item 3.
+          pytest --import-mode=importlib \
+            external_validation/_rollout_anchors/${{ matrix.case_study }}/tests \
+            -v || test $? -eq 5

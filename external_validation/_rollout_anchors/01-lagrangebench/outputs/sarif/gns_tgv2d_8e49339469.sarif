@@ -1,0 +1,1209 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "checkpoint_id": "gns_tgv2d",
+        "dataset_name": "tgv2d",
+        "harness_sarif_schema_version": "1.0",
+        "lagrangebench_sha": "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2",
+        "model_name": "gns",
+        "physics_lint_sha_npz_conversion": "f48dd3f376",
+        "physics_lint_sha_pkl_inference": "f48dd3f376",
+        "physics_lint_sha_sarif_emission": "8e49339469",
+        "rollout_subdir": "/vol/rollouts/lagrangebench/gns_tgv2d_f48dd3f376/",
+        "source": "rollout-anchor-harness"
+      },
+      "results": [
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj00.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08414152074424337,
+            "ke_initial": 600.4293672798636,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj00.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 0
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj00.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj01.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08336040738136027,
+            "ke_initial": 601.4258669026701,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj01.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 1
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj01.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj02.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.0813943251957413,
+            "ke_initial": 601.4108662846456,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj02.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 2
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj02.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj03.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08377894898950099,
+            "ke_initial": 600.7405463582295,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj03.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 3
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj03.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj04.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08280873985369999,
+            "ke_initial": 601.0323758781919,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj04.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 4
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj04.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj05.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08272811454278972,
+            "ke_initial": 601.9646021647553,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj05.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 5
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj05.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj06.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08457693154533207,
+            "ke_initial": 599.7183532961496,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj06.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 6
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj06.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj07.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.07930897735337239,
+            "ke_initial": 601.6198343647845,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj07.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 7
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj07.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj08.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.0845304636445287,
+            "ke_initial": 600.75962126481,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj08.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 8
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj08.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj09.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08698943657225551,
+            "ke_initial": 600.817846134041,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj09.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 9
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj09.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj10.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08368341006264735,
+            "ke_initial": 598.8738962031074,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj10.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 10
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj10.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj11.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08155776762910007,
+            "ke_initial": 600.0675329244841,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj11.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 11
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj11.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj12.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08132430481752057,
+            "ke_initial": 601.0565547098156,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj12.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 12
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj12.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj13.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08306717703145136,
+            "ke_initial": 601.5817948160891,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj13.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 13
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj13.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj14.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08350911920736705,
+            "ke_initial": 600.9438059545485,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj14.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 14
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj14.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj15.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08484499692682029,
+            "ke_initial": 599.3968817815482,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj15.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 15
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj15.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj16.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08600816527299535,
+            "ke_initial": 601.4631367896009,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj16.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 16
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj16.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj17.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08025863424241993,
+            "ke_initial": 601.6665362364554,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj17.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 17
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj17.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj18.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08186104791484984,
+            "ke_initial": 600.4313654221169,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj18.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 18
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj18.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj19.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.08504953097794592,
+            "ke_initial": 601.3457507287206,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj19.npz",
+            "skip_reason": "system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class.",
+            "source": "rollout-anchor-harness",
+            "traj_index": 19
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "gns_tgv2d",
+            "dataset": "tgv2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "npz_filename": "particle_rollout_traj19.npz",
+            "raw_value": 0.0,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/tyy0811/physics-lint",
+          "name": "physics-lint-rollout-anchor-harness",
+          "version": "0.1.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}

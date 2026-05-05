@@ -57,3 +57,6 @@ dogfood/results/
 # never belongs in the repo (~3 MB per file, opaque binary, would create a
 # second stale source of truth next to the committed CI dumps above).
 dogfood/_predictions/
+
+# rollout-anchor harness local cache (populated by `modal volume get`)
+external_validation/_rollout_anchors/01-lagrangebench/outputs/_local_mirror/
