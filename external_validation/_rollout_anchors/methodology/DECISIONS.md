@@ -1945,3 +1945,93 @@ side counterpart. Implementation lands per the 14-step sequence in
 §4.
 
 ---
+
+---
+
+## D0-20 — 2026-05-04 — Generator-vs-consumer separation architecture (rung 4a pre-registration)
+
+**Question.** D0-19 specifies *what's in* the harness SARIF artifact.
+D0-20 specifies *how it's consumed* by the cross-stack writeup table
+renderer. Orthogonal pre-registrations: D0-19 is the artifact contract;
+D0-20 is the consumption architecture.
+
+**Decision (pre-registered before renderer code).**
+
+1. **Renderer lives in `methodology/tools/`** alongside other methodology
+   tooling, not in `_harness/`. Generator (harness + driver under
+   `_rollout_anchors/`) and consumer (renderer under `methodology/tools/`)
+   communicate only through the SARIF artifact contract. **No Python
+   imports cross the subtree boundary.** This makes the renderer
+   testable in isolation against synthetic fixtures, and prevents the
+   methodology subtree from accruing the harness as an import-time
+   dependency.
+
+2. **Schema version is the wire protocol.** Renderer hard-codes an
+   `EXPECTED_SCHEMA_VERSION` constant. First action on reading any
+   SARIF: assert `runs[0].properties.harness_sarif_schema_version ==
+   EXPECTED_SCHEMA_VERSION`. On mismatch, raise `SchemaVersionMismatch`
+   — **fail loud, not degraded**. No warnings, no log-and-continue, no
+   best-effort coercion. The assertion is the load-bearing primitive
+   that lets the cross-subtree separation hold without introducing
+   silent version drift.
+
+3. **Source-tag assertion** parallels schema-version: assert
+   `runs[0].properties.source == "rollout-anchor-harness"`; raise
+   `SourceTagMismatch` on failure. Distinguishes harness SARIF from
+   public-API SARIF reaching the renderer by accident.
+
+4. **Run-level field-presence assertions.** All 10 D0-19 run-level
+   fields are required on read; missing → raise `MissingRunLevelField`
+   naming the missing field. No defaulting.
+
+5. **Test surface — golden + version-mismatch + asymmetric-shas.**
+   - Golden: synthetic fixtures → rendered table matches an
+     expected_table.md byte-for-byte.
+   - Version-mismatch: bumped-version fixture (programmatically derived)
+     → SchemaVersionMismatch raises.
+   - Source-tag mismatch: wrong-source fixture (programmatically derived)
+     → SourceTagMismatch raises.
+   - Missing-field: deleted-field fixture (programmatically derived) →
+     MissingRunLevelField raises.
+   - Asymmetric-shas: feeds renderer fixtures with deliberately-distinct
+     three-stage shas; asserts renderer handles them correctly without
+     equality assumption (per D0-19's may-be-identical-or-distinct
+     contract).
+   - Aggregation: "all 20 identical → single cell" detection fires on
+     uniform values; falls back to summary stats on non-uniform.
+
+6. **Test fixtures hand-crafted synthetic-but-realistic, NEVER copied
+   from production.** Production SARIFs have incidental properties
+   (specific shas, paths, run-time-only fields) that have nothing to do
+   with the schema contract; copying them couples the test to those
+   incidentals. Fixtures use placeholder shas (`synthetic_inference_sha`,
+   etc.) and synthetic dataset names. SEGNN fixture defaults to
+   asymmetric three-stage shas (matching production); GNS fixture
+   defaults to collapsed shas (also matching production). Negative-path
+   fixtures (bumped_schema, wrong_source, missing_field) derived
+   programmatically at test time from the canonical fixture rather than
+   committed as separate files.
+
+7. **Renderer output convention.** Renderer is pure stdin-out: emits
+   markdown table to stdout, never writes to the writeup file directly.
+   Writeup includes the table via copy-paste, plus a rederivability
+   footer with the exact render command + sha at which the table was
+   rendered. The footer is what converts copy-paste from "two artifacts
+   that happen to agree right now" into "an artifact reproducible from
+   the commit-pinned source."
+
+**Reframing note.** Pre-migration, this would have been "cross-repo"
+separation (renderer in physics-lint-validation, generator in physics-
+lint). Post-migration (`971b8fc`), the methodology subtree lives in
+physics-lint alongside the harness; the discipline is intra-repo
+subtree separation with the same wire-protocol shape. The cross-repo
+URL discipline reduces to sibling-relative paths for in-repo navigation
+(commit-pinned GitHub URLs as optional secondary for GitHub-rendered-
+markdown readers).
+
+**Realized.** This entry now. Renderer implementation lands per the
+14-step sequence in
+`methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-design.md`
+§4 step 12.
+
+---
