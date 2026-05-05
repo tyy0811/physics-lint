@@ -23,7 +23,7 @@ E.g.::
     .venv/bin/python ...scripts/spot_check_rollout.py gns_tgv2d_f48dd3f376
 
 Cache lives at ``/tmp/physics_lint_spot_check/``; existing pulls are
-re-used (idempotent — re-running on the same subdir doesn't re-download).
+reused (idempotent — re-running on the same subdir doesn't re-download).
 
 ## Reference values (TGV2D specifically)
 
