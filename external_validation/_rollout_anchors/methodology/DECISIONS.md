@@ -1761,6 +1761,8 @@ behavior on the public rule is identical to its pre-D0-18 shipped
 state; v1.1 promotion of ``system_class`` from hardcoded mapping
 to per-rollout metadata field is the natural follow-on.
 
+**Post-merge cleanup TODO (rung 4a, 2026-05-04).** The rung-4a v1.0 docs amendment on physics-lint `master` (commit `514c5af`, see `methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-design.md` §1.3 deferral #4 + the master README's `## v1.0 known limitations` section) embeds a cross-branch qualifier: *"the harness layer (currently on the `feature/rollout-anchors` branch pending merge to master, at `external_validation/_rollout_anchors/_harness/`)"*. **When `feature/rollout-anchors` merges to `master`, this qualifier becomes stale and must be edited out** — the merge resolves the qualifier's premise. The cleanup is a small README edit + a one-line commit on master post-merge; trigger named here so it gets caught at merge PR review rather than living forever as a fossil.
+
 ---
 
 ## Day 0+ status — Modal session unblocked from documentation gates
