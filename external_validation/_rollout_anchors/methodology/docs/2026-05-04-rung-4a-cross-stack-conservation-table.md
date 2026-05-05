@@ -13,7 +13,7 @@
 
 physics-lint's harness ran the same conservation rule schema, unmodified, across SEGNN-TGV2D and GNS-TGV2D rollouts of the same dissipative system. Every result row is structurally identical between the two SARIF artifacts (D0-19-enforced); D0-18's dissipative-system skip-with-reason fires identically with the same `skip_reason` string on both — per-stack KE endpoints are recorded in dedicated `properties.ke_initial` / `properties.ke_final` fields, not interpolated into the reason — and points to `dissipation_sign_violation` as the load-bearing alternative. The methodology-evolution machinery — D0-18's skip-with-reason path — is exercised end-to-end against real upstream output.
 
-The "20 identical fires" claim above is schema-specified and renderer-aggregation-observed: D0-19 §3.4 specifies that for a fixed (rule, stack), all 20 result rows MUST have identical `ruleId`, `level`, `message.text`, plus either identical `properties.raw_value` or identical `properties.skip_reason`. The renderer aggregates per (rule, stack) and surfaces non-uniformity as a `min=, max=, n=` cell rather than silencing it; any divergence would be visible in the table above rather than masked. SCHEMA.md §3.x marks the result-row identity check as MAY-assert at the consumer layer (the renderer chose the surface-non-uniformity path); a future MUST-assert hardening — raising on divergence rather than displaying it — is the natural v1.x graduation if downstream readers want a fail-loud rather than fail-visible discipline.
+The "20 identical fires" claim above binds at two enforcement layers. D0-19 §3.4 specifies that for a fixed (rule, stack), all 20 result rows MUST have identical `ruleId`, `level`, `message.text`, plus either identical `properties.raw_value` or identical `properties.skip_reason`. The renderer **hard-asserts the SKIP-row half** — presence of `properties.skip_reason` on every SKIP row, plus identity of `skip_reason` and `message.text` within (rule, stack); divergence raises `ResultRowInvariantError` per `methodology/tools/render_cross_stack_table.py`. **Raw-row identity is renderer-aggregation-observed** — uniform values display as `value (xN identical)`, non-uniform as `min=, max=, n=` (visible, not silenced). The asymmetric treatment matches the underlying contract: `skip_reason` is template-constant per D0-19 design; `raw_value` is per-traj-permitted-to-vary in general — rung 4a's all-zero raw values are incidental to TGV2D's exact mass conservation and monotone dissipation, not a schema requirement.
 
 ---
 
@@ -27,8 +27,8 @@ The "20 identical fires" claim above is schema-specified and renderer-aggregatio
 
 **Provenance (D0-19 three-sha):**
 
-- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=5ed9fa3009
-- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=5ed9fa3009
+- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=8e49339469
+- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=8e49339469
 
 ---
 
@@ -48,7 +48,7 @@ The "20 identical fires" claim above is schema-specified and renderer-aggregatio
 
 ## Rederivability
 
-Rendered at physics-lint `feature/rollout-anchors` sha `5ed9fa3009` via:
+Rendered at physics-lint `feature/rollout-anchors` sha `8e49339469` via:
 
 ```bash
 python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \
