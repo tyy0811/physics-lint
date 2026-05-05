@@ -38,6 +38,8 @@ from pathlib import Path
 # Ensure repo root is importable regardless of how this script is invoked
 # (plan's documented invocation is `python <path>` from repo root, which
 # does not auto-include the repo root in sys.path).
+# REMOVE WHEN PACKAGED: becomes dead code if physics-lint ships
+# pip-installable with proper console_scripts / entry_points.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
