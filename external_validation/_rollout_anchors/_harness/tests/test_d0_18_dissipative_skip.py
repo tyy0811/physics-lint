@@ -259,13 +259,36 @@ def test_skip_reason_names_dataset_for_audit_trail() -> None:
     assert "'tgv2d'" in result.skip_reason
 
 
-def test_skip_reason_includes_ke_endpoints() -> None:
-    """The skip_reason must include KE(0) and KE(end) so a future reader
-    can quickly assess whether the dissipation magnitude is physical
-    (e.g., partial decay vs ~total decay).
+def test_skip_reason_signposts_ke_property_fields() -> None:
+    """Per D0-19's guaranteed-identical contract on skip_reason, KE
+    endpoint values must NOT be interpolated into the reason string
+    (that would make skip_reason per-row varying). The reason instead
+    signposts the dedicated SARIF properties (`ke_initial`, `ke_final`)
+    where the per-row values live.
     """
     rollout = _build_dissipative_rollout(dataset_name="tgv2d")
     result = energy_drift(rollout)
     assert result.skip_reason is not None
-    assert "KE(0)" in result.skip_reason
-    assert "KE(end)" in result.skip_reason
+    assert "KE(0)" not in result.skip_reason
+    assert "KE(end)" not in result.skip_reason
+    assert "ke_initial" in result.skip_reason
+    assert "ke_final" in result.skip_reason
+    assert "properties." in result.skip_reason
+
+
+def test_skip_reason_template_constant_across_invocations() -> None:
+    """Per D0-19, the skip_reason template is constant — no per-row
+    value interpolation. Two invocations with the same dataset_name but
+    different KE endpoints must produce IDENTICAL skip_reason strings.
+    """
+    rollout_a = _build_dissipative_rollout(dataset_name="tgv2d", decay_rate=0.5)
+    rollout_b = _build_dissipative_rollout(dataset_name="tgv2d", decay_rate=2.0)
+    reason_a = energy_drift(rollout_a).skip_reason
+    reason_b = energy_drift(rollout_b).skip_reason
+    assert reason_a is not None and reason_b is not None
+    assert reason_a == reason_b, (
+        "D0-19 contract violation: skip_reason varies across invocations "
+        "with different KE endpoints. Per-row varying values must move to "
+        "SARIF properties.ke_initial / ke_final, not interpolate into the "
+        "reason string."
+    )

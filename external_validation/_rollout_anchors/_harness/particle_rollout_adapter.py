@@ -508,13 +508,13 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
         return HarnessDefect(
             value=None,
             skip_reason=(
-                f"system_class='dissipative' (dataset={dataset_name!r}) and "
-                f"KE(t) monotone-non-increasing across the rollout (KE(0)={e0:.3e}, "
-                f"KE(end)={float(e_series[-1]):.3e}); relative drift is a "
-                f"misfire for dissipative-by-design systems where the "
-                f"dissipation magnitude IS the physics. See "
-                f"DECISIONS.md D0-18; consult dissipation_sign_violation "
-                f"for the load-bearing test on this system class."
+                f"system_class='dissipative' (dataset={dataset_name!r}); "
+                "KE(t) monotone-non-increasing across the rollout; "
+                "see properties.ke_initial / ke_final for values; "
+                "relative drift is a misfire for dissipative-by-design "
+                "systems where the dissipation magnitude IS the physics. "
+                "See DECISIONS.md D0-18; consult dissipation_sign_violation "
+                "for the load-bearing test on this system class."
             ),
         )
     drift = float(np.max(np.abs(e_series - e0)))
