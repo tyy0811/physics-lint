@@ -185,6 +185,63 @@ sync with the public emitter on this field.
 
 ---
 
+### 3.x Harness SARIF result schema (D0-19)
+
+Pre-registered in `physics-lint/external_validation/_rollout_anchors/methodology/DECISIONS.md` D0-19. Schema version: v1.0.
+
+#### Run-level properties (`runs[0].properties`)
+
+All 10 fields REQUIRED. Renderer raises `MissingRunLevelField` on any absent field.
+
+| Field | Type | Description |
+|---|---|---|
+| `source` | string | Literal `"rollout-anchor-harness"`. Discriminator vs public-API SARIF. |
+| `harness_sarif_schema_version` | string | `"1.0"` for this version. Renderer's `EXPECTED_SCHEMA_VERSION` binds on equality. Bumps on any contract change in this section; co-evolves with `physics_lint_sha_sarif_emission` by construction. |
+| `physics_lint_sha_pkl_inference` | string | Sha at which the LB CLI ran on Modal to produce pkls. |
+| `physics_lint_sha_npz_conversion` | string | Sha at which pkl→npz conversion ran. May equal inference sha (single-shot run) or differ (multi-session). |
+| `physics_lint_sha_sarif_emission` | string | Sha at which the lint code emitted this SARIF. May equal the other two or differ. |
+| `lagrangebench_sha` | string | LB upstream sha (the inference engine producing the pkls). |
+| `checkpoint_id` | string | LB gdown identifier or symbolic name. |
+| `model_name` | string | LB CLI key, e.g., `"segnn"` or `"gns"`. |
+| `dataset_name` | string | LB dataset identifier, e.g., `"tgv2d"`. |
+| `rollout_subdir` | string | Volume artifact location at npz-genesis time, e.g., `"/vol/rollouts/lagrangebench/segnn_tgv2d_<sha>/"`. |
+
+The three `physics_lint_sha_*` fields MAY be identical (single-shot) or distinct (multi-session). The renderer MUST NOT assume equality across stages.
+
+#### Result-level fields (`runs[0].results[*]`)
+
+Standard SARIF fields:
+
+- `ruleId` — one of `"harness:mass_conservation_defect"`, `"harness:energy_drift"`, `"harness:dissipation_sign_violation"` (the `harness:` prefix distinguishes harness rules from public-API rule IDs).
+- `level` — `"note"` for both PASS-equivalent values and SKIPs.
+- `message.text` — human-readable summary.
+
+Result-level `properties`:
+
+| Field | Guaranteed-identical across trajs (within stack)? | Description |
+|---|---|---|
+| `traj_index` | NO (may-vary) | Integer 0..(N-1) where N is the number of trajectories in the rollout. |
+| `npz_filename` | NO (may-vary) | E.g., `"particle_rollout_traj00.npz"`. |
+| `raw_value` | YES iff present AND value happens to be identical across rows | Float. Present iff row is not a SKIP. |
+| `skip_reason` | YES (template constant) | String. Present iff row is a SKIP. Template-constant — no per-row value interpolation. |
+| `ke_initial` | NO (may-vary) | Float. Present only on `harness:energy_drift` SKIP rows. |
+| `ke_final` | NO (may-vary) | Float. Present only on `harness:energy_drift` SKIP rows. |
+
+#### Schema-enforced invariants
+
+For a fixed (rule, stack), all result rows MUST have:
+
+- Identical `ruleId`, `level`, `message.text`.
+- Identical `properties.raw_value` if present, OR identical `properties.skip_reason` if present (HarnessDefect emits exactly one of the two on every row).
+
+Consumers MAY assert these invariants at render time. The schema makes them checkable; checking is not mandatory.
+
+#### Energy_drift skip_reason template
+
+Per D0-19, the `harness:energy_drift` SKIP path uses a template-constant skip_reason (no per-row value interpolation). Per-row varying KE values move to `properties.ke_initial` / `properties.ke_final`. See `_harness/particle_rollout_adapter.py:energy_drift` for the canonical template; renderer-side documentation cites that path.
+
+---
+
 ## 4. Tolerances
 
 §4.1 and §4.2 below are pre-registered tolerances that **answer different
