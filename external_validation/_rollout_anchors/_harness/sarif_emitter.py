@@ -77,29 +77,37 @@ def emit_sarif(
     output_path: Path | str,
     tool_name: str = "physics-lint-rollout-anchor-harness",
     tool_version: str = "0.1.0",
+    run_properties: dict[str, Any] | None = None,
 ) -> Path:
     """Write `results` to `output_path` in SARIF v2.1.0 format.
+
+    `run_properties` (D0-19): optional dict written verbatim to
+    `runs[0].properties`. When None, runs[0].properties is omitted.
+    Callers that emit harness SARIF for rung 4a+ pass the 10 D0-19
+    run-level fields here; pre-D0-19 call sites omit and continue to work.
 
     Returns the absolute path written.
     """
     out = Path(output_path).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
 
+    run: dict[str, Any] = {
+        "tool": {
+            "driver": {
+                "name": tool_name,
+                "version": tool_version,
+                "informationUri": "https://github.com/tyy0811/physics-lint",
+            }
+        },
+        "results": [r.to_sarif_result() for r in results],
+    }
+    if run_properties is not None:
+        run["properties"] = run_properties
+
     sarif: dict[str, Any] = {
         "$schema": _SARIF_SCHEMA_URI,
         "version": _SARIF_VERSION,
-        "runs": [
-            {
-                "tool": {
-                    "driver": {
-                        "name": tool_name,
-                        "version": tool_version,
-                        "informationUri": "https://github.com/tyy0811/physics-lint",
-                    }
-                },
-                "results": [r.to_sarif_result() for r in results],
-            }
-        ],
+        "runs": [run],
     }
     out.write_text(json.dumps(sarif, indent=2, sort_keys=True))
     return out
