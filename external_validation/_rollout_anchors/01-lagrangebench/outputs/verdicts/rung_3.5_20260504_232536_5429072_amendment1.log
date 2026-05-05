@@ -1,0 +1,29 @@
+✓ Initialized. View run at 
+https://modal.com/apps/janedoraemon/main/ap-XONR1Xa7mcrvj3mO6sitmH
+✓ Created objects.
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/01-l
+│   agrangebench/modal_app.py
+├── 🔨 Created mount 
+│   /Users/zenith/Desktop/physics-lint/external_validation/_rollout_anchors/_har
+│   ness/lagrangebench_pkl_to_npz.py
+├── 🔨 Created function lagrangebench_install_smoke.
+├── 🔨 Created function jax_micro_gate.
+├── 🔨 Created function lagrangebench_rollout_p0_segnn_tgv2d.
+└── 🔨 Created function lagrangebench_convert_pkls_in_volume.
+=== Standalone rung-3.5 conversion: P0 SEGNN-TGV2D (D0-17 amendment 1) ===
+  rollout_subdir_name: segnn_tgv2d_8c3d080397
+  git_sha (full):      5429072b7801e40701280b2298ca2bdbe735ecf5
+
+--- manifest ---
+  rollout_subdir:        /vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397
+  lagrangebench_sha:     b880a6c84a93792d2499d2a9b8ba3a077ddf44e2
+  conversion_returncode: 1
+  conversion_error:      RuntimeError: Unable to initialize backend 'cuda': FAILED_PRECONDITION: No visible GPU devices. (you may need to uninstall the failing plugin package, or set JAX_PLATFORMS=cpu to skip this backend.)
+  converted_npz_count:   0
+
+--- verdict ---
+  -> standalone rung-3.5 conversion: FAIL — RuntimeError: Unable to initialize backend 'cuda': FAILED_PRECONDITION: No visible GPU devices. (you may need to uninstall the failing plugin package, or set JAX_PLATFORMS=cpu to skip this backend.)
+Stopping app - local entrypoint completed.
+✓ App completed. View run at 
+https://modal.com/apps/janedoraemon/main/ap-XONR1Xa7mcrvj3mO6sitmH
