@@ -70,6 +70,17 @@ class MissingRunLevelFieldError(Exception):
     """
 
 
+class ResultRowInvariantError(Exception):
+    """Raised when D0-19 §3.4's guaranteed-identical-across-rows
+    invariant is violated for a (rule, stack) group: a SKIP row missing
+    `properties.skip_reason`, divergent `skip_reason` strings within the
+    group, divergent `message.text`, or a mix of SKIP and raw rows
+    within a single (rule, stack) (HarnessDefect's "one or the other"
+    invariant). Fail loud — the writeup's "20 identical fires" claim
+    binds on this.
+    """
+
+
 def _assert_run_level(sarif: dict[str, Any], src_path: Path) -> dict[str, Any]:
     """Apply the three D0-20 fail-loud assertions on a SARIF.
 
@@ -142,14 +153,48 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
                 continue
             n = len(rule_rows)
             raw_values = [r["properties"].get("raw_value") for r in rule_rows]
-            skip_present = [
-                r["properties"].get("skip_reason") is not None
-                or r["properties"].get("raw_value") is None
-                for r in rule_rows
-            ]
-            if all(rv is None for rv in raw_values) and all(skip_present):
+
+            all_skip = all(rv is None for rv in raw_values)
+            all_raw = all(rv is not None for rv in raw_values)
+            if not (all_skip or all_raw):
+                # HarnessDefect emits one of value or skip_reason consistently
+                # per rule per row; mixing within a (rule, stack) violates D0-19 §3.4.
+                raise ResultRowInvariantError(
+                    f"{rule_id} on {stack_label}: mixed SKIP and raw rows "
+                    f"within a single (rule, stack). D0-19 §3.4 requires "
+                    f"HarnessDefect's one-of-value-or-skip_reason invariant."
+                )
+
+            if all_skip:
+                # D0-19 §3.4: SKIP rows MUST carry properties.skip_reason and
+                # the value MUST be identical across rows. message.text MUST
+                # also be identical (it's a co-variate of skip_reason).
+                skip_reasons = [r["properties"].get("skip_reason") for r in rule_rows]
+                if any(sr is None for sr in skip_reasons):
+                    raise ResultRowInvariantError(
+                        f"{rule_id} on {stack_label}: SKIP row(s) missing "
+                        f"properties.skip_reason. D0-19 §3.4 requires it on "
+                        f"every SKIP row. See SCHEMA.md §3.x."
+                    )
+                if len(set(skip_reasons)) != 1:
+                    raise ResultRowInvariantError(
+                        f"{rule_id} on {stack_label}: skip_reason divergence "
+                        f"across rows. D0-19 §3.4 requires guaranteed-identical "
+                        f"skip_reason within (rule, stack); got {len(set(skip_reasons))} "
+                        f"distinct values."
+                    )
+                messages = [r.get("message", {}).get("text") for r in rule_rows]
+                if len(set(messages)) != 1:
+                    raise ResultRowInvariantError(
+                        f"{rule_id} on {stack_label}: message.text divergence "
+                        f"across SKIP rows. D0-19 §3.4 requires guaranteed-"
+                        f"identical message.text co-varying with skip_reason."
+                    )
                 cells[(rule_id, stack_label)] = f"SKIP (x{n}, D0-18)"
-            elif all(rv is not None for rv in raw_values):
+            else:
+                # all_raw: per-row raw_value may legitimately vary across trajs
+                # (e.g., conservation defect differs by initial conditions).
+                # Renderer surfaces uniformity vs distribution; does not raise.
                 vals = [float(rv) for rv in raw_values]
                 if all(abs(v - vals[0]) < 1e-15 for v in vals):
                     cells[(rule_id, stack_label)] = f"{vals[0]:.3e} (x{n} identical)"
@@ -157,8 +202,6 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
                     cells[(rule_id, stack_label)] = (
                         f"min={min(vals):.3e}, max={max(vals):.3e}, n={n}"
                     )
-            else:
-                cells[(rule_id, stack_label)] = f"MIXED (n={n})"
 
     header = ["Rule", *stack_labels]
     rows: list[list[str]] = [header]

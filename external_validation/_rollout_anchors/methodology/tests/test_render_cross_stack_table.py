@@ -16,6 +16,7 @@ import pytest
 
 from external_validation._rollout_anchors.methodology.tools.render_cross_stack_table import (
     MissingRunLevelFieldError,
+    ResultRowInvariantError,
     SchemaVersionMismatchError,
     SourceTagMismatchError,
     render_cross_stack_table,
@@ -118,6 +119,49 @@ def test_renderer_detects_all_n_identical_aggregation() -> None:
     """
     table = render_cross_stack_table([SEGNN_FIXTURE, GNS_FIXTURE])
     assert table.count("0.0") >= 4 or table.count("0.000e+00") >= 4
+
+
+def test_skip_row_missing_skip_reason_raises(tmp_path: Path) -> None:
+    """Per D0-19 §3.4 + Codex adversarial review finding: a SKIP row
+    must carry properties.skip_reason. Removing it must raise
+    ResultRowInvariantError, not silently aggregate to "SKIP (xN, D0-18)".
+
+    This is the regression guard for the bug Codex caught: pre-fix
+    artifacts had no skip_reason on SKIP rows and the renderer
+    aggregated them anyway via the (raw_value is None) shortcut.
+    """
+    bad = copy.deepcopy(_load(SEGNN_FIXTURE))
+    # Strip skip_reason from one energy_drift SKIP row.
+    for r in bad["runs"][0]["results"]:
+        if r["ruleId"] == "harness:energy_drift" and "skip_reason" in r["properties"]:
+            del r["properties"]["skip_reason"]
+            break
+    bad_path = tmp_path / "missing_skip_reason.sarif"
+    _write(bad, bad_path)
+
+    with pytest.raises(ResultRowInvariantError):
+        render_cross_stack_table([bad_path, GNS_FIXTURE])
+
+
+def test_skip_reason_divergence_raises(tmp_path: Path) -> None:
+    """Per D0-19 §3.4: skip_reason is guaranteed-identical across rows
+    within a (rule, stack). Two distinct skip_reason values within one
+    stack must raise ResultRowInvariantError.
+    """
+    bad = copy.deepcopy(_load(SEGNN_FIXTURE))
+    # Mutate one SKIP row's skip_reason so two distinct values exist.
+    mutated = False
+    for r in bad["runs"][0]["results"]:
+        if r["ruleId"] == "harness:energy_drift" and not mutated:
+            r["properties"]["skip_reason"] = "DIVERGENT — should not happen per D0-19 §3.4"
+            mutated = True
+            break
+    assert mutated, "fixture should contain at least one SKIP row to mutate"
+    bad_path = tmp_path / "divergent_skip_reason.sarif"
+    _write(bad, bad_path)
+
+    with pytest.raises(ResultRowInvariantError):
+        render_cross_stack_table([bad_path, GNS_FIXTURE])
 
 
 def test_renderer_golden_output_matches_expected_table() -> None:

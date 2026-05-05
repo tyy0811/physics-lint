@@ -19,6 +19,7 @@ import pytest
 
 from external_validation._rollout_anchors._harness.lint_npz_dir import (
     EmptyNpzDirectoryError,
+    TrajIndexGapError,
     lint_npz_dir,
 )
 from external_validation._rollout_anchors._harness.particle_rollout_adapter import (
@@ -140,6 +141,65 @@ def test_non_energy_drift_rows_do_not_have_ke_fields(tmp_path: Path) -> None:
     for row in non_energy_rows:
         assert "ke_initial" not in row.extra_properties
         assert "ke_final" not in row.extra_properties
+
+
+def test_skip_rows_carry_skip_reason_property(tmp_path: Path) -> None:
+    """D0-19 §3.4: SKIP rows MUST carry skip_reason as a result-level
+    property (not just inside message.text). The property is what the
+    renderer asserts on for guaranteed-identical-across-rows.
+    """
+    _save_n_npzs(tmp_path, n=2, dataset_name="tgv2d")
+    results = lint_npz_dir(tmp_path)
+    skip_rows = [r for r in results if r.raw_value is None]
+    # Both energy_drift rows are SKIPs for tgv2d; mass / dissipation_sign emit raw_value=0.
+    assert len(skip_rows) == 2
+    reasons = set()
+    for row in skip_rows:
+        assert "skip_reason" in row.extra_properties
+        reasons.add(row.extra_properties["skip_reason"])
+    # Per D0-19 the skip_reason is template-constant per (rule, stack);
+    # all SKIP rows for a single stack must produce the same string.
+    assert len(reasons) == 1
+
+
+def test_non_skip_rows_do_not_have_skip_reason(tmp_path: Path) -> None:
+    """skip_reason lives only on SKIP rows (raw_value is None);
+    non-SKIP rows do not carry it.
+    """
+    _save_n_npzs(tmp_path, n=1, dataset_name="tgv2d")
+    results = lint_npz_dir(tmp_path)
+    raw_rows = [r for r in results if r.raw_value is not None]
+    for row in raw_rows:
+        assert "skip_reason" not in row.extra_properties
+
+
+# ---------------------------------------------------------------------------
+# 3b. traj_index parsed from filename + gap detection
+# ---------------------------------------------------------------------------
+
+
+def test_traj_index_parsed_from_filename_not_enumerate(tmp_path: Path) -> None:
+    """traj_index in extra_properties must come from the filename, not
+    enumerate-over-glob. A file named particle_rollout_traj05.npz must
+    produce traj_index=5, even when it's the only file in the dir.
+    """
+    rollout = _make_dissipative_rollout()
+    save_rollout_npz(rollout, tmp_path / "particle_rollout_traj05.npz")
+    results = lint_npz_dir(tmp_path)
+    for row in results:
+        assert row.extra_properties["traj_index"] == 5
+
+
+def test_lint_npz_dir_raises_on_traj_index_gap(tmp_path: Path) -> None:
+    """A missing middle file (traj00 + traj02 with no traj01) must
+    raise TrajIndexGapError. The pre-fix bug renumbered traj02 as
+    traj_index=1 silently.
+    """
+    rollout = _make_dissipative_rollout()
+    save_rollout_npz(rollout, tmp_path / "particle_rollout_traj00.npz")
+    save_rollout_npz(rollout, tmp_path / "particle_rollout_traj02.npz")
+    with pytest.raises(TrajIndexGapError):
+        lint_npz_dir(tmp_path)
 
 
 # ---------------------------------------------------------------------------

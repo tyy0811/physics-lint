@@ -23,18 +23,242 @@
         "rollout_subdir": "/synthetic/vol/gns_run/"
       },
       "results": [
-        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz"}},
-        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz", "ke_initial": 600.4, "ke_final": 0.084}},
-        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz"}},
-        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz"}},
-        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz", "ke_initial": 598.2, "ke_final": 0.082}},
-        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz"}},
-        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz"}},
-        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz", "ke_initial": 601.1, "ke_final": 0.085}},
-        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz"}},
-        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz"}},
-        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz", "ke_initial": 599.8, "ke_final": 0.083}},
-        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz"}}
+        {
+          "ruleId": "harness:mass_conservation_defect",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 0,
+            "npz_filename": "particle_rollout_traj00.npz"
+          }
+        },
+        {
+          "ruleId": "harness:energy_drift",
+          "level": "note",
+          "message": {
+            "text": "SKIP: dissipative system"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 0,
+            "npz_filename": "particle_rollout_traj00.npz",
+            "ke_initial": 600.4,
+            "ke_final": 0.084,
+            "skip_reason": "synthetic dissipative skip reason (template-constant per stack, D0-19 \u00a73.4)"
+          }
+        },
+        {
+          "ruleId": "harness:dissipation_sign_violation",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 0,
+            "npz_filename": "particle_rollout_traj00.npz"
+          }
+        },
+        {
+          "ruleId": "harness:mass_conservation_defect",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 1,
+            "npz_filename": "particle_rollout_traj01.npz"
+          }
+        },
+        {
+          "ruleId": "harness:energy_drift",
+          "level": "note",
+          "message": {
+            "text": "SKIP: dissipative system"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 1,
+            "npz_filename": "particle_rollout_traj01.npz",
+            "ke_initial": 598.2,
+            "ke_final": 0.082,
+            "skip_reason": "synthetic dissipative skip reason (template-constant per stack, D0-19 \u00a73.4)"
+          }
+        },
+        {
+          "ruleId": "harness:dissipation_sign_violation",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 1,
+            "npz_filename": "particle_rollout_traj01.npz"
+          }
+        },
+        {
+          "ruleId": "harness:mass_conservation_defect",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 2,
+            "npz_filename": "particle_rollout_traj02.npz"
+          }
+        },
+        {
+          "ruleId": "harness:energy_drift",
+          "level": "note",
+          "message": {
+            "text": "SKIP: dissipative system"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 2,
+            "npz_filename": "particle_rollout_traj02.npz",
+            "ke_initial": 601.1,
+            "ke_final": 0.085,
+            "skip_reason": "synthetic dissipative skip reason (template-constant per stack, D0-19 \u00a73.4)"
+          }
+        },
+        {
+          "ruleId": "harness:dissipation_sign_violation",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 2,
+            "npz_filename": "particle_rollout_traj02.npz"
+          }
+        },
+        {
+          "ruleId": "harness:mass_conservation_defect",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 3,
+            "npz_filename": "particle_rollout_traj03.npz"
+          }
+        },
+        {
+          "ruleId": "harness:energy_drift",
+          "level": "note",
+          "message": {
+            "text": "SKIP: dissipative system"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 3,
+            "npz_filename": "particle_rollout_traj03.npz",
+            "ke_initial": 599.8,
+            "ke_final": 0.083,
+            "skip_reason": "synthetic dissipative skip reason (template-constant per stack, D0-19 \u00a73.4)"
+          }
+        },
+        {
+          "ruleId": "harness:dissipation_sign_violation",
+          "level": "note",
+          "message": {
+            "text": "raw_value=0.000e+00"
+          },
+          "properties": {
+            "source": "rollout-anchor-harness",
+            "raw_value": 0.0,
+            "case_study": "01-lagrangebench",
+            "dataset": "synthetic_dissipative_d",
+            "model": "synthetic_gns",
+            "ckpt_hash": "synthetic_gns_ckpt",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "traj_index": 3,
+            "npz_filename": "particle_rollout_traj03.npz"
+          }
+        }
       ]
     }
   ]

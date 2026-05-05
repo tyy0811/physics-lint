@@ -59,6 +59,13 @@ LAGRANGEBENCH_SHA = "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2"
 
 HARNESS_SARIF_SCHEMA_VERSION = "1.0"
 
+# Per the rung 4a writeup's "20 identical fires" claim: each stack must
+# carry exactly this many trajectories. lint_npz_dir's gap-detection
+# already rejects holes; this driver-level assertion catches the case
+# where the count is contiguous but wrong (e.g., 19 trajs because one
+# never made it to the volume), which lint_npz_dir cannot diagnose.
+EXPECTED_TRAJ_COUNT = 20
+
 # Local mirror paths (populated by `modal volume get` before this script runs).
 REPO_ROOT = Path(__file__).resolve().parents[3]
 LOCAL_MIRROR_ROOT = (
@@ -72,6 +79,14 @@ SARIF_OUTPUT_ROOT = (
 class MissingLocalMirrorError(Exception):
     """Raised when the local mirror dir does not exist or is empty —
     user must run `modal volume get` first.
+    """
+
+
+class UnexpectedTrajCountError(Exception):
+    """Raised when a stack's trajectory count does not match
+    EXPECTED_TRAJ_COUNT. The writeup's "20 identical fires" claim binds
+    on the count; a 19-traj artifact would silently drop one row from
+    the table without surfacing the loss.
     """
 
 
@@ -127,6 +142,13 @@ def _emit_for_stack(
         raise MissingLocalMirrorError(
             f"Local mirror missing or empty at {mirror_subdir}. "
             f"Run `modal volume get rollout-anchors-artifacts /vol/rollouts/lagrangebench/<subdir>/ {mirror_subdir}/` first."
+        )
+    npz_count = sum(1 for _ in mirror_subdir.glob("particle_rollout_traj*.npz"))
+    if npz_count != EXPECTED_TRAJ_COUNT:
+        raise UnexpectedTrajCountError(
+            f"Stack at {mirror_subdir} has {npz_count} trajectories, expected "
+            f"{EXPECTED_TRAJ_COUNT}. The rung 4a writeup's "
+            f'"{EXPECTED_TRAJ_COUNT} identical fires" claim binds on this count.'
         )
     results = lint_npz_dir(
         mirror_subdir,
