@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "physics-lint-rollout-anchor-harness",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/tyy0811/physics-lint"
+        }
+      },
+      "properties": {
+        "source": "rollout-anchor-harness",
+        "harness_sarif_schema_version": "1.0",
+        "physics_lint_sha_pkl_inference": "synthetic_combined_sha",
+        "physics_lint_sha_npz_conversion": "synthetic_combined_sha",
+        "physics_lint_sha_sarif_emission": "synthetic_emission_sha",
+        "lagrangebench_sha": "synthetic_lb_sha",
+        "checkpoint_id": "synthetic_gns_ckpt",
+        "model_name": "synthetic_gns",
+        "dataset_name": "synthetic_dissipative_d",
+        "rollout_subdir": "/synthetic/vol/gns_run/"
+      },
+      "results": [
+        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz"}},
+        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz", "ke_initial": 600.4, "ke_final": 0.084}},
+        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 0, "npz_filename": "particle_rollout_traj00.npz"}},
+        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz"}},
+        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz", "ke_initial": 598.2, "ke_final": 0.082}},
+        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 1, "npz_filename": "particle_rollout_traj01.npz"}},
+        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz"}},
+        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz", "ke_initial": 601.1, "ke_final": 0.085}},
+        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 2, "npz_filename": "particle_rollout_traj02.npz"}},
+        {"ruleId": "harness:mass_conservation_defect", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz"}},
+        {"ruleId": "harness:energy_drift", "level": "note", "message": {"text": "SKIP: dissipative system"}, "properties": {"source": "rollout-anchor-harness", "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz", "ke_initial": 599.8, "ke_final": 0.083}},
+        {"ruleId": "harness:dissipation_sign_violation", "level": "note", "message": {"text": "raw_value=0.000e+00"}, "properties": {"source": "rollout-anchor-harness", "raw_value": 0.0, "case_study": "01-lagrangebench", "dataset": "synthetic_dissipative_d", "model": "synthetic_gns", "ckpt_hash": "synthetic_gns_ckpt", "harness_validation_passed": null, "harness_vs_public_epsilon": null, "traj_index": 3, "npz_filename": "particle_rollout_traj03.npz"}}
+      ]
+    }
+  ]
+}
