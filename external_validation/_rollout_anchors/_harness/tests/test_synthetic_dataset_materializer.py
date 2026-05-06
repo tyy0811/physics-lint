@@ -33,12 +33,16 @@ def test_apply_transform_to_window_appends_placeholder_frame():
         dtype=np.float32,
     )
     out = apply_transform_to_window(
-        input_window=input_window, transform_fn=_identity_transform, box_size=1.0, t_steps=7
+        input_window=input_window, transform_fn=_identity_transform, box_size=1.0, t_steps=10
     )
-    assert out.shape == (7, 2, 2), f"expected (7, 2, 2), got {out.shape}"
+    assert out.shape == (10, 2, 2), f"expected (10, 2, 2), got {out.shape}"
     assert out.dtype == np.float32
     np.testing.assert_array_equal(out[:6], input_window)
-    np.testing.assert_array_equal(out[6], input_window[5], err_msg="placeholder must equal frame 5")
+    # Frames 6..9 are all placeholder copies of frame 5 (4 placeholders for t_steps=10).
+    for k in range(6, 10):
+        np.testing.assert_array_equal(
+            out[k], input_window[5], err_msg="placeholder must equal frame 5"
+        )
 
 
 def test_apply_transform_to_window_rejects_wrong_input_shape():
@@ -49,7 +53,7 @@ def test_apply_transform_to_window_rejects_wrong_input_shape():
     bad = np.zeros((5, 2, 2), dtype=np.float32)  # only 5 frames; need 6
     with pytest.raises(ValueError, match=r"input_window must have 6 frames"):
         apply_transform_to_window(
-            input_window=bad, transform_fn=_identity_transform, box_size=1.0, t_steps=7
+            input_window=bad, transform_fn=_identity_transform, box_size=1.0, t_steps=10
         )
 
 
@@ -124,7 +128,7 @@ def test_materialize_synthetic_dataset_writes_all_files(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -161,7 +165,7 @@ def test_materialize_synthetic_dataset_test_h5_structure(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -175,7 +179,7 @@ def test_materialize_synthetic_dataset_test_h5_structure(tmp_path):
             grp = f[f"{k:05d}"]
             assert "position" in grp
             assert "particle_type" in grp
-            assert grp["position"].shape == (7, 4, 2)
+            assert grp["position"].shape == (10, 4, 2)
             assert grp["position"].dtype == np.float32
             assert grp["particle_type"].shape == (4,)
             assert grp["particle_type"].dtype == np.int32
@@ -204,7 +208,7 @@ def test_materialize_synthetic_dataset_metadata_reuses_published_stats(tmp_path)
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=pub,
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -224,7 +228,11 @@ def test_materialize_synthetic_dataset_metadata_reuses_published_stats(tmp_path)
     # Synthesized split sizes:
     assert written["num_trajs_test"] == 1
     assert written["num_trajs_train"] == 1
-    assert written["sequence_length_test"] == 7
+    assert written["sequence_length_test"] == 10
+    # sequence_length_train must also satisfy LB's H5Dataset assertion (set
+    # to LB_SUBSEQ_LENGTH=10 on the train.h5 dummy; see "LB loader-contract
+    # assertions" section below).
+    assert written["sequence_length_train"] == 10
 
 
 def test_materialize_synthetic_dataset_manifest_schema(tmp_path):
@@ -256,7 +264,7 @@ def test_materialize_synthetic_dataset_manifest_schema(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -306,7 +314,7 @@ def test_materialize_synthetic_dataset_rejects_input_window_traj_count_mismatch(
             particle_type=particle_type,
             transforms=transforms,
             published_metadata=_published_metadata_stub(),
-            t_steps=7,
+            t_steps=10,
             sweep_kind="main",
             stack="segnn",
             dataset="tgv2d",
@@ -338,7 +346,7 @@ def test_materialize_synthetic_dataset_rejects_unnamespaced_ckpt_hash(tmp_path):
             particle_type=particle_type,
             transforms=transforms,
             published_metadata=_published_metadata_stub(),
-            t_steps=7,
+            t_steps=10,
             sweep_kind="main",
             stack="segnn",
             dataset="tgv2d",
@@ -389,3 +397,122 @@ def test_read_published_input_windows_rejects_too_few_trajs(tmp_path):
     h5_path = _create_published_test_h5_fixture(tmp_path, n_trajs=2)
     with pytest.raises(ValueError, match=r"requested 5 trajs but only 2 available"):
         read_published_input_windows(h5_path=h5_path, n_trajs=5)
+
+
+# =============================================================================
+# LB loader-contract assertions
+# =============================================================================
+# Pre-flight assertions mirroring the contract LB's H5Dataset.__init__ enforces
+# at config-load time (`lagrangebench/data/data.py:144`):
+#
+#     assert sequence_length >= subseq_length
+#
+# where `subseq_length = input_seq_length + extra_seq_length` and the
+# assertion fires for ALL splits (train, valid, test), regardless of
+# `eval.n_rollout_steps`. This section is the methodology pattern future
+# case studies (PhysicsNeMo MGN, etc.) inherit when introducing a new
+# external loader: each loader-side assertion that gates pipeline execution
+# gets a paired pre-flight test in the materializer's test suite. See
+# 2026-05-06-rung-4b-t7-modal-entrypoints-design.md amendment 2.
+
+
+def test_lb_subseq_length_matches_pre_registration():
+    """LB_SUBSEQ_LENGTH = INPUT_SEQ_LENGTH + EXTRA_SEQ_LENGTH = 6 + 4 = 10.
+
+    Drift-guard for the constants. EXTRA_SEQ_LENGTH=4 is sourced from
+    SEGNN-TGV2D's pushforward.unrolls = [0, 1, 2, 3] config dump at
+    LB sha b880a6c84a93792d2499d2a9b8ba3a077ddf44e2. If the constant
+    changes here without a paired DECISIONS sub-entry under D0-15/D0-21
+    explaining why, this test fails CI.
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        EXTRA_SEQ_LENGTH,
+        INPUT_SEQ_LENGTH,
+        LB_SUBSEQ_LENGTH,
+    )
+
+    assert INPUT_SEQ_LENGTH == 6
+    assert EXTRA_SEQ_LENGTH == 4
+    assert LB_SUBSEQ_LENGTH == 10
+
+
+def test_apply_transform_rejects_t_steps_below_lb_subseq_length():
+    """Materializer must fail-fast when t_steps would produce an h5 that
+    LB's H5Dataset rejects at init.
+
+    This pre-flights the assertion at `lagrangebench/data/data.py:144`:
+    catching "t_steps too small" in materialize_synthetic_dataset is
+    cheaper than catching it at LB config-load (which costs Modal
+    cold-start + image-pull time).
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        LB_SUBSEQ_LENGTH,
+        apply_transform_to_window,
+    )
+
+    input_window = np.zeros((6, 4, 2), dtype=np.float32)
+    for bad_t in (1, 6, 7, 9):  # everything below LB_SUBSEQ_LENGTH
+        with pytest.raises(ValueError, match=r"t_steps must be >= LB_SUBSEQ_LENGTH"):
+            apply_transform_to_window(
+                input_window=input_window,
+                transform_fn=_identity_transform,
+                box_size=1.0,
+                t_steps=bad_t,
+            )
+    # Boundary: LB_SUBSEQ_LENGTH itself must succeed.
+    out = apply_transform_to_window(
+        input_window=input_window,
+        transform_fn=_identity_transform,
+        box_size=1.0,
+        t_steps=LB_SUBSEQ_LENGTH,
+    )
+    assert out.shape == (LB_SUBSEQ_LENGTH, 4, 2)
+
+
+def test_materialized_h5s_satisfy_lb_h5dataset_assertion(tmp_path):
+    """End-to-end loader-contract pre-flight: every h5 the materializer
+    writes (test/train/valid) must have sequence_length >= LB_SUBSEQ_LENGTH.
+
+    This is the exact assertion LB's `H5Dataset.__init__` enforces at
+    setup_data time (line 144 of lagrangebench/data/data.py). Failing
+    here means LB will fail at infer-time cold-start; this test catches
+    the same bug in <1s without paying Modal compute.
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        LB_SUBSEQ_LENGTH,
+        materialize_synthetic_dataset,
+    )
+
+    windows, particle_type = _make_input_windows(n_trajs=2)
+    transforms = [
+        {
+            "rule_id": "PH-SYM-001",
+            "transform_kind": "rotation",
+            "transform_param": "pi_2",
+            "transform_fn": _identity_transform,
+            "original_traj_index": 0,
+        }
+    ]
+    out_dir = tmp_path / "loader_contract"
+    materialize_synthetic_dataset(
+        out_dir=out_dir,
+        input_windows=windows,
+        particle_type=particle_type,
+        transforms=transforms,
+        published_metadata=_published_metadata_stub(),
+        t_steps=LB_SUBSEQ_LENGTH,
+        sweep_kind="main",
+        stack="segnn",
+        dataset="tgv2d",
+        ckpt_hash="sha256:" + "a" * 64,
+        physics_lint_sha_eps_computation="abcdef0123",
+    )
+    for split_name in ("test.h5", "train.h5", "valid.h5"):
+        with h5py.File(out_dir / split_name, "r") as f:
+            for traj_key in f:
+                seq_len = f[f"{traj_key}/position"].shape[0]
+                assert seq_len >= LB_SUBSEQ_LENGTH, (
+                    f"{split_name}/{traj_key}: sequence_length={seq_len} < "
+                    f"LB_SUBSEQ_LENGTH={LB_SUBSEQ_LENGTH}; LB's H5Dataset would "
+                    f"reject this at config-load time"
+                )
