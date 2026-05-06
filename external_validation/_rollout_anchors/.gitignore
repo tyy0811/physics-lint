@@ -9,3 +9,6 @@
 01-lagrangebench/outputs/trajectories/**/*.npz
 01-lagrangebench/outputs/trajectories/_local_mirror/**
 !01-lagrangebench/outputs/trajectories/.gitkeep
+01-lagrangebench/outputs/synthetic/**/*.h5
+01-lagrangebench/outputs/synthetic/**/*.json
+!01-lagrangebench/outputs/synthetic/.gitkeep
