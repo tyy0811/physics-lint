@@ -449,8 +449,19 @@ def lagrangebench_smoke() -> None:
 # file is sent over the wire each function invocation. Same
 # reuse-across-rungs reasoning as the harness package itself
 # (P1 GNS-TGV2D will reuse the conversion verbatim; P2/P3 likewise).
-_HARNESS_CONVERSION_MODULE = (
-    Path(__file__).resolve().parent.parent / "_harness" / "lagrangebench_pkl_to_npz.py"
+_HARNESS_DIR = Path(__file__).resolve().parent.parent / "_harness"
+_HARNESS_CONVERSION_MODULE = _HARNESS_DIR / "lagrangebench_pkl_to_npz.py"
+# Rung 4b T7 harness modules: synthetic dataset materializer + LB rollout pkl
+# consumer + Modal orchestrator + the shared symmetry primitives. Shipped as
+# bare files (matches lagrangebench_pkl_to_npz pattern); cross-module imports
+# inside these modules use try/except fallback so bare-name resolution works
+# under /opt/physics_lint_harness on the Modal container while the fully-
+# qualified import works under local pytest.
+_HARNESS_T7_MODULES = (
+    "symmetry_rollout_adapter.py",
+    "synthetic_dataset_materializer.py",
+    "eps_pkl_consumer.py",
+    "eps_modal_orchestrator.py",
 )
 _REMOTE_HARNESS_DIR = "/opt/physics_lint_harness"
 rollout_image = (
@@ -461,6 +472,11 @@ rollout_image = (
         f"{_REMOTE_HARNESS_DIR}/lagrangebench_pkl_to_npz.py",
     )
 )
+for _mod_name in _HARNESS_T7_MODULES:
+    rollout_image = rollout_image.add_local_file(
+        str(_HARNESS_DIR / _mod_name),
+        f"{_REMOTE_HARNESS_DIR}/{_mod_name}",
+    )
 
 
 # Modal Volume: persistent storage for rollout-anchors artifacts. Layout
@@ -1240,6 +1256,379 @@ def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
 
     rollout_volume.commit()
     return manifest
+
+
+@app.function(
+    image=rollout_image,
+    gpu=ROLLOUT_GENERATION_GPU_CLASS,  # A10G — matched to rung 4a per D0-21 item 10
+    timeout=60 * 30,
+    volumes={"/vol": rollout_volume},
+)
+def lagrangebench_eps_p0_segnn_tgv2d(
+    git_sha: str,
+    full_git_sha: str,
+    rung_4a_rollout_subdir: str,
+    physics_lint_sha_pkl_inference: str,
+    physics_lint_sha_npz_conversion: str,
+) -> dict:
+    """Rung 4b T7: SEGNN-TGV2D equivariance eps(t) computation.
+
+    Pipeline (per
+    ``methodology/docs/2026-05-06-rung-4b-t7-modal-entrypoints-design.md``):
+
+      1. Read 6-frame input windows for traj 0..19 from the published
+         TGV2D ``test.h5`` on Volume.
+      2. Write 20 PH-SYM-003 SKIP eps_t npzs (no LB invocation).
+      3. Run pre-execution sanity probe: 1 traj * pi/2 rotation. Abort
+         if eps > 1e-5.
+      4. Materialize main-sweep synthetic dataset (120 trajs * T_steps=7).
+      5. Materialize figure-sweep synthetic dataset (3 trajs * T_steps=106).
+      6. Run LB main sweep via subprocess (mode=infer
+         eval.n_rollout_steps=1).
+      7. Run LB figure sweep via subprocess (mode=infer
+         eval.n_rollout_steps=100).
+      8. Post-process each rollout pkl into eps_t npz; figure-sweep
+         entries overwrite the 3 corresponding main-sweep entries.
+
+    Parameters
+    ----------
+    git_sha : str
+        Short (10-char) sha of the physics-lint commit at execution time.
+    full_git_sha : str
+        Full 40-char sha (used in eps_computation provenance and
+        synthetic-dataset directory names).
+    rung_4a_rollout_subdir : str
+        Subdirectory name under ``/vol/rollouts/lagrangebench/`` where
+        rung-4a's reference rollouts live (e.g. ``segnn_tgv2d_8c3d080397``).
+        Holds ``particle_rollout_traj{NN}.npz`` files.
+    physics_lint_sha_pkl_inference : str
+        physics-lint sha at the time rung-4a's pkl inference ran. Recorded
+        in eps_t.npz per SCHEMA.md §1.5 4-stage provenance contract.
+        Hardcoded in the local entrypoint to match emit_sarif.py constants.
+    physics_lint_sha_npz_conversion : str
+        physics-lint sha at the time rung-4a's pkl-to-npz conversion ran.
+        Cross-checked against the rung-4a npz's ``git_sha`` field as a
+        silent-mismatch guard.
+
+    Returns
+    -------
+    dict with keys: npz_count, sanity_probe_eps, elapsed_s, git_sha_eps,
+    eps_out_dir, synthetic_dirs, figure_overwrite_count.
+    """
+    import json
+    import os  # noqa: F401  (used inside _run_lb_inference via os.chdir)
+    import sys as _sys
+    import time
+    from pathlib import Path
+
+    import numpy as np
+
+    if _REMOTE_HARNESS_DIR not in _sys.path:
+        _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+    from eps_modal_orchestrator import (
+        build_figure_sweep_transforms,
+        build_main_sweep_transforms,
+        interpret_sanity_probe_verdict,
+    )
+    from eps_pkl_consumer import eps_t_from_pkl_and_reference
+    from symmetry_rollout_adapter import write_eps_t_npz
+    from synthetic_dataset_materializer import (
+        materialize_synthetic_dataset,
+        read_published_input_windows,
+    )
+
+    started = time.time()
+    model_name = "segnn"
+    dataset_name = "tgv2d"
+
+    # ---- Step 0: locate published TGV2D dataset + SEGNN checkpoint on Volume ----
+    published_dataset_dir = Path("/vol/datasets/lagrangebench/2D_TGV_2500_10kevery100")
+    if not published_dataset_dir.exists():
+        raise FileNotFoundError(
+            f"Published TGV2D dataset not found at {published_dataset_dir}. "
+            "Verify rung-4a populated the dataset on Volume."
+        )
+    published_test_h5 = published_dataset_dir / "test.h5"
+    published_metadata = json.loads((published_dataset_dir / "metadata.json").read_text())
+
+    rung_4a_dir = Path("/vol/rollouts/lagrangebench") / rung_4a_rollout_subdir
+    if not rung_4a_dir.exists():
+        raise FileNotFoundError(
+            f"Rung-4a rollout dir not found: {rung_4a_dir}. "
+            f"Got rung_4a_rollout_subdir={rung_4a_rollout_subdir!r}."
+        )
+
+    # Read ckpt_hash + cross-check npz git_sha vs npz_conversion_sha (design §8).
+    sample_ref_npz = rung_4a_dir / "particle_rollout_traj00.npz"
+    with np.load(sample_ref_npz, allow_pickle=True) as ref:
+        ref_metadata = ref["metadata"].item()
+    ckpt_hash_raw = str(ref_metadata.get("ckpt_hash", ""))
+    if not ckpt_hash_raw:
+        raise ValueError(f"{sample_ref_npz}: ckpt_hash missing from metadata")
+    ckpt_hash = ckpt_hash_raw if ckpt_hash_raw.startswith("sha256:") else f"sha256:{ckpt_hash_raw}"
+    npz_git_sha = str(ref_metadata.get("git_sha", ""))
+    if npz_git_sha and not npz_git_sha.startswith(physics_lint_sha_npz_conversion):
+        raise ValueError(
+            f"{sample_ref_npz}: rung-4a npz git_sha={npz_git_sha!r} does not "
+            f"match physics_lint_sha_npz_conversion={physics_lint_sha_npz_conversion!r}"
+        )
+
+    # ---- Step 1: read 6-frame input windows from published test.h5 ----
+    input_windows, particle_type = read_published_input_windows(
+        h5_path=published_test_h5, n_trajs=20
+    )
+
+    # ---- Step 2: write 20 PH-SYM-003 SKIP eps_t npzs (no LB invocation) ----
+    eps_out_dir = Path("/vol/trajectories") / f"{model_name}_{dataset_name}_{full_git_sha[:10]}"
+    eps_out_dir.mkdir(parents=True, exist_ok=True)
+    skip_reason = "PBC-square breaks SO(2) symmetry — rotated cell doesn't tile with original"
+    common_provenance = dict(
+        model_name=model_name,
+        dataset_name=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_pkl_inference=physics_lint_sha_pkl_inference,
+        physics_lint_sha_npz_conversion=physics_lint_sha_npz_conversion,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    for traj_index in range(20):
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=np.array([np.nan], dtype=np.float32),
+            rule_id="PH-SYM-003",
+            transform_kind="skip",
+            transform_param="so2_continuous",
+            traj_index=traj_index,
+            skip_reason=skip_reason,
+            **common_provenance,
+        )
+
+    # ---- Step 3: pre-execution sanity probe (PASS gate; abort > 1e-5) ----
+    box_size = float(published_metadata["bounds"][0][1] - published_metadata["bounds"][0][0])
+    sanity_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_sanity_{full_git_sha[:10]}"
+    )
+    sanity_transforms = [
+        {
+            "rule_id": "PH-SYM-001",
+            "transform_kind": "rotation",
+            "transform_param": "pi_2",
+            # entry [1] of build_main_sweep_transforms is the pi/2 rotation fn.
+            "transform_fn": build_main_sweep_transforms(n_trajs=1)[1]["transform_fn"],
+            "original_traj_index": 0,
+        }
+    ]
+    materialize_synthetic_dataset(
+        out_dir=sanity_synth_dir,
+        input_windows=input_windows[:1],
+        particle_type=particle_type,
+        transforms=sanity_transforms,
+        published_metadata=published_metadata,
+        t_steps=7,
+        sweep_kind="main",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    sanity_rollout_dir = sanity_synth_dir / "rollout_out"
+    sanity_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=sanity_synth_dir,
+        rollout_out_dir=sanity_rollout_dir,
+        ckpt_path="/vol/checkpoints/lagrangebench/segnn_tgv2d/best",
+        n_rollout_steps=1,
+        n_trajs=1,
+    )
+    sanity_eps_t = eps_t_from_pkl_and_reference(
+        synthetic_pkl_path=sanity_rollout_dir / "rollout_0.pkl",
+        reference_npz_path=rung_4a_dir / "particle_rollout_traj00.npz",
+        transform_kind="rotation",
+        transform_param="pi_2",
+        t_steps=1,
+        box_size=box_size,
+    )
+    verdict = interpret_sanity_probe_verdict(eps=float(sanity_eps_t[0]))
+    print(f"[sanity] {verdict['message']}")
+    if verdict["abort"]:
+        raise RuntimeError(verdict["message"])
+
+    # ---- Step 4: materialize main-sweep synthetic dataset (120 * T=7) ----
+    main_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_main_{full_git_sha[:10]}"
+    )
+    main_transforms = build_main_sweep_transforms(n_trajs=20)
+    materialize_synthetic_dataset(
+        out_dir=main_synth_dir,
+        input_windows=input_windows,
+        particle_type=particle_type,
+        transforms=main_transforms,
+        published_metadata=published_metadata,
+        t_steps=7,
+        sweep_kind="main",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+
+    # ---- Step 5: materialize figure-sweep synthetic dataset (3 * T=106) ----
+    figure_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_figure_{full_git_sha[:10]}"
+    )
+    figure_transforms = build_figure_sweep_transforms()
+    materialize_synthetic_dataset(
+        out_dir=figure_synth_dir,
+        input_windows=input_windows,
+        particle_type=particle_type,
+        transforms=figure_transforms,
+        published_metadata=published_metadata,
+        t_steps=106,
+        sweep_kind="figure",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+
+    # ---- Step 6: run LB main sweep ----
+    main_rollout_dir = main_synth_dir / "rollout_out"
+    main_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=main_synth_dir,
+        rollout_out_dir=main_rollout_dir,
+        ckpt_path="/vol/checkpoints/lagrangebench/segnn_tgv2d/best",
+        n_rollout_steps=1,
+        n_trajs=120,
+    )
+
+    # ---- Step 7: run LB figure sweep ----
+    figure_rollout_dir = figure_synth_dir / "rollout_out"
+    figure_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=figure_synth_dir,
+        rollout_out_dir=figure_rollout_dir,
+        ckpt_path="/vol/checkpoints/lagrangebench/segnn_tgv2d/best",
+        n_rollout_steps=100,
+        n_trajs=3,
+    )
+
+    # ---- Step 8: post-process pkls -> eps_t npzs (main first, figure overwrites) ----
+    main_manifest = json.loads((main_synth_dir / "manifest.json").read_text())
+    npz_count = 20  # the 20 SKIP rows already written in Step 2
+    for entry in main_manifest["trajectories"]:
+        i = entry["synthetic_traj_index"]
+        pkl_path = main_rollout_dir / f"rollout_{i}.pkl"
+        ref_npz_path = rung_4a_dir / f"particle_rollout_traj{entry['original_traj_index']:02d}.npz"
+        eps_t = eps_t_from_pkl_and_reference(
+            synthetic_pkl_path=pkl_path,
+            reference_npz_path=ref_npz_path,
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            t_steps=1,
+            box_size=box_size,
+        )
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=eps_t,
+            rule_id=entry["rule_id"],
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            traj_index=entry["original_traj_index"],
+            skip_reason=None,
+            **common_provenance,
+        )
+        npz_count += 1
+
+    figure_manifest = json.loads((figure_synth_dir / "manifest.json").read_text())
+    figure_overwrite_count = 0
+    for entry in figure_manifest["trajectories"]:
+        i = entry["synthetic_traj_index"]
+        pkl_path = figure_rollout_dir / f"rollout_{i}.pkl"
+        ref_npz_path = rung_4a_dir / f"particle_rollout_traj{entry['original_traj_index']:02d}.npz"
+        eps_t = eps_t_from_pkl_and_reference(
+            synthetic_pkl_path=pkl_path,
+            reference_npz_path=ref_npz_path,
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            t_steps=100,
+            box_size=box_size,
+        )
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=eps_t,
+            rule_id=entry["rule_id"],
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            traj_index=entry["original_traj_index"],
+            skip_reason=None,
+            **common_provenance,
+        )
+        figure_overwrite_count += 1
+
+    rollout_volume.commit()  # persist eps_out_dir + synthetic_dirs to Volume
+
+    elapsed = time.time() - started
+    return {
+        "npz_count": npz_count,
+        "sanity_probe_eps": float(sanity_eps_t[0]),
+        "elapsed_s": elapsed,
+        "git_sha_eps": full_git_sha,
+        "eps_out_dir": str(eps_out_dir),
+        "synthetic_dirs": [str(main_synth_dir), str(figure_synth_dir)],
+        "figure_overwrite_count": figure_overwrite_count,
+    }
+
+
+def _run_lb_inference(
+    *,
+    dataset_dir,
+    rollout_out_dir,
+    ckpt_path: str,
+    n_rollout_steps: int,
+    n_trajs: int,
+) -> None:
+    """Invoke LB ``mode=infer`` via subprocess.
+
+    Mirrors rung-4a's invocation shape: ``os.chdir("/opt/lagrangebench")``
+    before ``subprocess.run`` (no ``cwd=`` arg), CLI flags match
+    ``lagrangebench_rollout_p0_segnn_tgv2d`` modulo the per-call
+    ``eval.n_rollout_steps`` / ``eval.infer.n_trajs`` and the synthetic
+    ``dataset.src``.
+    """
+    import os
+    import subprocess
+
+    cmd = [
+        "python",
+        "main.py",
+        "mode=infer",
+        "eval.test=True",
+        f"load_ckp={ckpt_path}",
+        f"eval.n_rollout_steps={n_rollout_steps}",
+        f"eval.infer.n_trajs={n_trajs}",
+        f"dataset.src={dataset_dir}",
+        "dataset.name=tgv2d",
+        "eval.infer.metrics=[mse,e_kin]",
+        "eval.infer.out_type=pkl",
+        f"eval.rollout_dir={rollout_out_dir}",
+        "seed=0",
+    ]
+    print(f"[lb-infer] {' '.join(cmd)}")
+    os.chdir("/opt/lagrangebench")
+    proc = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=60 * 20,
+    )
+    if proc.returncode != 0:
+        raise RuntimeError(
+            f"LB inference failed (returncode={proc.returncode})\n"
+            f"stdout tail:\n{proc.stdout[-2000:]}\n"
+            f"stderr tail:\n{proc.stderr[-2000:]}"
+        )
+    print(f"[lb-infer] success; stdout tail:\n{proc.stdout[-500:]}")
 
 
 @app.local_entrypoint()

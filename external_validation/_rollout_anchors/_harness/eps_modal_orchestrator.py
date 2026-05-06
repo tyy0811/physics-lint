@@ -13,11 +13,22 @@ from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 
-from external_validation._rollout_anchors._harness.symmetry_rollout_adapter import (
-    reflect_y_axis,
-    rotate_about_box_center,
-    translate_pbc,
-)
+try:
+    # Local / pytest path: external_validation package on sys.path.
+    from external_validation._rollout_anchors._harness.symmetry_rollout_adapter import (
+        reflect_y_axis,
+        rotate_about_box_center,
+        translate_pbc,
+    )
+except ImportError:
+    # Modal-container path: harness modules co-shipped via add_local_file under
+    # /opt/physics_lint_harness/ (bare-name import; mirrors rung-4a's
+    # lagrangebench_pkl_to_npz.py shipping pattern).
+    from symmetry_rollout_adapter import (  # type: ignore[no-redef]
+        reflect_y_axis,
+        rotate_about_box_center,
+        translate_pbc,
+    )
 
 # Per-stack number of original trajectories from rung 4a (TGV2D test split).
 N_ORIG_TRAJS = 20
