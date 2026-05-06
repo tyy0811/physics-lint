@@ -321,3 +321,86 @@ The plan anticipated the cwd discrepancy (T4.2 step 3) and the rung-4a subdir na
 - T7 (GPU drift-guard): commit `49b2201`.
 
 T9 (run on Modal) and T10/T11 (table render + writeup) deferred to a separate execution session; the §7b addendum on the original 4b design doc will fire after T9 lands.
+
+---
+
+## 14. Post-execution amendment 2 — LB loader-contract failure class (T9 first-fire)
+
+**Recorded:** during the first T9 launch attempt at master sha `22492b06` (PR #7 merged). The SEGNN P0 sweep aborted at Step 3 (sanity probe) — but **not** at the ε > 1e-5 abort gate the design anticipated. Instead, LB's `H5Dataset.__init__` rejected the synthetic test.h5 at config-load time, before any pkl was produced. This amendment records the failure mode, the fix, and a methodology lesson the original design did not contemplate.
+
+### 14.1 The failure
+
+LB's `lagrangebench/data/data.py:144` enforces:
+
+```python
+assert self.sequence_length >= self.subseq_length, (
+    "# steps in dataset trajectory ({sequence_length}) must be >= "
+    "subsequence length ({subseq_length}). Reduce either input_seq_length "
+    "or extra_seq_length/max pushforward steps."
+)
+```
+
+where `subseq_length = input_seq_length + extra_seq_length`. For SEGNN-TGV2D at LB sha `b880a6c84a93792d2499d2a9b8ba3a077ddf44e2`:
+
+- `input_seq_length = 6`
+- `extra_seq_length = 4` (from `pushforward.unrolls = [0, 1, 2, 3]` — max unroll 3 + 1 target = 4)
+- `subseq_length = 10`
+
+The materializer (T1, commit `2dcad1e`) wrote `t_steps = 7` for main-sweep test.h5 (= `INPUT_SEQ_LENGTH + n_rollout_steps = 6 + 1`), based on the docstring assumption that the constraint was `T >= input_seq_length + n_rollout_steps`. That assumption was **incorrect at the LB-contract level**: `extra_seq_length` is the training-time pushforward horizon, baked into the config at training time, and enforced regardless of `eval.n_rollout_steps`. The assertion fires at `setup_data` for ALL splits (train.h5 with hardcoded `t_steps=7` would have failed too, even on the figure sweep where test.h5 was 106 frames).
+
+### 14.2 The 5th failure class — paired against the four ε bands
+
+The original design anticipated four ε-band failure modes, all sharing a structural property: **pipeline executes end-to-end, ε computes, the bug lives in the measurement.** The diagnostic mechanism is "ε magnitude lands in band X → bug class Y":
+
+| ε band | Bug class |
+|---|---|
+| ε ∈ [1e-5, 1e-3] | "concerning" — coordinate-space mismatch, frame-index off-by-one, etc. |
+| ε > 1e-3 | "clear bug" — normalization wrong, manifest mapping inverted, etc. |
+
+The T9 first-fire abort exposes a **5th failure class** with a different structural property: **pipeline aborts before ε computation; the bug lives in the contract between materialized artifact and consumer's loader.** The diagnostic mechanism here is whatever the loader's error message is (LB's `AssertionError` here is unusually informative; PhysicsNeMo's may not be), and the prevention surface is **pre-flight assertions in materialization that mirror loader-side contracts** — caught at materializer-test time, before any Modal compute.
+
+The two classes are not interchangeable:
+
+|  | ε-band failures (4 classes) | Loader-contract failure (5th class) |
+|---|---|---|
+| When does it fire? | After end-to-end pipeline run | At loader config-load, before pipeline runs |
+| What computes? | ε scalar; magnitude is the diagnostic | Nothing; loader's error message is the diagnostic |
+| Where is the bug? | In the measurement (ε formula, frame indices, normalization) | In the artifact↔loader contract |
+| Prevention surface | Diagnostic-band methodology (post-hoc band → bug class) | Pre-flight assertions in materializer mirroring loader contracts |
+| Cost of catching late | Bad ε numbers in the table; misleading writeup | Modal cold-start + image-pull wasted (~30 s on A10G); no bad data, just a stop |
+
+The diagnostic-band methodology earns its keep when the pipeline runs and ε is wrong. Loader-contract assertions earn their keep when the pipeline doesn't run at all. Both belong in the methodology toolkit; they cover non-overlapping failure surfaces.
+
+### 14.3 The fix
+
+Five changes on `feature/rung-4b-t7-subseq-length-fix` off master:
+
+1. **`synthetic_dataset_materializer.py` constants.** Added `EXTRA_SEQ_LENGTH = 4` and `LB_SUBSEQ_LENGTH = INPUT_SEQ_LENGTH + EXTRA_SEQ_LENGTH = 10` with provenance comment citing LB sha `b880a6c`, ckpt `segnn_tgv2d/best`, and the `pushforward.unrolls = [0,1,2,3]` config dump. Pinned by D0-15 (rung-3 P0 invocation) inherited by D0-21 (rung-4b pre-registration). The LB sha is the captured-at-image-build value (the rollout_image clones `--depth 1` of master, not a sha pin); a rebuild can shift this if upstream LB has moved. Re-derive when the checkpoint changes or LB pushforward semantics change.
+
+2. **Materializer dummy + metadata bump.** train.h5/valid.h5 dummies were hardcoded at `t_steps=7`; bumped to `LB_SUBSEQ_LENGTH=10`. `metadata["sequence_length_train"]` matches.
+
+3. **Materializer assert tightened.** `t_steps >= input_seq_length + 1` (the old "n_placeholders >= 1" check) → `t_steps >= LB_SUBSEQ_LENGTH`. Fail-fast at materializer rather than at LB config-load.
+
+4. **`modal_app.py` call-site bumps.** SEGNN + GNS sanity + main sweep call sites (4 total) bumped from `t_steps=7` to `t_steps=LB_SUBSEQ_LENGTH`. Figure sweep (`t_steps=106`) unchanged. `LB_SUBSEQ_LENGTH` imported alongside `materialize_synthetic_dataset` and `read_published_input_windows`.
+
+5. **`test_synthetic_dataset_materializer.py` regression test.** New section "LB loader-contract assertions" with three tests: `test_lb_subseq_length_matches_pre_registration` (drift-guard for the constants), `test_apply_transform_rejects_t_steps_below_lb_subseq_length` (boundary tests around 10), and `test_materialized_h5s_satisfy_lb_h5dataset_assertion` (end-to-end check that every materialized split satisfies LB's actual H5Dataset assertion). The pattern: **each loader-side assertion that gates pipeline execution gets a paired pre-flight test in the materializer's test suite.**
+
+### 14.4 Forward-flag for future case studies
+
+`subseq_length` is the **first** LB-loader-contract assertion that bit us. Others may exist that haven't surfaced yet — the H5Dataset `__init__` runs more validation than just this assert; the runner's `setup_data` runs more still; and PhysicsNeMo (case study 02) will have its own loader-side assertions, with different shapes.
+
+The pattern that future case studies inherit:
+
+1. **Identify the consumer's loader-side assertions.** For LB: `lagrangebench/data/data.py:144` is one; future contributors should grep `H5Dataset` and `setup_data` for additional ones. For PhysicsNeMo: TBD when case study 02 lands.
+2. **Mirror each one in materializer pre-flight.** Same shape as `test_materialized_h5s_satisfy_lb_h5dataset_assertion`: assert that the materializer's output satisfies the assertion the consumer will check.
+3. **Cite the source line in the test docstring.** So when the consumer's version moves, future-you knows where to look.
+4. **The "LB loader-contract assertions" section is the home for these.** A future PhysicsNeMo case study gets a sibling section ("MGN loader-contract assertions") in its own materializer test file.
+
+This is structurally analogous to the `(rule, substrate)` compatibility forward-flag in the original 4b design doc: when a class of failures has a name and a designated home, future instances are recognized rather than rediscovered cold.
+
+### 14.5 Cross-references
+
+- T9 first-fire failure: Modal app run abort, ~30 s A10G, captured in session conversation. SEGNN sanity-probe synthetic dir: `/vol/synthetic/segnn_tgv2d_sanity_22492b06a3/` (orphan; safe to remove).
+- Fix branch: `feature/rung-4b-t7-subseq-length-fix` off master sha `22492b06`.
+- Re-fire path: same `modal run …::eps_p0_segnn_tgv2d` invocation; sanity probe is now expected to compute ε (and either pass at ≤ 1e-5 or land in one of the four ε bands the original design enumerated).
+- Stale Volume artifact note: `/vol/synthetic/segnn_tgv2d_sanity_22492b06a3/` — written by the failed first-fire; can be cleaned via `modal volume rm` post-fix-success. Likewise `/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/` (pre-D0-17-amendment-1 rung-4a rollout, superseded by `_8c3d080397`; orthogonal to this fix).
