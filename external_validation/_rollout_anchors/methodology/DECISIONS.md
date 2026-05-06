@@ -2039,3 +2039,130 @@ markdown readers).
 §4 step 12.
 
 ---
+
+## D0-21 — 2026-05-05 — Rung 4b cross-stack equivariance (pre-registration)
+
+**Question.** Rung 4b extends rung 4a's cross-stack conservation result to
+equivariance: compute first-step ε under rotation/reflection/translation
+on the existing 40 frozen rollouts; emit SARIF at schema_version v1.1;
+render a tripartite-grouped cross-stack equivariance table. Multiple
+sub-questions (threshold rationale, rule set, persistence, GPU class,
+renderer choice, schema bump) need pre-registration before code lands so
+the implementation can't drift from the design's load-bearing claims.
+
+**Decision (pre-registered before any code change).**
+
+Composite entry covering rung 4b's design surface. Full rationale lives
+in `methodology/docs/2026-05-05-rung-4b-equivariance-design.md`
+(committed at `d9a8baa`, branch `feature/rung-4b-equivariance`); this
+entry names the load-bearing decisions for searchability in
+DECISIONS.md.
+
+1. **Load-bearing claim.** "physics-lint's PH-SYM rule schema, with
+   equivariance thresholds set at the float32 numerical-precision floor
+   (ε ≤ 10⁻⁵ PASS, 10⁻⁵ < ε ≤ 10⁻² APPROXIMATE, ε > 10⁻² FAIL), runs
+   unmodified across SEGNN-TGV2D and GNS-TGV2D rollouts; per-stack ε
+   values are emitted in the same SARIF schema as 4a (schema_version
+   v1.1) and reported as observed." Frozen at design time. Robust to
+   both probe outcomes (SEGNN at floor expected; GNS at floor or in
+   APPROXIMATE band — secondary finding wording adapts post-hoc).
+2. **Threshold rationale.** Float32 numerical-precision floor (~10⁻⁷/op
+   accumulating with depth and conditioning). Architecture-agnostic, no
+   cross-paper citation needed at threshold layer. Helwig et al. ICML
+   2023 demoted to writeup body context for interpreting observed GNS
+   values.
+3. **Rule set (γ).** PH-SYM-001 active at θ ∈ {π/2, π, 3π/2} +
+   construction-trivial smoke at θ=0; PH-SYM-002 active at y-axis
+   reflection through box center; PH-SYM-003 SKIP-with-reason
+   ("PBC-square breaks SO(2) symmetry — rotated cell doesn't tile with
+   original"); PH-SYM-004 active at t=(L/3, L/7), construction-trivial
+   PASS at machine-zero.
+4. **Tripartite evidence framing in writeup body and renderer output:**
+   architectural-evidence rows / construction-trivial rows /
+   substrate-incompatible-SKIP. Prevents the reader from interpreting
+   four PASSes as the same kind of evidence.
+5. **PH-SYM-003 / PBC-square IS analogous to PH-CON-002 / dissipative**
+   under D0-18's skip-with-reason mechanism. Meta-correction: this was
+   missed at the brainstorm's non-claim-5 framing, surfaced at design
+   pass not mid-execution. Recording the correction makes the
+   writeup-framing-baked-into-design discipline self-validating.
+6. **Trigger-vs-emission separation for SKIP paths:** rule-specific
+   trigger logic ("substrate has periodic boundaries AND rotation angle
+   is non-trivial-symmetry of substrate cell") in
+   `symmetry_rollout_adapter.py`; shared D0-19 §3.4 emission machinery
+   (skip_reason as guaranteed-identical-across-rows) populates the
+   SARIF row. Same emission shape as PH-CON-002, different trigger
+   source.
+7. **Reportable ε.** First-step scalar ε per (rule, transform_param,
+   traj_index) in SARIF (load-bearing); ε(t) over T=100 in writeup
+   figure (supplementary, not threshold-classified). Compared quantity:
+   positions only (matches LagrangeBench's published position-MSE
+   metric). Per-particle aggregation: RMS-across-particles
+   (ε = sqrt(mean_i ‖R⁻¹ r'_i,1 - r_i,1‖²)).
+8. **Pipeline shape (II) with uniform single-tier artifact:** every
+   (rule, transform_param, traj_index) tuple persists one ε(t) npz;
+   T_steps=1 for non-figure-subset (~hundreds of bytes), T_steps=100
+   for figure-subset (~few KB, 6 traces total: 1 angle × 3 trajs ×
+   2 stacks). Single schema, single consumer code path
+   (`lint_eps_dir` reads `eps_t[0]` always; figure renderer filters
+   for `len(eps_t) > 1`). Preserves rung 4a's single-artifact-tier
+   structure.
+9. **Persistence.** Modal-Volume-only with local mirror (gitignored),
+   matching rung 4a's pattern. SARIF + verdicts committed; ε(t) npzs
+   not committed. Rotated state intentionally non-persisted (lives in
+   Modal-job memory only); recovery via sub-minute re-run.
+10. **GPU class A10G** (matched to rung 4a). D0-17 amendment 1
+    principle generalized from within-rollout sha consistency to
+    GPU-class consistency — at float32-floor measurement scale,
+    GPU-class FP behavior differences (TF32, FMA scheduling,
+    kernel-fusion) sit at the same order as the threshold (~10⁻⁶–10⁻⁷).
+    Matched A10G keeps measurement noise below the floor-vs-architectural
+    -error distinction.
+11. **SARIF schema_version v1.0 → v1.1 bump.** New rule ids: PH-SYM-001,
+    PH-SYM-002, PH-SYM-003, PH-SYM-004. New per-row extra_properties:
+    `eps_pos_rms` (None for SKIP), `transform_kind`, `transform_param`.
+    v1.0 fields unchanged. Schema_version field on every SARIF row
+    enables fail-loud renderer assertion. v1.0 SARIFs unreadable by
+    v1.1 renderer; v1.1 SARIFs unreadable by v1.0 renderer.
+12. **Sibling renderer choice.** Rung 4b ships
+    `methodology/tools/render_eps_table.py`, separate from rung 4a's
+    `render_cross_stack_table.py`. Each renderer focused on one schema
+    version. Rationale: rung 4b's tripartite-grouped layout differs
+    structurally from rung 4a's flat per-rule list; modifying rung 4a's
+    renderer risks regressions on v1.0 behavior. Code-duplication is
+    bounded; DRY-ification of formatting primitives via
+    `methodology/tools/render_lib.py` is a forward-flag for n=3 schema
+    versions, not pre-emptive at n=2.
+13. **4-stage provenance for ε(t) npzs.** Generalizes D0-19's 3-stage
+    shape: `physics_lint_sha_pkl_inference` and
+    `physics_lint_sha_npz_conversion` carried unchanged from rung 4a's
+    reference rollouts; `physics_lint_sha_eps_computation` (new)
+    recorded at ε(t)-computation time; `physics_lint_sha_sarif_emission`
+    recorded at SARIF-emission time (consumer-side). The four shas may
+    be identical or distinct.
+
+**Forward flags (recorded for future rungs / case studies):**
+
+- *Float32→float64 threshold-rationale revisit:* the float32 floor
+  argument is precision-dependent. Case study 02 (PhysicsNeMo MGN), if
+  it runs at float64, needs threshold revisiting (float64 floor
+  ~10⁻¹⁶ per op).
+- *(rule, substrate) compatibility matrix generalization:* D0-18
+  detects PH-CON-002 SKIP via dataset-name + system_class heuristics;
+  PH-SYM-003 / PBC-square SKIP triggers on a different (rule,
+  substrate) compatibility axis. Future rung could formalize a per-rule
+  compatibility matrix in the rule schema rather than per-rule
+  heuristic triggers.
+- *Sibling-vs-extend renderer choice:* at n=3 schema versions, extract
+  shared formatting primitives into `methodology/tools/render_lib.py`.
+- *(I)-rejection framing precision:* the full-rotated-state pipeline
+  (Option I in the design) was rejected for over-persistence-for-
+  unclear-ROI under Modal-Volume cost, *not* commit-bulk. Future
+  readers should not interpret it as a commit-bulk rejection.
+- *Translation vector "non-grid-commensurate" wording:* L/3 and L/7
+  are rational fractions of L; the structural argument doesn't depend
+  on Diophantine incommensurability. Captured here for terminology
+  precision.
+
+**Realized.** [Filled in post-execution at the rung 4b table writeup
+step, naming the merge sha that closes this rung's loop.]
