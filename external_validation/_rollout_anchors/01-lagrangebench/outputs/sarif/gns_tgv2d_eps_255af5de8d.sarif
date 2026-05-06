@@ -1,0 +1,3110 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "checkpoint_id": "gns_tgv2d",
+        "dataset_name": "tgv2d",
+        "harness_sarif_schema_version": "1.1",
+        "lagrangebench_sha": "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2",
+        "model_name": "gns",
+        "physics_lint_sha_eps_computation": "255af5de8d",
+        "physics_lint_sha_npz_conversion": "f48dd3f376",
+        "physics_lint_sha_pkl_inference": "f48dd3f376",
+        "physics_lint_sha_sarif_emission": "255af5de8d",
+        "rollout_subdir": "/vol/trajectories/gns_tgv2d_255af5de8d/",
+        "source": "rollout-anchor-harness"
+      },
+      "results": [
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.555e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.554616487936983e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.554616487936983e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.580e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.579640026733614e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.579640026733614e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.199e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.199253637679703e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.199253637679703e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.936e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.935542084032022e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.935542084032022e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.206e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.206392815817253e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.206392815817253e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.269e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.268987634034829e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.268987634034829e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.662e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.662297463184586e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.662297463184586e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.263e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.262978745676719e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.262978745676719e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.146e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.146351149207476e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.146351149207476e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.669e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.668826462747802e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.668826462747802e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.029e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.028788300862288e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.028788300862288e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.100e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.09971911763796e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.09971911763796e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.273e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.273210922420503e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.273210922420503e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.521e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.521227196605196e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.521227196605196e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=8.068e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 8.068135493033424e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 8.068135493033424e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=6.931e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 6.930504170554741e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 6.930504170554741e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.195e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.194835394130905e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.194835394130905e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.481e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.481206765191928e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.481206765191928e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.285e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.285152925362581e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.285152925362581e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=7.421e-09 (transform=identity 0)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 7.42074934834136e-09,
+            "eps_t_npz_filename": "eps_PH-SYM-001_identity_0_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 7.42074934834136e-09,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "identity",
+            "transform_param": "0"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.151e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00041513133328408003,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00041513133328408003,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.847e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003847215848509222,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003847215848509222,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02828279137611389,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02828279137611389,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.944e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003944265190511942,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003944265190511942,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.129e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00041286982013843954,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00041286982013843954,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02828267216682434,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02828267216682434,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.891e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003891198430210352,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003891198430210352,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019999103620648384,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019999103620648384,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019999917596578598,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019999917596578598,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019999871030449867,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019999871030449867,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020003022626042366,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020003022626042366,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.463e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.03463130071759224,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.03463130071759224,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.999e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019994596019387245,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019994596019387245,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.999e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019989604130387306,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019989604130387306,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02827884815633297,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02827884815633297,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.910e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003910255909431726,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003910255909431726,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.675e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00036753161111846566,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00036753161111846566,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.810e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.000381005258532241,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.000381005258532241,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.973e-04 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003973237471655011,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003973237471655011,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation 3pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019997989758849144,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_3pi_2_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019997989758849144,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "rotation",
+            "transform_param": "3pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.082e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0004081913211848587,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0004081913211848587,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.982e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00039824971463531256,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00039824971463531256,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.028279555961489677,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.028279555961489677,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.960e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00039603430195711553,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00039603430195711553,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.145e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00041451401193626225,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00041451401193626225,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019998103380203247,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019998103380203247,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.758e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003758011444006115,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003758011444006115,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02827977016568184,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02827977016568184,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.835e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003834620292764157,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003834620292764157,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020001068711280823,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020001068711280823,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020000187680125237,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020000187680125237,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.989e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00039891802589409053,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00039891802589409053,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.999e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019994065165519714,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019994065165519714,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.999e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.01998983696103096,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.01998983696103096,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.01999979466199875,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.01999979466199875,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.878e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003877549315802753,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003877549315802753,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019999630749225616,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019999630749225616,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.01999991200864315,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.01999991200864315,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.057e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0004056554171256721,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0004056554171256721,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.889e-04 (transform=rotation pi_2)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003888635546900332,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_2_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003888635546900332,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "rotation",
+            "transform_param": "pi_2"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.083e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0004083289240952581,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0004083289240952581,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.650e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003649998106993735,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003649998106993735,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020001903176307678,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020001903176307678,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.974e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003973854472860694,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003973854472860694,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019997376948595047,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019997376948595047,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.999e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.01999489590525627,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.01999489590525627,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.736e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00037361960858106613,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00037361960858106613,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.028282059356570244,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.028282059356570244,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.01999715529382229,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.01999715529382229,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019998891279101372,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019998891279101372,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020001599565148354,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020001599565148354,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.463e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.03463296592235565,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.03463296592235565,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.060e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0004060192732140422,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0004060192732140422,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.034e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0004033661971334368,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0004033661971334368,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.463e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0346338227391243,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0346338227391243,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.858e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003857961273752153,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003857961273752153,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020001016557216644,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020001016557216644,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019999902695417404,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019999902695417404,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.928e-04 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00039277298492379487,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00039277298492379487,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=rotation pi)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02000194787979126,
+            "eps_t_npz_filename": "eps_PH-SYM-001_rotation_pi_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02000194787979126,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "rotation",
+            "transform_param": "pi"
+          },
+          "ruleId": "PH-SYM-001"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.982e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003981840854976326,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003981840854976326,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.607e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00036072047078050673,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00036072047078050673,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.779e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003779140242841095,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003779140242841095,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020003391429781914,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020003391429781914,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.982e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003981503832619637,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003981503832619637,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=1.997e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019973279908299446,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019973279908299446,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.754e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003754189528990537,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003754189528990537,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02828211709856987,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02828211709856987,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.019998757168650627,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.019998757168650627,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.828e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.028278877958655357,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.028278877958655357,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.798e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003797984099946916,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003797984099946916,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.464e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.034636881202459335,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.034636881202459335,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.044e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00040435793926008046,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00040435793926008046,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.042e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.00040421064477413893,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.00040421064477413893,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02000260353088379,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02000260353088379,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020000388845801353,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020000388845801353,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.02000109665095806,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.02000109665095806,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.629e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003628549166023731,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003628549166023731,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=3.903e-04 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.0003903219476342201,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.0003903219476342201,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=2.000e-02 (transform=reflection y_axis)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 0.020000213757157326,
+            "eps_t_npz_filename": "eps_PH-SYM-002_reflection_y_axis_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 0.020000213757157326,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "reflection",
+            "transform_param": "y_axis"
+          },
+          "ruleId": "PH-SYM-002"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": null,
+            "eps_t_npz_filename": "eps_PH-SYM-003_skip_so2_continuous_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "skip_reason": "PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original",
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "skip",
+            "transform_param": "so2_continuous"
+          },
+          "ruleId": "PH-SYM-003"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.503e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.5029826029340256e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj00.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.5029826029340256e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 0,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.370e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.369766498120043e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj01.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.369766498120043e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 1,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.400e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.399637714731398e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj02.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.399637714731398e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 2,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=4.054e-06 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 4.054318196722306e-06,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj03.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 4.054318196722306e-06,
+            "source": "rollout-anchor-harness",
+            "traj_index": 3,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.455e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.4546870131844116e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj04.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.4546870131844116e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 4,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.374e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.37423652247071e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj05.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.37423652247071e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 5,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.413e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.412850256902857e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj06.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.412850256902857e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 6,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.428e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.428414695529682e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj07.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.428414695529682e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 7,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.369e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.368677946648859e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj08.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.368677946648859e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 8,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.365e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.3646001418883316e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj09.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.3646001418883316e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 9,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.441e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.44113305522842e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj10.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.44113305522842e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 10,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.327e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.3267893207475936e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj11.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.3267893207475936e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 11,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.377e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.376712408633466e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj12.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.376712408633466e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 12,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.463e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.4626344336838883e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj13.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.4626344336838883e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 13,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.409e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.4093710843972076e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj14.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.4093710843972076e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 14,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.485e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.485240706093464e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj15.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.485240706093464e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 15,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.294e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.293696503372303e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj16.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.293696503372303e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 16,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.399e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.399021318908126e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj17.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.399021318908126e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 17,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.437e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.4372595315044236e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj18.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.4372595315044236e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 18,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "eps_pos_rms=5.438e-08 (transform=translation L_3_L_7)"
+          },
+          "properties": {
+            "case_study": "01-lagrangebench",
+            "ckpt_hash": "sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e",
+            "dataset": "tgv2d",
+            "eps_pos_rms": 5.438452532757765e-08,
+            "eps_t_npz_filename": "eps_PH-SYM-004_translation_L_3_L_7_traj19.npz",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "gns",
+            "raw_value": 5.438452532757765e-08,
+            "source": "rollout-anchor-harness",
+            "traj_index": 19,
+            "transform_kind": "translation",
+            "transform_param": "L_3_L_7"
+          },
+          "ruleId": "PH-SYM-004"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/tyy0811/physics-lint",
+          "name": "physics-lint-rollout-anchor-harness",
+          "version": "0.1.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}
