@@ -286,7 +286,7 @@ The four shas may be identical or distinct; equality is allowed but never requir
 - A multi-version-aware single renderer would branch on schema_version at most call sites, increasing per-line complexity and the risk that a change to v1.1 logic accidentally changes v1.0 output.
 - Code duplication is bounded: the column formatting and header-emission primitives are simple enough that DRY-ifying them later, if a third schema version arrives, is cheap. Premature DRY-ification of two structurally different table layouts adds complexity for no clear win at n=2.
 
-**Forward-flag:** when rung 4c (or analog) introduces a third schema version, the right move is to extract shared formatting primitives into `methodology/tools/render_lib.py` and have all version-specific renderers compose them. Not pre-emptive at n=2.
+**Forward-flag:** when rung 4c (or analog) introduces a third schema version, the right move is to extract shared formatting primitives into `methodology/tools/render_lib.py` and have all version-specific renderers compose them. Not preemptive at n=2.
 
 ### 5.2 Tripartite evidence grouping in the table
 
@@ -351,7 +351,7 @@ Per the "test fixtures hand-crafted, not copied from production" discipline, eac
 
 5. **Translation-vector "non-grid-commensurate" wording precision.** L/3 and L/7 are *commensurate* with L (rational fractions); the structural argument (translation + PBC commute exactly) doesn't depend on Diophantine incommensurability. D-entry uses "non-grid-commensurate" to capture the practical anti-accidental-alignment property, *not* "incommensurate with L" which is mathematically wrong.
 
-6. **Sibling-vs-extend renderer forward-flag.** When a third schema version (v1.2 etc.) arrives, extract shared formatting primitives into `methodology/tools/render_lib.py` and have all version-specific renderers compose them. Not pre-emptive at n=2.
+6. **Sibling-vs-extend renderer forward-flag.** When a third schema version (v1.2 etc.) arrives, extract shared formatting primitives into `methodology/tools/render_lib.py` and have all version-specific renderers compose them. Not preemptive at n=2.
 
 ---
 

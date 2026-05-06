@@ -2132,7 +2132,7 @@ DECISIONS.md.
     renderer risks regressions on v1.0 behavior. Code-duplication is
     bounded; DRY-ification of formatting primitives via
     `methodology/tools/render_lib.py` is a forward-flag for n=3 schema
-    versions, not pre-emptive at n=2.
+    versions, not preemptive at n=2.
 13. **4-stage provenance for ε(t) npzs.** Generalizes D0-19's 3-stage
     shape: `physics_lint_sha_pkl_inference` and
     `physics_lint_sha_npz_conversion` carried unchanged from rung 4a's
