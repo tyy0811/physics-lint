@@ -404,3 +404,43 @@ This is structurally analogous to the `(rule, substrate)` compatibility forward-
 - Fix branch: `feature/rung-4b-t7-subseq-length-fix` off master sha `22492b06`.
 - Re-fire path: same `modal run …::eps_p0_segnn_tgv2d` invocation; sanity probe is now expected to compute ε (and either pass at ≤ 1e-5 or land in one of the four ε bands the original design enumerated).
 - Stale Volume artifact note: `/vol/synthetic/segnn_tgv2d_sanity_22492b06a3/` — written by the failed first-fire; can be cleaned via `modal volume rm` post-fix-success. Likewise `/rollouts/lagrangebench/segnn_tgv2d_f75e22d8dd/` (pre-D0-17-amendment-1 rung-4a rollout, superseded by `_8c3d080397`; orthogonal to this fix).
+
+### 14.6 Second-pass refinement after source review — methodology validation
+
+Before re-firing the SEGNN P0 sweep at the §14.3 fix, source review of LB at sha `b880a6c` (`/lagrangebench/data/data.py:130-145` + `runner.py:163-188`) surfaced **two concrete instances** of the failure class §14.4's forward-flag predicted ("others may exist that haven't surfaced yet"):
+
+**Instance 1 — math error in §14.3.** The original fix declared `EXTRA_SEQ_LENGTH = 4`, claiming "max unroll 3 + 1 target = 4." But LB's source has the `+1` explicit:
+
+```python
+# data.py:131 (split == "train")
+self.subseq_length = input_seq_length + 1 + extra_seq_length
+```
+
+where `extra_seq_length = pushforward.unrolls[-1]` is just the pushforward horizon (= 3, not 4). The "+1" is the target frame — semantically distinct from the unroll count (predict-next-frame target is separate from the pushforward unrolls used for training-time noise injection). The value `LB_SUBSEQ_LENGTH = 10` was correct by coincidence (`6 + 4` happens to equal `6 + 1 + 3`); the derivation was muddled.
+
+**Renamed:** `EXTRA_SEQ_LENGTH` → `LB_PUSHFORWARD_UNROLLS_LAST = 3` (LB-namespaced, parallels other LB-derived constants); `LB_SUBSEQ_LENGTH` → `LB_TRAIN_SUBSEQ_LENGTH = INPUT_SEQ_LENGTH + 1 + LB_PUSHFORWARD_UNROLLS_LAST = 10`. Math now matches LB source verbatim.
+
+**Instance 2 — latent figure-sweep failure.** Per `runner.py:163-188`, LB constructs three H5Datasets at setup_data with **different** `extra_seq_length` kwargs:
+
+| Split | `extra_seq_length` source | At main/sanity (n_rollout_steps=1) | At figure (n_rollout_steps=100) |
+|-------|---------------------------|-----------------------------------:|-------------------------------:|
+| train | `cfg.train.pushforward.unrolls[-1]` = 3 | subseq_length = **10** | subseq_length = **10** (constant) |
+| valid | `cfg.eval.n_rollout_steps` | subseq_length = **7** | subseq_length = **106** |
+| test  | `cfg.eval.n_rollout_steps` | subseq_length = **7** | subseq_length = **106** |
+
+The §14.3 fix wrote `valid.h5` and `train.h5` dummies at hardcoded `LB_SUBSEQ_LENGTH = 10`. That clears the sanity probe and main sweep — but **figure sweep would have failed at Step 7**, because `valid.h5` needs ≥ 106 frames when LB constructs `data_valid` with `extra_seq_length = n_rollout_steps = 100`. Same failure class as the original first-fire abort, just on a different split + different sweep + cost of an additional A10G cold-start.
+
+**Fixed:** materializer now writes both dummies (`train.h5`, `valid.h5`) at `t_steps` (= `test.h5`'s length), uniformly. The `t_steps >= LB_TRAIN_SUBSEQ_LENGTH` assert covers the train floor; matching `test.h5`'s length covers the valid/test dynamic floor (since `t_steps` is sized by the caller for the sweep's `n_rollout_steps`).
+
+**Methodology validation, not just fix log.** §14.4's forward-flag wasn't aspirational — it correctly predicted that further loader-contract failures existed and would surface. Source review (no Modal compute, no live testing) surfaced both at **$0 Modal cost** before any feedback loop ran. The cost-benefit ratio that justifies the pattern: source-reading is essentially free, Modal feedback loops aren't. This becomes the **implicit precedent for future LB-integration changes, and for PhysicsNeMo MGN integration when case study 02 lands**: default to source-review pre-flight before any compute, not just when something has already failed.
+
+**Regression test refined:** `test_materialized_h5s_satisfy_lb_h5dataset_assertion` is now `@pytest.mark.parametrize("n_rollout_steps,t_steps", [(1, 10), (100, 106)])` — single test definition, both sweep shapes covered, future contributors add cases by extending the parametrize list. Same scaling shape as the synthetic-fixture-vs-LB-assertion contract pattern: one test definition, multiple instances of the contract.
+
+**Pattern surface, restated.** The §14.4 forward-flag's prescription becomes a four-part procedure:
+
+1. **Identify the consumer's loader-side assertions** by reading source at the pinned sha (not by trial-and-error against live runs).
+2. **Mirror each one in materializer pre-flight**, parametrized over the dynamic-axis kwargs the consumer passes (`n_rollout_steps`, etc.).
+3. **Cite source line + sha in the test docstring** so future contributors know where to look when the consumer's version moves.
+4. **Default to source review before compute.** If the consumer's loader is open-source, the cost of reading it is almost always less than the cost of the Modal cycles you'd otherwise burn on incremental feedback.
+
+This is the pattern PhysicsNeMo MGN (case study 02) inherits when it lands: read MGN's data-loader source at its pinned sha, identify its loader-side assertions, write paired pre-flight tests in the MGN materializer's test file, *before* firing any GPU run.
