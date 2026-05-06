@@ -355,6 +355,26 @@ Per the "test fixtures hand-crafted, not copied from production" discipline, eac
 
 ---
 
+## 7a. Addendum (2026-05-06): T7 LagrangeBench-API integration under-specification
+
+**What surfaced.** During execution of the implementation plan (consumer-side T0–T6 + T8 landed clean and tested), the T7 Modal-side ε-generation entrypoints exposed a gap the brainstorm had not closed: §3.6's pipeline architecture pre-registered the generator/consumer split and the four-stage sha provenance, but assumed LagrangeBench exposed a clean `infer(model, params, x_0, n_steps)` Python primitive. Rung 4a's actual driver (`lagrangebench_rollout_p0_segnn_tgv2d` in `01-lagrangebench/modal_app.py`) drives LB via subprocess invocation of `main.py mode=infer`, which loads initial conditions from the dataset rather than accepting a transformed `x_0`. The plan's `from lagrangebench.evaluate import infer` import is speculative; no such one-step-with-arbitrary-IC primitive exists at the surface LB exposes today.
+
+**Why this is OK to record.** Same shape as the §1.3-item-5 SO(2)/PBC-square meta-correction, except the SO(2) gap was caught at design pass and this gap surfaced during execution. Both are legitimate brainstorm-depth limits — there's a finite distance brainstorms can profitably descend into framework internals before becoming rabbit holes, and LagrangeBench's CLI-vs-Python-API shape sat below that depth. Recording the surfacing point is what makes the discipline self-validating rather than self-congratulatory aspiration.
+
+**Resolution path (deferred to a follow-up T7 design pass).** Three sub-options for the T7 integration shape, ordered by methodology preference:
+
+- **(c) Subprocess pattern mirroring rung 4a.** Apply the symmetry transform as numpy preprocessing (already done — `symmetry_rollout_adapter.py` primitives), materialize a synthetic IC dataset that LB ingests via `dataset.src`, run `mode=infer eval.n_rollout_steps=1`, post-process the output npz to compute ε via `compute_eps_t_from_pair`. **Preferred** under matched-stack-consistency reasoning (D0-17 amendment 1's principle): same pipeline shape as 4a → measurement-noise floor stays where rung 4a calibrated it, and the only new code is the IC-materialization step.
+
+- **(a) Patch LB upstream** to accept a transformed-IC override. Cleanest architecturally; small LB contribution reusable for case study 02; future-proofs against LB version bumps. Cost: depends on LB maintainer responsiveness; introduces a cross-repo dependency on a not-yet-merged patch.
+
+- **(b) Assemble forward call manually** by importing LB's internal model + dataset modules and calling forward 1 step in Python. Fragile to LB version bumps (private internals can shift across releases and silently change measurement semantics). **Not preferred.**
+
+**What lands now (PR #7 or equivalent).** Consumer-side plumbing — T0–T6 + T8 — committed and tested on `feature/rung-4b-equivariance`. SARIF v1.1 schema, four PH-SYM rule emissions, tripartite-grouped renderer, fail-loud schema assertion, sibling-vs-extend forward flag honored. Acceptance criteria items §8 #1, #2, #3 satisfied; #4–#9 deferred pending T7 + T9–T11 follow-up.
+
+**Forward flag.** When the T7 design pass lands, append a §7b addendum here recording the choice between (a)/(b)/(c) and the rationale, paired with a D0-21 amendment that names the resolution. Don't paper over the design-during-execution moment.
+
+---
+
 ## 8. Acceptance criteria
 
 Rung 4b is considered passed when all of the following hold:
