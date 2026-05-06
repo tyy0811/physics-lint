@@ -307,7 +307,7 @@ The plan anticipated the cwd discrepancy (T4.2 step 3) and the rung-4a subdir na
 
 **Resolution applied:** all four harness modules are now shipped via `add_local_file` (extending rung-4a's shipping list); the two cross-importing modules use try/except fallback imports (fully-qualified first, bare-name second) so the same source file resolves under both contexts. This is **not just a packaging detail** — it's a scaling pattern from one rung to the next that future case studies will hit whenever a rung needs more than one cross-importing harness module. The alternatives (extracting a single mega-module; shipping the whole `external_validation` tree via `add_local_python_source`; importing the symmetry primitives by inlining) all have non-trivial costs; the try/except + multiple-add_local_file pattern is the lowest-overhead generalization of rung-4a's single-file pattern.
 
-**Forward-flag for future rungs:** if a third cross-importing harness module lands, the per-module `add_local_file` boilerplate scales linearly. At ~5 modules the right move is probably `add_local_python_source` for the whole `_harness/` package; not pre-emptive at n=4.
+**Forward-flag for future rungs:** if a third cross-importing harness module lands, the per-module `add_local_file` boilerplate scales linearly. At ~5 modules the right move is probably `add_local_python_source` for the whole `_harness/` package; not preemptive at n=4.
 
 ### 13.4 Cross-references
 
