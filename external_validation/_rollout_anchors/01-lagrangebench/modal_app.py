@@ -2122,6 +2122,89 @@ def rollout_p1_gns_tgv2d() -> None:
         )
 
 
+# --- Rung 4b T7: equivariance eps(t) Modal entrypoints ---
+# 4-stage provenance constants are kept colocated with the rung-4a SHAs
+# in emit_sarif.py (single source of truth for the rung-4a rollouts'
+# pkl-inference and npz-conversion shas). The local entrypoints below
+# hardcode the same values; emit_sarif_eps.py downstream consumes the
+# eps_t.npz with these stamped in. Cross-checked at runtime: the rung-4a
+# npz's `git_sha` field must prefix-match SEGNN_NPZ_CONVERSION_SHA /
+# GNS_NPZ_CONVERSION_SHA.
+_T7_SEGNN_RUNG_4A_SUBDIR = "segnn_tgv2d_8c3d080397"
+_T7_SEGNN_PKL_INFERENCE_SHA = "8c3d080397"
+_T7_SEGNN_NPZ_CONVERSION_SHA = "5857144"
+
+_T7_GNS_RUNG_4A_SUBDIR = "gns_tgv2d_f48dd3f376"
+_T7_GNS_PKL_INFERENCE_SHA = "f48dd3f376"
+_T7_GNS_NPZ_CONVERSION_SHA = "f48dd3f376"
+
+
+@app.local_entrypoint()
+def eps_p0_segnn_tgv2d() -> None:
+    """Fire the rung-4b T7 SEGNN-TGV2D equivariance eps(t) sweep."""
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_short = subprocess.check_output(
+        ["git", "rev-parse", "--short=10", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Rung 4b T7 SEGNN-TGV2D eps(t) sweep ===")
+    print(f"  gpu_class:                       {ROLLOUT_GENERATION_GPU_CLASS}")
+    print(f"  git_sha (short):                 {git_sha_short}")
+    print(f"  git_sha (full):                  {git_sha_full}")
+    print(f"  rung_4a_rollout_subdir:          {_T7_SEGNN_RUNG_4A_SUBDIR}")
+    print(f"  physics_lint_sha_pkl_inference:  {_T7_SEGNN_PKL_INFERENCE_SHA}")
+    print(f"  physics_lint_sha_npz_conversion: {_T7_SEGNN_NPZ_CONVERSION_SHA}")
+    print()
+    res = lagrangebench_eps_p0_segnn_tgv2d.remote(
+        git_sha=git_sha_short,
+        full_git_sha=git_sha_full,
+        rung_4a_rollout_subdir=_T7_SEGNN_RUNG_4A_SUBDIR,
+        physics_lint_sha_pkl_inference=_T7_SEGNN_PKL_INFERENCE_SHA,
+        physics_lint_sha_npz_conversion=_T7_SEGNN_NPZ_CONVERSION_SHA,
+    )
+    print("--- result ---")
+    for k, v in res.items():
+        print(f"  {k}: {v}")
+
+
+@app.local_entrypoint()
+def eps_p1_gns_tgv2d() -> None:
+    """Fire the rung-4b T7 GNS-TGV2D equivariance eps(t) sweep."""
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_short = subprocess.check_output(
+        ["git", "rev-parse", "--short=10", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Rung 4b T7 GNS-TGV2D eps(t) sweep ===")
+    print(f"  gpu_class:                       {ROLLOUT_GENERATION_GPU_CLASS}")
+    print(f"  git_sha (short):                 {git_sha_short}")
+    print(f"  git_sha (full):                  {git_sha_full}")
+    print(f"  rung_4a_rollout_subdir:          {_T7_GNS_RUNG_4A_SUBDIR}")
+    print(f"  physics_lint_sha_pkl_inference:  {_T7_GNS_PKL_INFERENCE_SHA}")
+    print(f"  physics_lint_sha_npz_conversion: {_T7_GNS_NPZ_CONVERSION_SHA}")
+    print()
+    res = lagrangebench_eps_p1_gns_tgv2d.remote(
+        git_sha=git_sha_short,
+        full_git_sha=git_sha_full,
+        rung_4a_rollout_subdir=_T7_GNS_RUNG_4A_SUBDIR,
+        physics_lint_sha_pkl_inference=_T7_GNS_PKL_INFERENCE_SHA,
+        physics_lint_sha_npz_conversion=_T7_GNS_NPZ_CONVERSION_SHA,
+    )
+    print("--- result ---")
+    for k, v in res.items():
+        print(f"  {k}: {v}")
+
+
 # --- Standalone rung-3.5 conversion (D0-17 amendment 1) ---
 # CPU-only re-conversion against existing pkls in the Volume. Use when:
 # (a) a prior rung-3 inference PASSed but rung-3.5 conversion FAILed
