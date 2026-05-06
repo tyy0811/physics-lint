@@ -22,6 +22,20 @@ from numpy.typing import NDArray
 
 INPUT_SEQ_LENGTH = 6  # LB default; verified at design time, asserted in materializer
 
+# Pre-registration: TGV2D pushforward training horizon. Sourced from
+# SEGNN-TGV2D's pushforward.unrolls config dump = [0, 1, 2, 3] (max unroll 3,
+# +1 target frame = 4) at LB sha b880a6c84a93792d2499d2a9b8ba3a077ddf44e2 and
+# ckpt segnn_tgv2d/best (sha256:c0be98f9...441b). Pinned by D0-15 (rung-3 P0
+# invocation) inherited by D0-21 (rung 4b pre-registration). LB enforces
+# `sequence_length >= input_seq_length + extra_seq_length` at H5Dataset
+# init in `lagrangebench/data/data.py:144` for ALL splits (train/valid/test),
+# regardless of `eval.n_rollout_steps`. Re-derive when:
+#   - the checkpoint changes (different model/dataset → different unrolls config)
+#   - LB pushforward semantics change (LB sha drift; the rollout_image clones
+#     `--depth 1` of master, not a sha pin, so a rebuild can shift this too)
+EXTRA_SEQ_LENGTH = 4
+LB_SUBSEQ_LENGTH = INPUT_SEQ_LENGTH + EXTRA_SEQ_LENGTH
+
 
 def apply_transform_to_window(
     *,
@@ -32,7 +46,9 @@ def apply_transform_to_window(
 ) -> NDArray[np.float32]:
     """Apply `transform_fn` to each of 6 input frames; append (t_steps - 6)
     placeholder frames (each = transformed frame 5) so the trajectory
-    satisfies LB's `T >= input_seq_length + n_rollout_steps` requirement.
+    satisfies LB's `T >= input_seq_length + extra_seq_length` requirement
+    (asserted in `lagrangebench/data/data.py:144`, enforced for ALL splits
+    at H5Dataset init regardless of `eval.n_rollout_steps`).
 
     Per design §3.2 (placeholder = copy of frame 5; distribution-safe per
     features.py:68 — FD-velocity uses only frames[0:6]).
@@ -47,7 +63,9 @@ def apply_transform_to_window(
     box_size : float
         Periodic-square side length; passed to transform_fn.
     t_steps : int
-        Total trajectory length (7 for main sweep, 106 for figure sweep).
+        Total trajectory length. Must be >= LB_SUBSEQ_LENGTH (10).
+        Main sweep uses LB_SUBSEQ_LENGTH directly; figure sweep uses 106
+        (= INPUT_SEQ_LENGTH + 100 figure rollout steps).
 
     Returns
     -------
@@ -62,9 +80,14 @@ def apply_transform_to_window(
         [transform_fn(input_window[k], box_size) for k in range(INPUT_SEQ_LENGTH)],
         axis=0,
     ).astype(np.float32)
+    if t_steps < LB_SUBSEQ_LENGTH:
+        raise ValueError(
+            f"t_steps must be >= LB_SUBSEQ_LENGTH ({LB_SUBSEQ_LENGTH} = "
+            f"INPUT_SEQ_LENGTH {INPUT_SEQ_LENGTH} + EXTRA_SEQ_LENGTH {EXTRA_SEQ_LENGTH}); "
+            f"got t_steps={t_steps}. LB's H5Dataset asserts "
+            f"sequence_length >= subseq_length at config-load time."
+        )
     n_placeholders = t_steps - INPUT_SEQ_LENGTH
-    if n_placeholders < 1:
-        raise ValueError(f"t_steps must be >= input_seq_length + 1; got t_steps={t_steps}")
     placeholder = transformed_frames[5:6]  # shape (1, N, D)
     placeholders = np.repeat(placeholder, n_placeholders, axis=0)
     return np.concatenate([transformed_frames, placeholders], axis=0).astype(np.float32)
@@ -116,7 +139,9 @@ def materialize_synthetic_dataset(
         Decoded from published TGV2D metadata.json. Reused verbatim for
         normalization stats (silent-mismatch hazard if not reused).
     t_steps : int
-        Total trajectory length (7 for main sweep, 106 for figure sweep).
+        Total trajectory length. Must be >= LB_SUBSEQ_LENGTH (10).
+        Main sweep uses LB_SUBSEQ_LENGTH directly; figure sweep uses 106
+        (= INPUT_SEQ_LENGTH + 100 figure rollout steps).
     sweep_kind : str
         "main" or "figure".
     stack, dataset : str
@@ -162,11 +187,14 @@ def materialize_synthetic_dataset(
             _write_h5_trajectory(f, f"{synthetic_traj_index:05d}", traj, particle_type)
 
     # ---- train.h5 + valid.h5 (single dummy trajectory each; LB requires file exists) ----
+    # LB's H5Dataset asserts sequence_length >= subseq_length for ALL splits
+    # at setup_data time (not just `test` even in mode=infer); use
+    # LB_SUBSEQ_LENGTH so the assertion passes on the dummies too.
     dummy_traj = apply_transform_to_window(
         input_window=input_windows[0],
         transform_fn=lambda pos, _bs: pos.copy(),
         box_size=box_size,
-        t_steps=7,  # always 7 for dummies; train/valid never used in mode=infer
+        t_steps=LB_SUBSEQ_LENGTH,
     )
     for split_name in ("train.h5", "valid.h5"):
         with h5py.File(out_dir / split_name, "w") as f:
@@ -174,7 +202,7 @@ def materialize_synthetic_dataset(
 
     # ---- metadata.json ----
     metadata = copy.deepcopy(published_metadata)
-    metadata["sequence_length_train"] = 7
+    metadata["sequence_length_train"] = LB_SUBSEQ_LENGTH
     metadata["sequence_length_test"] = t_steps
     metadata["num_trajs_train"] = 1
     metadata["num_trajs_test"] = len(transforms)
