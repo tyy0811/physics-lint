@@ -1631,6 +1631,286 @@ def _run_lb_inference(
     print(f"[lb-infer] success; stdout tail:\n{proc.stdout[-500:]}")
 
 
+@app.function(
+    image=rollout_image,
+    gpu=ROLLOUT_GENERATION_GPU_CLASS,  # A10G — matched to rung 4a per D0-21 item 10
+    timeout=60 * 30,
+    volumes={"/vol": rollout_volume},
+)
+def lagrangebench_eps_p1_gns_tgv2d(
+    git_sha: str,
+    full_git_sha: str,
+    rung_4a_rollout_subdir: str,
+    physics_lint_sha_pkl_inference: str,
+    physics_lint_sha_npz_conversion: str,
+) -> dict:
+    """Rung 4b T7: GNS-TGV2D equivariance eps(t) computation.
+
+    Mirror of ``lagrangebench_eps_p0_segnn_tgv2d`` with ``model_name="gns"``
+    and the GNS checkpoint path. Pipeline shape, materialization,
+    post-processing, and silent-mismatch guards are identical. The
+    sanity-probe gate is **informational only** (never aborts): GNS's
+    expected eps lives in the (1e-5, 1e-2] approximate-equivariance band
+    per design §3.3 and Helwig et al. ICML 2023's architecture-level
+    characterization — that's the headline finding to report, not a
+    gate condition to enforce. The verdict's diagnostic bands still
+    discriminate "concerning" (architectural approximation; expected)
+    from "clear bug" (> 1e-2), so a coordinate-space / frame-index /
+    normalization / manifest-mapping bug would still surface in the log
+    even though no abort raises.
+    """
+    import json
+    import os  # noqa: F401  (used inside _run_lb_inference via os.chdir)
+    import sys as _sys
+    import time
+    from pathlib import Path
+
+    import numpy as np
+
+    if _REMOTE_HARNESS_DIR not in _sys.path:
+        _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+    from eps_modal_orchestrator import (
+        build_figure_sweep_transforms,
+        build_main_sweep_transforms,
+        interpret_sanity_probe_verdict,
+    )
+    from eps_pkl_consumer import eps_t_from_pkl_and_reference
+    from symmetry_rollout_adapter import write_eps_t_npz
+    from synthetic_dataset_materializer import (
+        materialize_synthetic_dataset,
+        read_published_input_windows,
+    )
+
+    started = time.time()
+    model_name = "gns"
+    dataset_name = "tgv2d"
+    ckpt_path = "/vol/checkpoints/lagrangebench/gns_tgv2d/best"
+
+    # ---- Step 0: locate published TGV2D dataset on Volume ----
+    published_dataset_dir = Path("/vol/datasets/lagrangebench/2D_TGV_2500_10kevery100")
+    if not published_dataset_dir.exists():
+        raise FileNotFoundError(f"Published TGV2D dataset not found at {published_dataset_dir}.")
+    published_test_h5 = published_dataset_dir / "test.h5"
+    published_metadata = json.loads((published_dataset_dir / "metadata.json").read_text())
+
+    rung_4a_dir = Path("/vol/rollouts/lagrangebench") / rung_4a_rollout_subdir
+    if not rung_4a_dir.exists():
+        raise FileNotFoundError(f"Rung-4a rollout dir not found: {rung_4a_dir}")
+
+    sample_ref_npz = rung_4a_dir / "particle_rollout_traj00.npz"
+    with np.load(sample_ref_npz, allow_pickle=True) as ref:
+        ref_metadata = ref["metadata"].item()
+    ckpt_hash_raw = str(ref_metadata.get("ckpt_hash", ""))
+    if not ckpt_hash_raw:
+        raise ValueError(f"{sample_ref_npz}: ckpt_hash missing from metadata")
+    ckpt_hash = ckpt_hash_raw if ckpt_hash_raw.startswith("sha256:") else f"sha256:{ckpt_hash_raw}"
+    npz_git_sha = str(ref_metadata.get("git_sha", ""))
+    if npz_git_sha and not npz_git_sha.startswith(physics_lint_sha_npz_conversion):
+        raise ValueError(
+            f"{sample_ref_npz}: rung-4a npz git_sha={npz_git_sha!r} does not "
+            f"match physics_lint_sha_npz_conversion={physics_lint_sha_npz_conversion!r}"
+        )
+
+    # ---- Step 1: read input windows ----
+    input_windows, particle_type = read_published_input_windows(
+        h5_path=published_test_h5, n_trajs=20
+    )
+
+    # ---- Step 2: write 20 PH-SYM-003 SKIP rows ----
+    eps_out_dir = Path("/vol/trajectories") / f"{model_name}_{dataset_name}_{full_git_sha[:10]}"
+    eps_out_dir.mkdir(parents=True, exist_ok=True)
+    skip_reason = "PBC-square breaks SO(2) symmetry — rotated cell doesn't tile with original"
+    common_provenance = dict(
+        model_name=model_name,
+        dataset_name=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_pkl_inference=physics_lint_sha_pkl_inference,
+        physics_lint_sha_npz_conversion=physics_lint_sha_npz_conversion,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    for traj_index in range(20):
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=np.array([np.nan], dtype=np.float32),
+            rule_id="PH-SYM-003",
+            transform_kind="skip",
+            transform_param="so2_continuous",
+            traj_index=traj_index,
+            skip_reason=skip_reason,
+            **common_provenance,
+        )
+
+    # ---- Step 3: sanity probe (informational; no abort for GNS) ----
+    box_size = float(published_metadata["bounds"][0][1] - published_metadata["bounds"][0][0])
+    sanity_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_sanity_{full_git_sha[:10]}"
+    )
+    sanity_transforms = [
+        {
+            "rule_id": "PH-SYM-001",
+            "transform_kind": "rotation",
+            "transform_param": "pi_2",
+            "transform_fn": build_main_sweep_transforms(n_trajs=1)[1]["transform_fn"],
+            "original_traj_index": 0,
+        }
+    ]
+    materialize_synthetic_dataset(
+        out_dir=sanity_synth_dir,
+        input_windows=input_windows[:1],
+        particle_type=particle_type,
+        transforms=sanity_transforms,
+        published_metadata=published_metadata,
+        t_steps=7,
+        sweep_kind="main",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    sanity_rollout_dir = sanity_synth_dir / "rollout_out"
+    sanity_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=sanity_synth_dir,
+        rollout_out_dir=sanity_rollout_dir,
+        ckpt_path=ckpt_path,
+        n_rollout_steps=1,
+        n_trajs=1,
+    )
+    sanity_eps_t = eps_t_from_pkl_and_reference(
+        synthetic_pkl_path=sanity_rollout_dir / "rollout_0.pkl",
+        reference_npz_path=rung_4a_dir / "particle_rollout_traj00.npz",
+        transform_kind="rotation",
+        transform_param="pi_2",
+        t_steps=1,
+        box_size=box_size,
+    )
+    verdict = interpret_sanity_probe_verdict(eps=float(sanity_eps_t[0]))
+    print(f"[sanity] {verdict['message']}")
+    print("[sanity] GNS gate is informational; proceeding regardless of band.")
+
+    # ---- Step 4: main sweep ----
+    main_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_main_{full_git_sha[:10]}"
+    )
+    main_transforms = build_main_sweep_transforms(n_trajs=20)
+    materialize_synthetic_dataset(
+        out_dir=main_synth_dir,
+        input_windows=input_windows,
+        particle_type=particle_type,
+        transforms=main_transforms,
+        published_metadata=published_metadata,
+        t_steps=7,
+        sweep_kind="main",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    main_rollout_dir = main_synth_dir / "rollout_out"
+    main_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=main_synth_dir,
+        rollout_out_dir=main_rollout_dir,
+        ckpt_path=ckpt_path,
+        n_rollout_steps=1,
+        n_trajs=120,
+    )
+
+    # ---- Step 5: figure sweep ----
+    figure_synth_dir = (
+        Path("/vol/synthetic") / f"{model_name}_{dataset_name}_figure_{full_git_sha[:10]}"
+    )
+    figure_transforms = build_figure_sweep_transforms()
+    materialize_synthetic_dataset(
+        out_dir=figure_synth_dir,
+        input_windows=input_windows,
+        particle_type=particle_type,
+        transforms=figure_transforms,
+        published_metadata=published_metadata,
+        t_steps=106,
+        sweep_kind="figure",
+        stack=model_name,
+        dataset=dataset_name,
+        ckpt_hash=ckpt_hash,
+        physics_lint_sha_eps_computation=full_git_sha,
+    )
+    figure_rollout_dir = figure_synth_dir / "rollout_out"
+    figure_rollout_dir.mkdir(exist_ok=True)
+    _run_lb_inference(
+        dataset_dir=figure_synth_dir,
+        rollout_out_dir=figure_rollout_dir,
+        ckpt_path=ckpt_path,
+        n_rollout_steps=100,
+        n_trajs=3,
+    )
+
+    # ---- Step 6: post-process pkls -> eps_t npzs ----
+    main_manifest = json.loads((main_synth_dir / "manifest.json").read_text())
+    npz_count = 20
+    for entry in main_manifest["trajectories"]:
+        i = entry["synthetic_traj_index"]
+        pkl_path = main_rollout_dir / f"rollout_{i}.pkl"
+        ref_npz_path = rung_4a_dir / f"particle_rollout_traj{entry['original_traj_index']:02d}.npz"
+        eps_t = eps_t_from_pkl_and_reference(
+            synthetic_pkl_path=pkl_path,
+            reference_npz_path=ref_npz_path,
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            t_steps=1,
+            box_size=box_size,
+        )
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=eps_t,
+            rule_id=entry["rule_id"],
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            traj_index=entry["original_traj_index"],
+            skip_reason=None,
+            **common_provenance,
+        )
+        npz_count += 1
+
+    figure_manifest = json.loads((figure_synth_dir / "manifest.json").read_text())
+    figure_overwrite_count = 0
+    for entry in figure_manifest["trajectories"]:
+        i = entry["synthetic_traj_index"]
+        pkl_path = figure_rollout_dir / f"rollout_{i}.pkl"
+        ref_npz_path = rung_4a_dir / f"particle_rollout_traj{entry['original_traj_index']:02d}.npz"
+        eps_t = eps_t_from_pkl_and_reference(
+            synthetic_pkl_path=pkl_path,
+            reference_npz_path=ref_npz_path,
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            t_steps=100,
+            box_size=box_size,
+        )
+        write_eps_t_npz(
+            out_dir=eps_out_dir,
+            eps_t=eps_t,
+            rule_id=entry["rule_id"],
+            transform_kind=entry["transform_kind"],
+            transform_param=entry["transform_param"],
+            traj_index=entry["original_traj_index"],
+            skip_reason=None,
+            **common_provenance,
+        )
+        figure_overwrite_count += 1
+
+    rollout_volume.commit()
+
+    elapsed = time.time() - started
+    return {
+        "npz_count": npz_count,
+        "sanity_probe_eps": float(sanity_eps_t[0]),
+        "elapsed_s": elapsed,
+        "git_sha_eps": full_git_sha,
+        "eps_out_dir": str(eps_out_dir),
+        "synthetic_dirs": [str(main_synth_dir), str(figure_synth_dir)],
+        "figure_overwrite_count": figure_overwrite_count,
+    }
+
+
 @app.local_entrypoint()
 def rollout_p0_segnn_tgv2d() -> None:
     """Fire the rung-3 P0 SEGNN-TGV2D rollout (D0-15)."""
