@@ -274,3 +274,50 @@ The original plan's §8 acceptance criteria are unchanged in their ultimate goal
 ## 12. D-entry footprint
 
 **No new D-entries.** This is a continuation of D0-21's pre-registration; the §7a addendum on the original 4b design doc records the mid-execution under-specification, and a §7b addendum + D0-21 amendment will record the (c.1) resolution and observed sanity-probe outcome after T7 lands. The amendment cadence (single composite D0-21 with footers vs. multiple new D-entries) follows the original plan's choice to keep the rung 4b pre-registration legible as one entry.
+
+---
+
+## 13. Post-execution amendment 1 — implementation-time corrections (T0–T7 landing)
+
+**Recorded:** after T0–T7 landed (commits `e4b36d6` … `49b2201` on `feature/rung-4b-equivariance`); before T9 (Modal sweep) actually runs. This amendment captures corrections applied during execution; a future §7b addendum on the original 4b design doc will record the observed sanity-probe outcome once T9 fires.
+
+**Meta-note:** the T7 implementation plan (`2026-05-06-rung-4b-t7-modal-entrypoints-plan.md`) transcribed several rung-4a conventions incorrectly at write time. The errors were grep-catchable from `01-lagrangebench/modal_app.py` and `01-lagrangebench/emit_sarif.py`; they were corrected during T4 implementation rather than gating the implementation on a plan re-write. Items 1–5 below are recording-time errors; items 6–7 are design-level patterns the plan glossed over but that have rung-4a precedent — also resolved correction-and-continue. Future plans for adjacent rungs should grep rung-4a's modal_app and emit_sarif for the actual constants before transcribing into prose.
+
+### 13.1 Recording-time corrections (items 1–5)
+
+The plan and this design doc (§10 #3) used `/rollouts/...` paths and named the wrong image variable; rung-4a's actual conventions are different. Corrected during T4 implementation:
+
+| Plan literal | Actual rung-4a convention | Source of truth |
+|---|---|---|
+| `image=lagrangebench_image` | `image=rollout_image` | `modal_app.py:626, 1001` |
+| `volumes={"/rollouts": rollout_volume}` | `volumes={"/vol": rollout_volume}` | `modal_app.py:627, 1474` |
+| All `/rollouts/...` paths | `/vol/checkpoints/...`, `/vol/rollouts/lagrangebench/...`, `/vol/datasets/...`, `/vol/synthetic/...`, `/vol/trajectories/...` | `modal_app.py:712, 757, 790, 1474, …` |
+| `cwd="/lagrangebench"` for LB subprocess | `os.chdir("/opt/lagrangebench")` then `subprocess.run(...)` (no `cwd=` arg) | `modal_app.py:795–858, 1520, 1540` |
+| `rung_4a_subdir = "segnn_tgv2d_post_d03df3e"` (and gns analog) | `segnn_tgv2d_8c3d080397`, `gns_tgv2d_f48dd3f376` | `emit_sarif.py:54–57` |
+
+The plan anticipated the cwd discrepancy (T4.2 step 3) and the rung-4a subdir name discrepancy (T6.1 step 4) as runtime-verification steps. The remaining three (image variable, mount path, /vol path tree) were not anticipated.
+
+### 13.2 4-stage provenance contract on eps_t.npz (item 6)
+
+**Implication-bearing change**: `physics_lint_sha_pkl_inference` and `physics_lint_sha_npz_conversion` are sourced from entrypoint args (hardcoded in the local entrypoint per the `emit_sarif.py` constants pattern), **not** from the rung-4a npz metadata. Reason: rung-4a's `RolloutMetadata` records only a single `git_sha` field — the npz_conversion_sha — because rung-4a's pkl-inference and npz-conversion can happen at the same git sha (the SEGNN case actually has them at distinct shas, `8c3d080397` vs `5857144`, because the SEGNN npzs were re-converted post-D0-17-amendment-1 in a standalone Modal run). The plan's `ref_metadata.get("physics_lint_sha_pkl_inference", "")` would have silently produced empty strings on every eps_t.npz, breaking the SCHEMA.md §1.5 4-stage provenance contract that the consumer-side `lint_eps_dir` + `emit_sarif_eps` pipeline relies on. Resolution pattern matches `emit_sarif.py`'s rung-4a-side approach: hardcoded constants in the local entrypoint, threaded through to the Modal entrypoint as args, recorded into the eps_t.npz at write time, cross-checked against the rung-4a npz's `git_sha` at runtime as a silent-mismatch guard.
+
+### 13.3 Harness-module shipping for cross-importing modules (item 7)
+
+**Methodology-level pattern, not just implementation detail**: rung-4a's `lagrangebench_pkl_to_npz.py` is shipped to the Modal container as a single bare file via `Image.add_local_file`, sys.path-inserted under `/opt/physics_lint_harness/`, and imported via the bare module name (`from lagrangebench_pkl_to_npz import …`). That pattern composes cleanly when the shipped module is self-contained — but rung-4b adds three new harness modules (`synthetic_dataset_materializer`, `eps_pkl_consumer`, `eps_modal_orchestrator`) of which two cross-import from a fourth (`symmetry_rollout_adapter`). The fully-qualified import (`from external_validation._rollout_anchors._harness.symmetry_rollout_adapter import …`) works under local pytest but fails inside the Modal container, where only the bare files are present and `external_validation` is not on sys.path.
+
+**Resolution applied:** all four harness modules are now shipped via `add_local_file` (extending rung-4a's shipping list); the two cross-importing modules use try/except fallback imports (fully-qualified first, bare-name second) so the same source file resolves under both contexts. This is **not just a packaging detail** — it's a scaling pattern from one rung to the next that future case studies will hit whenever a rung needs more than one cross-importing harness module. The alternatives (extracting a single mega-module; shipping the whole `external_validation` tree via `add_local_python_source`; importing the symmetry primitives by inlining) all have non-trivial costs; the try/except + multiple-add_local_file pattern is the lowest-overhead generalization of rung-4a's single-file pattern.
+
+**Forward-flag for future rungs:** if a third cross-importing harness module lands, the per-module `add_local_file` boilerplate scales linearly. At ~5 modules the right move is probably `add_local_python_source` for the whole `_harness/` package; not pre-emptive at n=4.
+
+### 13.4 Cross-references
+
+- T0 (gitignore): commit `e4b36d6`.
+- T1 (synthetic_dataset_materializer): commit `2dcad1e`.
+- T2 (eps_pkl_consumer): commit `fd54d34`.
+- T3 (eps_modal_orchestrator): commit `db74648`.
+- T4 (SEGNN entrypoint, items 1–4 + 6 + 7): commit `c7ee1cd`.
+- T5 (GNS entrypoint, mirror): commit `2ccf2a3`.
+- T6 (local entrypoints, item 5): commit `1b20efc`.
+- T7 (GPU drift-guard): commit `49b2201`.
+
+T9 (run on Modal) and T10/T11 (table render + writeup) deferred to a separate execution session; the §7b addendum on the original 4b design doc will fire after T9 lands.
