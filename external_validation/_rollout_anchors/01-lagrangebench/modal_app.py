@@ -1333,6 +1333,7 @@ def lagrangebench_eps_p0_segnn_tgv2d(
     from eps_pkl_consumer import eps_t_from_pkl_and_reference
     from symmetry_rollout_adapter import write_eps_t_npz
     from synthetic_dataset_materializer import (
+        LB_SUBSEQ_LENGTH,
         materialize_synthetic_dataset,
         read_published_input_windows,
     )
@@ -1423,7 +1424,7 @@ def lagrangebench_eps_p0_segnn_tgv2d(
         particle_type=particle_type,
         transforms=sanity_transforms,
         published_metadata=published_metadata,
-        t_steps=7,
+        t_steps=LB_SUBSEQ_LENGTH,
         sweep_kind="main",
         stack=model_name,
         dataset=dataset_name,
@@ -1463,7 +1464,7 @@ def lagrangebench_eps_p0_segnn_tgv2d(
         particle_type=particle_type,
         transforms=main_transforms,
         published_metadata=published_metadata,
-        t_steps=7,
+        t_steps=LB_SUBSEQ_LENGTH,
         sweep_kind="main",
         stack=model_name,
         dataset=dataset_name,
@@ -1677,6 +1678,7 @@ def lagrangebench_eps_p1_gns_tgv2d(
     from eps_pkl_consumer import eps_t_from_pkl_and_reference
     from symmetry_rollout_adapter import write_eps_t_npz
     from synthetic_dataset_materializer import (
+        LB_SUBSEQ_LENGTH,
         materialize_synthetic_dataset,
         read_published_input_windows,
     )
@@ -1760,7 +1762,7 @@ def lagrangebench_eps_p1_gns_tgv2d(
         particle_type=particle_type,
         transforms=sanity_transforms,
         published_metadata=published_metadata,
-        t_steps=7,
+        t_steps=LB_SUBSEQ_LENGTH,
         sweep_kind="main",
         stack=model_name,
         dataset=dataset_name,
@@ -1799,7 +1801,7 @@ def lagrangebench_eps_p1_gns_tgv2d(
         particle_type=particle_type,
         transforms=main_transforms,
         published_metadata=published_metadata,
-        t_steps=7,
+        t_steps=LB_SUBSEQ_LENGTH,
         sweep_kind="main",
         stack=model_name,
         dataset=dataset_name,
