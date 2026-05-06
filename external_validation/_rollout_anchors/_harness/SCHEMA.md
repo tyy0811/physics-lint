@@ -110,6 +110,71 @@ Both halves of the particle adapter (read-only and model-loading) consume
 this schema. The model-loading half additionally consults `ckpt_path` to
 re-load the JAX checkpoint for rotated-input rollouts.
 
+## 1.5. `eps_t.npz` — rung 4b equivariance trajectory artifact
+
+Per design §3.4 and §4.2. Modal-Volume-only persistence; gitignored
+locally; one npz per (rule, model, transform_param, traj_index).
+Uniform schema for both T_steps=1 (non-figure-subset SARIF rows) and
+T_steps=100 (figure-subset trajectory data) — single consumer code
+path reads `eps_t[0]` always.
+
+```python
+{
+    "eps_t":              ndarray,  # (T_steps,) fp32   eps at each forward step (T_steps in {1, 100})
+    "rule_id":            str,      # "PH-SYM-001" | "PH-SYM-002" | "PH-SYM-003" | "PH-SYM-004"
+    "transform_kind":     str,      # "rotation" | "reflection" | "translation" | "identity" | "skip"
+    "transform_param":    object,   # rotation: float (radians); reflection: str ("y_axis") ;
+                                    # translation: tuple (tx, ty); identity / skip: None
+    "traj_index":         int,      # parsed from filename, validated contiguous (D0-19 §)
+    "model_name":         str,      # "segnn" | "gns"
+    "dataset_name":       str,      # "tgv2d"
+    "ckpt_hash":          str,      # SHA-256 of LB checkpoint dir (carried from rung 4a's reference rollout)
+    "physics_lint_sha_pkl_inference":   str,  # carried from rung 4a's reference rollout npz
+    "physics_lint_sha_npz_conversion":  str,  # carried from rung 4a's reference rollout npz
+    "physics_lint_sha_eps_computation": str,  # NEW: physics-lint commit at eps(t)-computation time
+    "skip_reason":        str | None,         # populated only for transform_kind="skip" (PH-SYM-003)
+}
+```
+
+**Filename convention:**
+
+```
+outputs/trajectories/{model}_{dataset}_{eps_computation_sha[:10]}/eps_{rule_id}_{transform_kind}_{transform_param_str}_traj{NN}.npz
+```
+
+Where `{transform_param_str}` is:
+- rotation: angle as `pi_2`, `pi`, `3pi_2`, `0` (slash-free for path safety)
+- reflection: `y_axis`
+- translation: `L_3_L_7`
+- skip (SO(2)): `so2_continuous`
+
+Example:
+
+```
+outputs/trajectories/segnn_tgv2d_8d9a8baa12/eps_PH-SYM-001_rotation_pi_2_traj07.npz
+```
+
+**Provenance discipline (4-stage shas).** Per design §4.2, the four
+`physics_lint_sha_*` fields may be identical or distinct. The
+eps_computation sha is recorded by the Modal entrypoint at job execution
+time (read from the `git_sha` argument passed to the entrypoint, parallel
+to rung 4a's `lagrangebench_rollout_*` entrypoints). Equality is allowed
+but never required.
+
+**T_steps semantics.** `T_steps=1` rows carry `eps_t.shape == (1,)`
+with the first-step eps scalar. `T_steps=100` rows carry the full
+eps(t) array for the writeup figure subset (1 angle × 3 trajs × 2 stacks).
+The figure renderer filters for `len(eps_t) > 1`; SARIF emission
+reads `eps_t[0]` regardless of T_steps.
+
+**SKIP rows (PH-SYM-003 only).** `eps_t.shape == (1,)` with
+`eps_t[0] = numpy.nan` — chosen so the npz format remains uniform but
+the SKIP-vs-active distinction is unambiguous on the consumer side
+(active rows have finite `eps_t[0]`; SKIP rows have NaN). Implementation
+pins this in `symmetry_rollout_adapter.write_eps_t_npz` (see T3.4); the
+consumer checks `transform_kind == "skip"` first, then reads
+`skip_reason`.
+
 ## 2. `mesh_rollout.npz` — PhysicsNeMo MGN, or FNO under Gate D fallback
 
 Spec §3.2.
@@ -239,6 +304,41 @@ Consumers MAY assert these invariants at render time. The schema makes them chec
 #### Energy_drift skip_reason template
 
 Per D0-19, the `harness:energy_drift` SKIP path uses a template-constant skip_reason (no per-row value interpolation). Per-row varying KE values move to `properties.ke_initial` / `properties.ke_final`. See `_harness/particle_rollout_adapter.py:energy_drift` for the canonical template; renderer-side documentation cites that path.
+
+---
+
+### 3.5 SARIF schema_version v1.1 — rung 4b PH-SYM extensions
+
+v1.0 (rung 4a) emits PH-CON rule rows with extra_properties:
+`traj_index`, `npz_filename`, `skip_reason` (D0-19 §3.4 dissipative
+SKIP), `ke_initial`, `ke_final`.
+
+v1.1 (rung 4b) adds:
+
+| Field                 | Type            | Present on              | Notes |
+|-----------------------|-----------------|-------------------------|-------|
+| `eps_pos_rms`         | float \| None   | all PH-SYM rows         | None for SKIP rows; positive scalar for active rows |
+| `transform_kind`      | str             | all PH-SYM rows         | "rotation" \| "reflection" \| "translation" \| "identity" \| "skip" |
+| `transform_param`     | str             | all PH-SYM rows         | rendered as canonical string ("pi_2", "y_axis", "L_3_L_7", "so2_continuous", "0") |
+| `eps_t_npz_filename`  | str             | all PH-SYM rows         | basename of the eps(t) npz on Modal Volume; same role as v1.0's `npz_filename` |
+
+v1.0 fields (rule_id, level, message, raw_value, source, case_study,
+dataset, model, ckpt_hash, traj_index, npz_filename, skip_reason where
+applicable) remain unchanged. v1.0 SARIFs do not contain the four new
+fields; v1.1 SARIFs do not contain v1.0's `ke_initial`/`ke_final` (those
+are PH-CON-002-specific; PH-SYM SKIP uses `skip_reason` only).
+
+**Schema-version field.** Every SARIF v1.1 emission records
+`runs[0].properties.harness_sarif_schema_version = "1.1"`. The renderer
+asserts on equality at read time. v1.0 SARIFs (with
+`harness_sarif_schema_version = "1.0"`) cannot be rendered by the v1.1
+renderer; v1.1 SARIFs cannot be rendered by the v1.0 renderer. Both
+renderers fail-loud on mismatch.
+
+**Backward compatibility.** v1.1 emitters do not write to v1.0 rule ids
+(PH-CON-001/002/003); v1.0 emitters do not write v1.1 rule ids. Each
+rung's case-study driver invokes one schema version; cross-rung
+artifacts live in distinct SARIF files.
 
 ---
 

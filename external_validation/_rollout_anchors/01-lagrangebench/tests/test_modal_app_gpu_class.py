@@ -98,3 +98,27 @@ def test_rollout_generation_gpu_class_matches_d0_13_pre_registration() -> None:
         f"({D0_13_STAGE_2_GPU_CLASS!r}). Either revert the code change or "
         f"land a new DECISIONS sub-entry refining D0-13."
     )
+
+
+def test_lagrangebench_eps_entrypoints_use_a10g() -> None:
+    """T7 eps entrypoints must use ROLLOUT_GENERATION_GPU_CLASS (A10G).
+
+    Drift-guard for the rung-4b T7 ``lagrangebench_eps_p{0,1}_*_tgv2d``
+    Modal entrypoints. Per D0-21 item 10 the eps sweep matches rung-4a's
+    A10G GPU class so measurement-noise floors stay calibrated; if a
+    future change wants to graduate the eps sweep to a different class,
+    the change must land alongside a DECISIONS sub-entry under D0-21.
+    """
+    import re
+
+    assert MODAL_APP_PATH.is_file(), f"modal_app.py not found at {MODAL_APP_PATH}"
+    text = MODAL_APP_PATH.read_text(encoding="utf-8")
+    for fn_name in ("lagrangebench_eps_p0_segnn_tgv2d", "lagrangebench_eps_p1_gns_tgv2d"):
+        pattern = (
+            r"@app\.function\([^)]*?gpu=ROLLOUT_GENERATION_GPU_CLASS[^)]*?\)\s*\ndef "
+            + re.escape(fn_name)
+        )
+        match = re.search(pattern, text, flags=re.DOTALL)
+        assert match is not None, (
+            f"{fn_name}: expected @app.function decorator with gpu=ROLLOUT_GENERATION_GPU_CLASS"
+        )
