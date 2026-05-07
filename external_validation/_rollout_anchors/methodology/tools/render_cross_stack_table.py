@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -190,7 +191,20 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
                         f"across SKIP rows. D0-19 §3.4 requires guaranteed-"
                         f"identical message.text co-varying with skip_reason."
                     )
-                cells[(rule_id, stack_label)] = f"SKIP (x{n}, D0-18)"
+                # Extract the cited D-entry from the skip_reason for the cell
+                # label. Pre-rung-4c the only SKIP path was D0-18 so the label
+                # was hardcoded; post-rung-4c skip_reasons cite D0-08 (KE-rest),
+                # D0-18 (dissipative-monotone), D0-22 (open-driven on
+                # dissipation_sign_violation), or D0-22 (amendment 1) (open-
+                # driven on energy_drift). Regex requires the "DECISIONS.md "
+                # prefix so it doesn't pick up incidental D0-NN mentions
+                # (e.g., "D0-19 §3.4" referencing the schema invariant).
+                d_entry_match = re.search(
+                    r"DECISIONS\.md\s+(D0-\d+(?:\s+\(amendment\s+\d+\))?)",
+                    skip_reasons[0],
+                )
+                d_entry = d_entry_match.group(1) if d_entry_match else "?"
+                cells[(rule_id, stack_label)] = f"SKIP (x{n}, {d_entry})"
             else:
                 # all_raw: per-row raw_value may legitimately vary across trajs
                 # (e.g., conservation defect differs by initial conditions).
@@ -235,10 +249,26 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="Directory containing the harness SARIF files (e.g., outputs/sarif/).",
     )
+    parser.add_argument(
+        "--include-glob",
+        type=str,
+        default="*.sarif",
+        help=(
+            "Glob pattern (relative to --sarif-dir) for files to include. Defaults to "
+            "'*.sarif'. Use to render a subset of SARIFs in a directory that mixes "
+            "schema versions (e.g., '--include-glob \"*tgv2d*.sarif\"' to skip "
+            "rung-4b eps SARIFs at v1.1, or '--include-glob \"*dam2d*.sarif\"' for "
+            "rung-4c dam-break-only). The fail-loud schema-mismatch assertion still "
+            "applies to the filtered set."
+        ),
+    )
     args = parser.parse_args(argv)
-    sarif_paths = sorted(args.sarif_dir.glob("*.sarif"))
+    sarif_paths = sorted(args.sarif_dir.glob(args.include_glob))
     if not sarif_paths:
-        print(f"No .sarif files found in {args.sarif_dir}", file=sys.stderr)
+        print(
+            f"No SARIF files matching glob {args.include_glob!r} in {args.sarif_dir}",
+            file=sys.stderr,
+        )
         return 2
     print(render_cross_stack_table(sarif_paths))
     return 0

@@ -57,14 +57,27 @@ GNS_PKL_INFERENCE_SHA = "f48dd3f376"
 GNS_NPZ_CONVERSION_SHA = "f48dd3f376"  # P1 inference + conversion in one shot
 LAGRANGEBENCH_SHA = "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2"
 
+# Rung 4c dam-break shas (Task 8 fire output).
+# Both stacks fired at sha e754a4bc2e: SEGNN-dam2d (N=20 attempt) timed
+# out at 12/20 trajs; standalone conversion via convert_pkls_p1_segnn_dam2d
+# produced 12 npzs. GNS-dam2d (N=12) completed cleanly with 12 npzs.
+# Per D0-22 amendment 2, both stacks ship at N=12.
+SEGNN_DAM2D_PKL_INFERENCE_SHA = "e754a4bc2e"
+SEGNN_DAM2D_NPZ_CONVERSION_SHA = "e754a4bc2e"
+GNS_DAM2D_PKL_INFERENCE_SHA = "e754a4bc2e"
+GNS_DAM2D_NPZ_CONVERSION_SHA = "e754a4bc2e"
+
 HARNESS_SARIF_SCHEMA_VERSION = "1.0"
 
-# Per the rung 4a writeup's "20 identical fires" claim: each stack must
+# Per the rung 4a writeup's "N identical fires" claim: each stack must
 # carry exactly this many trajectories. lint_npz_dir's gap-detection
 # already rejects holes; this driver-level assertion catches the case
 # where the count is contiguous but wrong (e.g., 19 trajs because one
 # never made it to the volume), which lint_npz_dir cannot diagnose.
-EXPECTED_TRAJ_COUNT = 20
+# Per-case-pair value: rung-4a TGV2D ships at N=20; rung-4c dam2d ships
+# at N=12 per D0-22 amendment 2.
+EXPECTED_TRAJ_COUNT_TGV2D = 20
+EXPECTED_TRAJ_COUNT_DAM2D = 12
 
 # Local mirror paths (populated by `modal volume get` before this script runs).
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -136,6 +149,7 @@ def _emit_for_stack(
     dataset_name: str,
     model_name: str,
     checkpoint_id: str,
+    expected_traj_count: int,
 ) -> Path:
     """Run lint_npz_dir + emit_sarif for one stack."""
     if not mirror_subdir.exists() or not any(mirror_subdir.glob("particle_rollout_traj*.npz")):
@@ -144,11 +158,11 @@ def _emit_for_stack(
             f"Run `modal volume get rollout-anchors-artifacts /vol/rollouts/lagrangebench/<subdir>/ {mirror_subdir}/` first."
         )
     npz_count = sum(1 for _ in mirror_subdir.glob("particle_rollout_traj*.npz"))
-    if npz_count != EXPECTED_TRAJ_COUNT:
+    if npz_count != expected_traj_count:
         raise UnexpectedTrajCountError(
             f"Stack at {mirror_subdir} has {npz_count} trajectories, expected "
-            f"{EXPECTED_TRAJ_COUNT}. The rung 4a writeup's "
-            f'"{EXPECTED_TRAJ_COUNT} identical fires" claim binds on this count.'
+            f"{expected_traj_count}. The writeup's "
+            f'"{expected_traj_count} identical fires" claim binds on this count.'
         )
     results = lint_npz_dir(
         mirror_subdir,
@@ -188,6 +202,7 @@ def main() -> int:
         dataset_name="tgv2d",
         model_name="segnn",
         checkpoint_id="segnn_tgv2d",
+        expected_traj_count=EXPECTED_TRAJ_COUNT_TGV2D,
     )
     print(f"SEGNN SARIF: {out_segnn}")
 
@@ -211,8 +226,57 @@ def main() -> int:
         dataset_name="tgv2d",
         model_name="gns",
         checkpoint_id="gns_tgv2d",
+        expected_traj_count=EXPECTED_TRAJ_COUNT_TGV2D,
     )
     print(f"GNS SARIF: {out_gns}")
+
+    # SEGNN-DAM2D (rung 4c, D0-22 + amendment 1 + amendment 2)
+    segnn_dam2d_mirror = LOCAL_MIRROR_ROOT / f"segnn_dam2d_{SEGNN_DAM2D_PKL_INFERENCE_SHA}"
+    segnn_dam2d_props = _build_run_properties(
+        model_name="segnn",
+        dataset_name="dam2d",
+        checkpoint_id="segnn_dam2d",
+        pkl_inference_sha=SEGNN_DAM2D_PKL_INFERENCE_SHA,
+        npz_conversion_sha=SEGNN_DAM2D_NPZ_CONVERSION_SHA,
+        sarif_emission_sha=sarif_emission_sha,
+        rollout_subdir_volume_path=f"/vol/rollouts/lagrangebench/segnn_dam2d_{SEGNN_DAM2D_PKL_INFERENCE_SHA}/",
+    )
+    segnn_dam2d_sarif_path = SARIF_OUTPUT_ROOT / f"segnn_dam2d_{sarif_emission_sha}.sarif"
+    out_segnn_dam2d = _emit_for_stack(
+        mirror_subdir=segnn_dam2d_mirror,
+        sarif_output_path=segnn_dam2d_sarif_path,
+        run_properties=segnn_dam2d_props,
+        case_study_name="01-lagrangebench",
+        dataset_name="dam2d",
+        model_name="segnn",
+        checkpoint_id="segnn_dam2d",
+        expected_traj_count=EXPECTED_TRAJ_COUNT_DAM2D,
+    )
+    print(f"SEGNN-DAM2D SARIF: {out_segnn_dam2d}")
+
+    # GNS-DAM2D (rung 4c, D0-22 + amendment 1 + amendment 2)
+    gns_dam2d_mirror = LOCAL_MIRROR_ROOT / f"gns_dam2d_{GNS_DAM2D_PKL_INFERENCE_SHA}"
+    gns_dam2d_props = _build_run_properties(
+        model_name="gns",
+        dataset_name="dam2d",
+        checkpoint_id="gns_dam2d",
+        pkl_inference_sha=GNS_DAM2D_PKL_INFERENCE_SHA,
+        npz_conversion_sha=GNS_DAM2D_NPZ_CONVERSION_SHA,
+        sarif_emission_sha=sarif_emission_sha,
+        rollout_subdir_volume_path=f"/vol/rollouts/lagrangebench/gns_dam2d_{GNS_DAM2D_PKL_INFERENCE_SHA}/",
+    )
+    gns_dam2d_sarif_path = SARIF_OUTPUT_ROOT / f"gns_dam2d_{sarif_emission_sha}.sarif"
+    out_gns_dam2d = _emit_for_stack(
+        mirror_subdir=gns_dam2d_mirror,
+        sarif_output_path=gns_dam2d_sarif_path,
+        run_properties=gns_dam2d_props,
+        case_study_name="01-lagrangebench",
+        dataset_name="dam2d",
+        model_name="gns",
+        checkpoint_id="gns_dam2d",
+        expected_traj_count=EXPECTED_TRAJ_COUNT_DAM2D,
+    )
+    print(f"GNS-DAM2D SARIF: {out_gns_dam2d}")
     return 0
 
 
