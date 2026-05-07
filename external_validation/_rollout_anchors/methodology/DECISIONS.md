@@ -2166,3 +2166,54 @@ DECISIONS.md.
 
 **Realized.** [Filled in post-execution at the rung 4b table writeup
 step, naming the merge sha that closes this rung's loop.]
+
+## D0-22 — 2026-05-07 — Rung 4c substrate-class extension to dam-break-2D (pre-registration)
+
+**Status:** pre-registered before code change.
+**Predecessor:** D0-21 (rung-4b cross-stack equivariance), D0-18 (dissipative-system skip-with-reason), D0-19 (harness SARIF result schema), D0-08 (KE-rest skip on `energy_drift`).
+**Trigger:** rung-4c design pass (`methodology/docs/2026-05-07-rung-4c-substrate-class-extension-design.md`); source review of `_harness/particle_rollout_adapter.py` surfaced that `LAGRANGEBENCH_DATASET_SYSTEM_CLASS["dam2d"]` was preemptively classified as `"dissipative"` during the D0-18 design pass, before any dam-break-2D rollout was measured.
+
+**Decision.** Extend the harness's substrate-detection layer to a second LagrangeBench substrate class — `open-driven-dissipative` — via:
+
+1. **Taxonomy bump.** `LAGRANGEBENCH_DATASET_SYSTEM_CLASS` shifts from implicit-binary (`"dissipative"` or absent → fire-raw) to explicit-tri-state at minimum: `"dissipative"`, `"open-driven-dissipative"`, absent. Future taxonomy entries (e.g., `"strictly-conservative"` for case study 02 anchor) are forward-compatible.
+
+2. **`dam2d` reclassified empirically** from `"dissipative"` to `"open-driven-dissipative"`. Justification: dam-break-2D's KE rises during gravity-loaded fall (gravitational PE → KE conversion), violating the closed-dissipative class's monotone-non-increasing precondition. Empirical verification via 1-traj Modal smoke at pre-flight step 4 (rung-4c design §3.3); the reclassification ships as a TDD-green hypothesis at implementation time, with the smoke at pre-flight step 4 as the gating empirical verification — ABORT-on-smoke-fail triggers a revert of the reclassification commit before any 20-traj fire (pre-flight log records the gate decision).
+
+3. **New SKIP path on `dissipation_sign_violation`** for `system_class == "open-driven-dissipative"`. The rule's strictly-dissipative-or-conservative assumption (docstring-stated zero-for-strictly-dissipative-or-conservative behavior) doesn't apply to open-driven systems where `dE/dt > 0` over a stretch by physics. SKIP-reason template:
+
+   ```
+   system_class='open-driven-dissipative' (dataset='<name>'); dE/dt > 0
+   over a stretch by physics (gravitational PE → KE conversion); the
+   strictly-dissipative-or-conservative assumption underpinning
+   dissipation_sign_violation does not apply. See DECISIONS.md D0-22.
+   ```
+
+4. **Forward-flag two-tier split** for catalogue-wide reclassification:
+   - **Almost certainly misclassified, awaiting empirical probe:** `rpf2d` (reverse Poiseuille, forced flow), `ldc2d` (lid-driven cavity, forced flow), `rpf3d`, `ldc3d` (3D variants).
+   - **Likely correctly classified but unverified:** `tgv3d` (3D-TGV inherits 2D-TGV physics; closed dissipative system, KE monotone-non-increasing as turbulent KE decays).
+   The two-tier split preserves future-rung actionability: a rung exercising rpf or ldc walks into a known-misclassification (and the empirical probe is its first move); a rung exercising tgv3d treats it as inherited-from-validated.
+
+5. **D0-08 (KE-rest IC SKIP) is NOT absorbed into D0-22.** D0-08 gates on `KE(0) < KE_REST_THRESHOLD`, orthogonal to the `system_class` taxonomy. D0-22 gates on `system_class == "open-driven-dissipative"`. The two SKIP gates are sibling members of a "substrate-detection family" — distinct physical preconditions, distinct SKIP reasons. On dam-break-2D specifically, D0-08 fires on `energy_drift` (start-at-rest IC) and D0-22 fires on `dissipation_sign_violation` (open-driven by physics); both fire on the same rollout but on different rules.
+
+6. **(rule, substrate) compatibility matrix forward-flag from D0-21 cited but not promoted.** D0-21 §forward-flag-2 named "the (rule, substrate) compatibility matrix as a future generalization." Rung 4c demonstrates that pattern's empirical instance (`dissipation_sign_violation × open-driven-dissipative` becomes a new SKIP cell) without yet promoting the matrix to a first-class rule-schema field. Promotion is post-rung-4c work.
+
+**"Classify when you exercise" empirical-classification principle.** Named here as a first-class methodology output of the rung-4 series, generalizing the precedent set by rung-4b's PH-SYM-003 PBC-square-SO(2) substrate-incompatibility SKIP (classified only for the substrate measured, not retrospectively over all (rule, substrate) combinations). Pattern reads as: **substrate properties get verdicts only after empirical probing, never on theoretical intuition alone, even when the theoretical guess is almost certainly correct.** Applies to any future rung exercising a previously-unmeasured substrate.
+
+**Source-review-catches-issue-before-compute pattern (now trilateral).**
+1. Rung 4b first-pass math correction (TRAIN_PUSHFORWARD_UNROLLS_LAST=3 conflated +1 target with pushforward count) — caught at LB source review at sha `b880a6c`.
+2. Rung 4b first-pass latent figure-sweep failure (`valid.h5` hardcoded `subseq_length=10` vs. dynamic upstream value) — caught at the same source review pass.
+3. Rung 4c catalogue-misclassification (`dam2d → "dissipative"` was preemptive and wrong; `rpf2d`/`ldc2d` likely the same) — caught at source review of `particle_rollout_adapter.py` during this design pass.
+
+Three instances at $0 Modal cost. To be elevated as a first-class methodology contribution of the rung-4 series in integrating-README composition rather than three scattered amendments. The pattern reads as: **a source-review pre-flight pass between design and execution catches issues that brainstorm-only and execution-only review miss; the cost is hours of source reading, the saving is multiple GPU runs and methodology errors that would otherwise land in writeups.**
+
+**Forward flags carried into D0-22:**
+- Bilateral D0-18 still requires a strictly conservative substrate anchor (case study 02 territory); rung 4c does not exercise this.
+- PH-SYM substrate-symmetry-SKIP (gravity-direction-pinning breaks SO(2) on dam-break-2D) → rung 4d.
+- PH-BC-particle-wall not in v1.0 rule path → out of scope; plan v2.1 amendment removes "PH-BC (wall)" from §3.1 P1.
+- Catalogue-wide reclassification (`rpf2d`/`ldc2d`/`rpf3d`/`ldc3d`) deferred to future rungs; D0-22 records the two-tier split for actionability.
+
+**Implementation:** rung-4c plan (`methodology/docs/2026-05-07-rung-4c-substrate-class-extension-plan.md`). Acceptance criteria in design §8.
+
+**Plan-diff (Task 1 step 1.2 retrofit):** rung-4c plan §Task 1 step 1.2 stated `grep -c "^## D0-" DECISIONS.md` should return 8 ("D0-15 through D0-22"); the actual returns the full file count, which is 22 after this commit. Plan expectation was an off-by-counting-scope error; the commit count check is unchanged in intent (verify the new entry parsed cleanly), only the expected number is updated.
+
+**Plan-diff (Task 1 D0-22 §2 wording reconciliation):** the plan's §2 text said "reclassification commits *after* smoke confirms the rise-then-fall shape, not before." This conflicts with Task 4's commit ordering (which lands the dam2d label flip before Task 7's smoke). Reconciled here as TDD-green hypothesis with smoke as gating verification + ABORT-on-fail revert path; preserves the empirical-justification discipline while letting the test-driven plan order proceed. The substantive contract is unchanged — Task 7 ABORT means the reclassification does not survive in the production fire.
