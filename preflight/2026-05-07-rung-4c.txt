@@ -105,3 +105,34 @@ Justification:
     feeds the writeup's honest-limits section as a forward-flag for a future
     rung addressing energy_drift on open-driven substrates.
   - 20-traj Modal fire authorized for Task 8.
+
+Post-decision (2026-05-07, same session):
+  Secondary finding addressed within-rung as D0-22 amendment 1 (Option B
+  rather than the original Option A "ship with honest-limits caveat" path).
+  Reasoning: the principle D0-22 established (substrate-class dispatch
+  on open-driven-dissipative) generalizes naturally to energy_drift —
+  same physical reason, same substrate class, same SKIP shape — just a
+  second rule instance of the same principle. Mirrors D0-15 / D0-17 /
+  D0-18 amendment-layered patterns where in-rung work surfaced the gap.
+
+  Re-run pipeline smoke on cached npzs post-amendment:
+    SEGNN-dam2d:
+      mass_conservation_defect    raw=0.0
+      energy_drift                SKIP D0-22 amendment 1 (was raw=2771.39)
+      dissipation_sign_violation  SKIP D0-22
+    GNS-dam2d:
+      mass_conservation_defect    raw=0.0
+      energy_drift                SKIP D0-22 amendment 1 (was raw=2349.83)
+      dissipation_sign_violation  SKIP D0-22
+
+  Cleaner SARIF artifact (no methodologically-meaningless raw values
+  for the writeup to caveat); test coverage extended (10 D0-22 tests
+  total, was 7); DECISIONS.md D0-22 amendment 1 records the empirical-
+  discovery-during-smoke origin and the within-rung-refinement framing.
+
+  Methodology contribution elevated by amendment 1: substrate-class
+  dispatch is per-substrate-class, not per-rule. When an empirical
+  probe surfaces that a rule's assumption fails on a specific substrate
+  class, the dispatch extends to ALL rules sharing the assumption —
+  not just the one the gate is named after. To be foregrounded in
+  integrating-README composition.

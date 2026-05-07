@@ -28,9 +28,11 @@ from __future__ import annotations
 import numpy as np
 
 from external_validation._rollout_anchors._harness.particle_rollout_adapter import (
+    KE_REST_THRESHOLD,
     LAGRANGEBENCH_DATASET_SYSTEM_CLASS,
     ParticleRollout,
     dissipation_sign_violation,
+    energy_drift,
 )
 
 # ---------------------------------------------------------------------------
@@ -232,3 +234,100 @@ def test_skip_reason_signposts_d0_22() -> None:
     result = dissipation_sign_violation(rollout)
     assert result.skip_reason is not None
     assert "D0-22" in result.skip_reason
+
+
+# ---------------------------------------------------------------------------
+# 4. D0-22 amendment 1: energy_drift extension on open-driven-dissipative
+# ---------------------------------------------------------------------------
+#
+# Pre-flight smoke (preflight/2026-05-07-rung-4c.txt) surfaced that
+# energy_drift fires a methodologically meaningless raw value on dam-break
+# (~2500-2700) because KE(0)=0.47 >> KE_REST_THRESHOLD=1e-10 absolute, so
+# D0-08 does not gate; KE rises by ~3 orders of magnitude due to gravity,
+# so the relative-drift form is uninformative. The same strictly-
+# dissipative-or-conservative assumption that D0-22 catches on
+# dissipation_sign_violation also fails here. Amendment 1 extends the
+# substrate-class dispatch to energy_drift on open-driven-dissipative
+# (parallel SKIP to dissipation_sign_violation's D0-22 path).
+
+
+def test_energy_drift_skip_when_open_driven_with_rise_then_fall_ke() -> None:
+    """Positive path (energy_drift D0-22 amendment 1): open-driven dataset +
+    rise-then-fall KE -> SKIP.
+
+    Without the amendment, energy_drift would fire (max|KE(t)-KE(0)|/|KE(0)|)
+    which is methodologically meaningless on gravity-loaded systems where
+    the KE rise IS the physics. With the amendment, SKIP-with-D0-22-reason.
+    """
+    rollout = _build_rise_then_fall_rollout(dataset_name="dam2d")
+    result = energy_drift(rollout)
+    assert result.value is None, (
+        "open-driven dataset + rise-then-fall KE must SKIP energy_drift, not fire raw"
+    )
+    assert result.skip_reason is not None
+    assert "system_class='open-driven-dissipative'" in result.skip_reason
+    assert "dataset='dam2d'" in result.skip_reason
+    assert "energy_drift" in result.skip_reason
+    assert "D0-22" in result.skip_reason
+    assert "amendment 1" in result.skip_reason
+
+
+def test_energy_drift_d0_08_takes_precedence_over_d0_22_amendment_1() -> None:
+    """Sibling-gate precedence: D0-08 (KE-rest) fires before D0-22 amendment 1.
+
+    If KE(0) < KE_REST_THRESHOLD AND dataset is open-driven, D0-08 wins —
+    the at-rest IC makes relative drift undefined regardless of substrate
+    class. Mirrors the D0-08-takes-precedence-over-D0-18 invariant in
+    test_d0_18_dissipative_skip.py::test_ke_rest_skip_takes_precedence_over_d0_18.
+    """
+    # KE(0) at 1e-12 (well below threshold 1e-10). Build a custom fixture
+    # since the existing _build_rise_then_fall_rollout sets v0~N(0,1) above
+    # the threshold by design.
+    import numpy as np
+
+    rng = np.random.default_rng(20260507)
+    n_timesteps, n_particles = 10, 4
+    dt = 0.01
+    positions = np.zeros((n_timesteps, n_particles, 2), dtype=float)
+    velocities = np.zeros((n_timesteps, n_particles, 2), dtype=float)
+    # v0 magnitudes such that KE(0) = 0.5 * sum(|v_i|^2) < KE_REST_THRESHOLD.
+    # With n_particles=4 and KE_REST_THRESHOLD=1e-10, need |v_i|^2 ~ 1e-11.
+    v0 = rng.normal(scale=1e-6, size=(n_particles, 2))
+    for t in range(n_timesteps):
+        velocities[t] = v0 * (1.0 + 0.5 * t * dt)  # rises (would trigger D0-22)
+        positions[t] = 0.5
+    rollout = ParticleRollout(
+        positions=positions,
+        velocities=velocities,
+        particle_type=np.zeros(n_particles, dtype=np.int32),
+        particle_mass=np.ones(n_particles, dtype=np.float64),
+        dt=dt,
+        domain_box=np.array([[0.0, 0.0], [1.0, 1.0]]),
+        metadata={"dataset": "dam2d"},  # open-driven-dissipative
+    )
+    # Sanity: confirm KE(0) is below threshold
+    from external_validation._rollout_anchors._harness.particle_rollout_adapter import (
+        kinetic_energy_series,
+    )
+
+    assert kinetic_energy_series(rollout)[0] < KE_REST_THRESHOLD
+
+    result = energy_drift(rollout)
+    assert result.value is None, "KE-rest IC must SKIP, not fire raw"
+    # D0-08 fires (its reason cites D0-08), NOT D0-22 amendment 1.
+    assert result.skip_reason is not None
+    assert "D0-08" in result.skip_reason
+    assert "D0-22" not in result.skip_reason
+
+
+def test_energy_drift_d0_22_amendment_1_reason_template_constant() -> None:
+    """D0-19 §3.4: energy_drift D0-22 SKIP reason must be template-constant
+    across invocations on the same dataset.
+    """
+    r1 = _build_rise_then_fall_rollout(dataset_name="dam2d")
+    r2 = _build_rise_then_fall_rollout(dataset_name="dam2d", n_particles=8)
+    s1 = energy_drift(r1).skip_reason
+    s2 = energy_drift(r2).skip_reason
+    assert s1 == s2, (
+        "energy_drift D0-22 amendment 1 skip_reason must be template-constant within (rule, stack)"
+    )

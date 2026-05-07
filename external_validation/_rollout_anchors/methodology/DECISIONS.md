@@ -2217,3 +2217,58 @@ Three instances at $0 Modal cost. To be elevated as a first-class methodology co
 **Plan-diff (Task 1 step 1.2 retrofit):** rung-4c plan §Task 1 step 1.2 stated `grep -c "^## D0-" DECISIONS.md` should return 8 ("D0-15 through D0-22"); the actual returns the full file count, which is 22 after this commit. Plan expectation was an off-by-counting-scope error; the commit count check is unchanged in intent (verify the new entry parsed cleanly), only the expected number is updated.
 
 **Plan-diff (Task 1 D0-22 §2 wording reconciliation):** the plan's §2 text said "reclassification commits *after* smoke confirms the rise-then-fall shape, not before." This conflicts with Task 4's commit ordering (which lands the dam2d label flip before Task 7's smoke). Reconciled here as TDD-green hypothesis with smoke as gating verification + ABORT-on-fail revert path; preserves the empirical-justification discipline while letting the test-driven plan order proceed. The substantive contract is unchanged — Task 7 ABORT means the reclassification does not survive in the production fire.
+
+### D0-22 amendment 1 — 2026-05-07 — Extend SKIP gate to `energy_drift` on `open-driven-dissipative`
+
+**Status:** in-rung amendment landed alongside the parent D0-22 entry; mirrors D0-15's amendment-layered pattern (D0-15 amendments 1-4 were all within-rung refinements surfaced during execution).
+
+**Trigger:** rung-4c pre-flight smoke (`preflight/2026-05-07-rung-4c.txt`, Step 5 pipeline smoke) surfaced that `energy_drift` fires a methodologically meaningless raw value of ~2500-2700 on dam-break-2D. Mechanism:
+- KE(0)=0.4703 (input window has the column already falling at t=0)
+- max(KE)=O(1000) (gravity-loaded fall + dissipation phase)
+- `KE_REST_THRESHOLD=1e-10` is an absolute threshold; KE(0)=0.47 clears it by 9 orders of magnitude
+- D0-08 KE-rest gate does NOT fire; energy_drift falls through to raw computation
+- Raw value: `max|KE(t)-KE(0)|/|KE(0)|` ≈ 2700 — large but uninformative because the KE rise IS the physics, not a model defect
+
+The same strictly-dissipative-or-conservative assumption that D0-22 catches on `dissipation_sign_violation` (the rule assumes `dE/dt ≤ 0` everywhere) ALSO fails for `energy_drift` (the rule assumes `|E(t)-E(0)|` stays small relative to E(0)). Both rules' assumptions fail under the same physics and on the same substrate class.
+
+**Decision.** Extend D0-22's substrate-class dispatch to cover `energy_drift` on `open-driven-dissipative`:
+
+```python
+if system_class == "open-driven-dissipative":
+    return HarnessDefect(
+        value=None,
+        skip_reason=(
+            f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+            "KE grows by orders of magnitude due to physics (gravitational PE → "
+            "KE conversion); the strictly-dissipative-or-conservative assumption "
+            "underpinning energy_drift does not apply. See DECISIONS.md D0-22 "
+            "(amendment 1)."
+        ),
+    )
+```
+
+Gate is purely `system_class`-conditioned (parallel to D0-22's `dissipation_sign_violation` gate; no co-condition on KE shape). D0-08 takes precedence over D0-22 amendment 1 on `energy_drift` (KE-rest IC → D0-08 wins) — verified by `test_energy_drift_d0_08_takes_precedence_over_d0_22_amendment_1`. D0-18 and D0-22 are mutually exclusive on `system_class` value, so order between them is irrelevant.
+
+**Why amendment, not new D-entry.** Within-rung refinement of the principle D0-22 already established. The substrate class (`open-driven-dissipative`), the failing assumption (strictly-dissipative-or-conservative), the SKIP-with-reason mechanism, and the D0-19 §3.4 template-constant invariant are all unchanged from D0-22 §3. The only new fact is that the principle generalizes from `dissipation_sign_violation` to `energy_drift` — an empirical observation the smoke surfaced. Mirrors D0-15 amendment 4 (rollout-persistence enablement surfaced during rung-3 execution) and D0-17 amendment 1 (PBC-truncation convention surfaced during rung-3.5 execution) — both within-rung amendments to existing decisions when in-rung work surfaced the gap.
+
+**Why not Option C (rework D0-08 as relative threshold).** Rejected. D0-08's absolute threshold is validated against rung-4a's TGV2D conservation behavior; cross-cutting it now risks regressing rung 4a. D0-22's substrate-class dispatch is the right surface for "this rule's assumption fails on this substrate class" — exactly what amendment 1 captures.
+
+**Test coverage:** 3 new tests in `test_d0_22_open_driven_skip.py`:
+1. `test_energy_drift_skip_when_open_driven_with_rise_then_fall_ke` — positive path
+2. `test_energy_drift_d0_08_takes_precedence_over_d0_22_amendment_1` — sibling-gate precedence
+3. `test_energy_drift_d0_22_amendment_1_reason_template_constant` — D0-19 §3.4 invariant
+
+Plus the existing 7 tests continue to cover the dissipation_sign_violation gate; total D0-22 coverage = 10 tests.
+
+**SARIF impact (rung-4c artifacts):** the dam-break SARIFs emitted at Task 9 will now show `energy_drift: SKIP D0-22 amendment 1` instead of `energy_drift: raw=2700-ish`. Two distinct skip_reasons within the same rule across stacks (one per class label); the renderer's D0-19 §3.4 template-constant invariant holds within each (rule, stack) pair.
+
+**Methodology contribution this amendment elevates:**
+> The substrate-class-extension principle that D0-22 introduced for one rule (`dissipation_sign_violation`) generalizes naturally to OTHER rules with the same failing assumption (`energy_drift`). When an empirical probe surfaces that a rule's assumption fails on a specific substrate class, the dispatch should extend to ALL rules that share the assumption — not just the one the rule's named after.
+
+To be elevated as a first-class methodology output of the rung-4 series in integrating-README composition: substrate-class dispatch is per-substrate-class, not per-rule; the rule-axis enumeration follows from the assumption-axis enumeration.
+
+**"Smoke surfaces honest-limits" pattern (now bilateral within rung 4c).** Smoke caught:
+1. Empirical confirmation of dam2d rise-then-fall KE → D0-22 reclassification justified (PRIMARY).
+2. D0-08 absolute-threshold misfire on dam-break + energy_drift's strictly-dissipative-or-conservative assumption failure → D0-22 amendment 1 (SECONDARY, fixed in-rung).
+
+The smoke gate's PROCEED authorization is independent of the secondary finding (D0-22's load-bearing claim is unaffected); the amendment is "next-step refinement to close the loop the smoke opened, before the writeup hardens the artifact."
