@@ -102,11 +102,20 @@ def _build_growing_rollout(
 # ---------------------------------------------------------------------------
 
 
-def test_lagrangebench_dataset_system_class_includes_all_2d_sph() -> None:
-    """All five 2D LB SPH datasets must be in the dissipative mapping (D0-18)."""
-    for dataset in ("tgv2d", "rpf2d", "ldc2d", "dam2d"):
+def test_lagrangebench_dataset_system_class_includes_2d_sph_dissipative() -> None:
+    """The 2D LB SPH datasets in the closed-dissipative class (post-D0-22).
+
+    `dam2d` was reclassified to 'open-driven-dissipative' per D0-22; see
+    `test_d0_22_open_driven_skip.py::test_dam2d_classified_as_open_driven_dissipative`.
+
+    `rpf2d` and `ldc2d` are forward-flagged as almost-certainly-misclassified
+    (forced flows by definition) but retain `"dissipative"` pending empirical
+    probe in a future rung — D0-22's "classify when you exercise" discipline.
+    """
+    for dataset in ("tgv2d", "rpf2d", "ldc2d"):
         assert LAGRANGEBENCH_DATASET_SYSTEM_CLASS.get(dataset) == "dissipative", (
-            f"D0-18: {dataset} must be classified 'dissipative' (SPH viscous)"
+            f"D0-18: {dataset} must currently be classified 'dissipative' "
+            f"(forward-flagged for empirical probe per D0-22 §4 if forced-flow)"
         )
 
 
