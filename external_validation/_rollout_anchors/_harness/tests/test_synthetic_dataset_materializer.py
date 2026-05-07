@@ -33,12 +33,16 @@ def test_apply_transform_to_window_appends_placeholder_frame():
         dtype=np.float32,
     )
     out = apply_transform_to_window(
-        input_window=input_window, transform_fn=_identity_transform, box_size=1.0, t_steps=7
+        input_window=input_window, transform_fn=_identity_transform, box_size=1.0, t_steps=10
     )
-    assert out.shape == (7, 2, 2), f"expected (7, 2, 2), got {out.shape}"
+    assert out.shape == (10, 2, 2), f"expected (10, 2, 2), got {out.shape}"
     assert out.dtype == np.float32
     np.testing.assert_array_equal(out[:6], input_window)
-    np.testing.assert_array_equal(out[6], input_window[5], err_msg="placeholder must equal frame 5")
+    # Frames 6..9 are all placeholder copies of frame 5 (4 placeholders for t_steps=10).
+    for k in range(6, 10):
+        np.testing.assert_array_equal(
+            out[k], input_window[5], err_msg="placeholder must equal frame 5"
+        )
 
 
 def test_apply_transform_to_window_rejects_wrong_input_shape():
@@ -49,7 +53,7 @@ def test_apply_transform_to_window_rejects_wrong_input_shape():
     bad = np.zeros((5, 2, 2), dtype=np.float32)  # only 5 frames; need 6
     with pytest.raises(ValueError, match=r"input_window must have 6 frames"):
         apply_transform_to_window(
-            input_window=bad, transform_fn=_identity_transform, box_size=1.0, t_steps=7
+            input_window=bad, transform_fn=_identity_transform, box_size=1.0, t_steps=10
         )
 
 
@@ -124,7 +128,7 @@ def test_materialize_synthetic_dataset_writes_all_files(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -161,7 +165,7 @@ def test_materialize_synthetic_dataset_test_h5_structure(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -175,7 +179,7 @@ def test_materialize_synthetic_dataset_test_h5_structure(tmp_path):
             grp = f[f"{k:05d}"]
             assert "position" in grp
             assert "particle_type" in grp
-            assert grp["position"].shape == (7, 4, 2)
+            assert grp["position"].shape == (10, 4, 2)
             assert grp["position"].dtype == np.float32
             assert grp["particle_type"].shape == (4,)
             assert grp["particle_type"].dtype == np.int32
@@ -204,7 +208,7 @@ def test_materialize_synthetic_dataset_metadata_reuses_published_stats(tmp_path)
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=pub,
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -224,7 +228,13 @@ def test_materialize_synthetic_dataset_metadata_reuses_published_stats(tmp_path)
     # Synthesized split sizes:
     assert written["num_trajs_test"] == 1
     assert written["num_trajs_train"] == 1
-    assert written["sequence_length_test"] == 7
+    assert written["sequence_length_test"] == 10
+    # sequence_length_train tracks the train.h5 dummy's actual frame count,
+    # which equals t_steps (= test.h5 length). Sized uniformly to satisfy
+    # both the constant train-split floor (LB_TRAIN_SUBSEQ_LENGTH=10) and
+    # the dynamic valid-split floor (INPUT_SEQ_LENGTH + n_rollout_steps).
+    # See "LB loader-contract assertions" section below.
+    assert written["sequence_length_train"] == 10
 
 
 def test_materialize_synthetic_dataset_manifest_schema(tmp_path):
@@ -256,7 +266,7 @@ def test_materialize_synthetic_dataset_manifest_schema(tmp_path):
         particle_type=particle_type,
         transforms=transforms,
         published_metadata=_published_metadata_stub(),
-        t_steps=7,
+        t_steps=10,
         sweep_kind="main",
         stack="segnn",
         dataset="tgv2d",
@@ -306,7 +316,7 @@ def test_materialize_synthetic_dataset_rejects_input_window_traj_count_mismatch(
             particle_type=particle_type,
             transforms=transforms,
             published_metadata=_published_metadata_stub(),
-            t_steps=7,
+            t_steps=10,
             sweep_kind="main",
             stack="segnn",
             dataset="tgv2d",
@@ -338,7 +348,7 @@ def test_materialize_synthetic_dataset_rejects_unnamespaced_ckpt_hash(tmp_path):
             particle_type=particle_type,
             transforms=transforms,
             published_metadata=_published_metadata_stub(),
-            t_steps=7,
+            t_steps=10,
             sweep_kind="main",
             stack="segnn",
             dataset="tgv2d",
@@ -389,3 +399,169 @@ def test_read_published_input_windows_rejects_too_few_trajs(tmp_path):
     h5_path = _create_published_test_h5_fixture(tmp_path, n_trajs=2)
     with pytest.raises(ValueError, match=r"requested 5 trajs but only 2 available"):
         read_published_input_windows(h5_path=h5_path, n_trajs=5)
+
+
+# =============================================================================
+# LB loader-contract assertions
+# =============================================================================
+# Pre-flight assertions mirroring the contracts LB's H5Dataset.__init__ enforces
+# at config-load time (`lagrangebench/data/data.py:130-145`). Per
+# `lagrangebench/runner.py:163-188`, all three splits (train, valid, test) get
+# constructed at setup_data time with split-dependent `extra_seq_length`:
+#
+#     train: extra_seq_length = cfg.train.pushforward.unrolls[-1]   → constant
+#            subseq_length    = input_seq_length + 1 + extra_seq_length
+#                              (the "+1" is the target frame, separate from
+#                               the pushforward unroll horizon)
+#     valid: extra_seq_length = cfg.eval.n_rollout_steps            → dynamic
+#     test:  extra_seq_length = cfg.eval.n_rollout_steps            → dynamic
+#            subseq_length    = input_seq_length + extra_seq_length (no "+1")
+#
+# This section is the methodology pattern future case studies (PhysicsNeMo
+# MGN, etc.) inherit: each loader-side assertion that gates pipeline
+# execution gets a paired pre-flight test in the materializer's test suite,
+# parametrized over the dynamic-axis kwargs the consumer passes. See
+# 2026-05-06-rung-4b-t7-modal-entrypoints-design.md amendment 2.
+
+
+def test_lb_constants_match_pre_registration():
+    """Drift-guard for LB-derived constants.
+
+    LB_PUSHFORWARD_UNROLLS_LAST = 3 is sourced from SEGNN-TGV2D's
+    `pushforward.unrolls = [0, 1, 2, 3]` config dump at LB sha
+    b880a6c84a93792d2499d2a9b8ba3a077ddf44e2 + ckpt segnn_tgv2d/best.
+
+    LB_TRAIN_SUBSEQ_LENGTH = INPUT_SEQ_LENGTH + 1 + LB_PUSHFORWARD_UNROLLS_LAST
+                           = 6 + 1 + 3 = 10
+    matches `lagrangebench/data/data.py:131` for split="train". The "+1"
+    is the target frame — separate from the pushforward unroll count;
+    conflating them was the original-fix-pass bug.
+
+    If any constant changes here without a paired DECISIONS sub-entry under
+    D0-15/D0-21 explaining why, this test fails CI.
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        INPUT_SEQ_LENGTH,
+        LB_PUSHFORWARD_UNROLLS_LAST,
+        LB_TRAIN_SUBSEQ_LENGTH,
+    )
+
+    assert INPUT_SEQ_LENGTH == 6
+    assert LB_PUSHFORWARD_UNROLLS_LAST == 3
+    assert LB_TRAIN_SUBSEQ_LENGTH == 10
+
+
+def test_apply_transform_rejects_t_steps_below_lb_train_subseq_length():
+    """Materializer must fail-fast when t_steps would produce an h5 that
+    LB's H5Dataset rejects at init for the train split.
+
+    This pre-flights the assertion at `lagrangebench/data/data.py:144`:
+    catching "t_steps too small for train" in materialize_synthetic_dataset
+    is cheaper than catching it at LB config-load (which costs Modal
+    cold-start + image-pull time). Note the materializer enforces only the
+    train-split floor (constant, since all sweeps share the same
+    pushforward.unrolls); the valid/test-split floors are dynamic with
+    n_rollout_steps and are the caller's responsibility (covered by
+    test_materialized_h5s_satisfy_lb_h5dataset_assertion below).
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        LB_TRAIN_SUBSEQ_LENGTH,
+        apply_transform_to_window,
+    )
+
+    input_window = np.zeros((6, 4, 2), dtype=np.float32)
+    for bad_t in (1, 6, 7, 9):  # everything below LB_TRAIN_SUBSEQ_LENGTH
+        with pytest.raises(ValueError, match=r"t_steps must be >= LB_TRAIN_SUBSEQ_LENGTH"):
+            apply_transform_to_window(
+                input_window=input_window,
+                transform_fn=_identity_transform,
+                box_size=1.0,
+                t_steps=bad_t,
+            )
+    # Boundary: LB_TRAIN_SUBSEQ_LENGTH itself must succeed.
+    out = apply_transform_to_window(
+        input_window=input_window,
+        transform_fn=_identity_transform,
+        box_size=1.0,
+        t_steps=LB_TRAIN_SUBSEQ_LENGTH,
+    )
+    assert out.shape == (LB_TRAIN_SUBSEQ_LENGTH, 4, 2)
+
+
+@pytest.mark.parametrize(
+    "n_rollout_steps,t_steps",
+    [
+        # main + sanity sweeps: n_rollout_steps=1, t_steps sized for the
+        # constant train floor (LB_TRAIN_SUBSEQ_LENGTH=10), which also
+        # covers valid/test (=6+1=7).
+        (1, 10),
+        # figure sweep: n_rollout_steps=100, valid/test floor=6+100=106;
+        # train floor=10 covered trivially.
+        (100, 106),
+    ],
+)
+def test_materialized_h5s_satisfy_lb_h5dataset_assertion(tmp_path, n_rollout_steps, t_steps):
+    """End-to-end loader-contract pre-flight: every h5 the materializer
+    writes must satisfy LB's H5Dataset.__init__ assertion under the
+    sweep's `eval.n_rollout_steps` setting.
+
+    Mirrors `lagrangebench/runner.py:163-188` setup_data ordering and
+    the `lagrangebench/data/data.py:130-145` per-split subseq_length
+    derivation. Failing here means LB will fail at infer-time
+    cold-start; this test catches the same bug in <1s without paying
+    Modal compute. Future contributors add new sweep-shape rows by
+    extending the parametrize list — same shape pattern as the
+    synthetic-fixture-vs-LB-assertion contract pattern in design
+    amendment 2.
+    """
+    from external_validation._rollout_anchors._harness.synthetic_dataset_materializer import (
+        INPUT_SEQ_LENGTH,
+        LB_PUSHFORWARD_UNROLLS_LAST,
+        materialize_synthetic_dataset,
+    )
+
+    windows, particle_type = _make_input_windows(n_trajs=2)
+    transforms = [
+        {
+            "rule_id": "PH-SYM-001",
+            "transform_kind": "rotation",
+            "transform_param": "pi_2",
+            "transform_fn": _identity_transform,
+            "original_traj_index": 0,
+        }
+    ]
+    out_dir = tmp_path / f"loader_contract_n{n_rollout_steps}"
+    materialize_synthetic_dataset(
+        out_dir=out_dir,
+        input_windows=windows,
+        particle_type=particle_type,
+        transforms=transforms,
+        published_metadata=_published_metadata_stub(),
+        t_steps=t_steps,
+        sweep_kind="main",
+        stack="segnn",
+        dataset="tgv2d",
+        ckpt_hash="sha256:" + "a" * 64,
+        physics_lint_sha_eps_computation="abcdef0123",
+    )
+
+    # Per-split subseq_length expectations, derived from LB source:
+    expected_subseq = {
+        # train: data.py:131 — input_seq_length + 1 + extra_seq_length
+        # where extra_seq_length = pushforward.unrolls[-1]
+        "train.h5": INPUT_SEQ_LENGTH + 1 + LB_PUSHFORWARD_UNROLLS_LAST,
+        # valid: data.py:138 — input_seq_length + extra_seq_length
+        # where extra_seq_length = n_rollout_steps
+        "valid.h5": INPUT_SEQ_LENGTH + n_rollout_steps,
+        # test: same formula as valid
+        "test.h5": INPUT_SEQ_LENGTH + n_rollout_steps,
+    }
+    for split_name, required in expected_subseq.items():
+        with h5py.File(out_dir / split_name, "r") as f:
+            for traj_key in f:
+                seq_len = f[f"{traj_key}/position"].shape[0]
+                assert seq_len >= required, (
+                    f"{split_name}/{traj_key} (n_rollout_steps={n_rollout_steps}): "
+                    f"sequence_length={seq_len} < required subseq_length={required}; "
+                    f"LB's H5Dataset would reject this at setup_data time"
+                )
