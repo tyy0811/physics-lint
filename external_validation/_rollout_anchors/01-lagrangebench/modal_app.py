@@ -1407,7 +1407,13 @@ def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dic
         "eval.test=True",
         f"load_ckp={ckpt_dir}",
         "eval.n_rollout_steps=100",
-        "eval.infer.n_trajs=20",
+        # rung-4c N=12 (D0-22 amendment 2): smoke projected ~5min/20-traj,
+        # actual is ~200s/traj amortized → 20-traj would need ~67min, well
+        # over the 2400s subprocess timeout. Production fire at sha
+        # e754a4bc2e (n_trajs=20) timed out with 12 converted; ship at N=12
+        # canonically. See preflight/2026-05-07-rung-4c.txt + DECISIONS.md
+        # D0-22 amendment 2 for full reasoning.
+        "eval.infer.n_trajs=12",
         f"dataset.src={dataset_dir}",
         # dataset.name=dam2d (no underscore): required by current
         # upstream runner.py:148. Valid name space per upstream
@@ -1664,7 +1670,9 @@ def lagrangebench_rollout_p1_gns_dam2d(git_sha: str, full_git_sha: str) -> dict:
         "eval.test=True",
         f"load_ckp={ckpt_dir}",
         "eval.n_rollout_steps=100",
-        "eval.infer.n_trajs=20",
+        # rung-4c N=12 (D0-22 amendment 2): matches SEGNN canonical N. See
+        # preflight/2026-05-07-rung-4c.txt + DECISIONS.md D0-22 amendment 2.
+        "eval.infer.n_trajs=12",
         f"dataset.src={dataset_dir}",
         "dataset.name=dam2d",
         "eval.infer.metrics=[mse,e_kin]",
@@ -3053,6 +3061,65 @@ def lagrangebench_convert_pkls_in_volume(
         manifest["conversion_error"] = f"{type(e).__name__}: {e}"
 
     return manifest
+
+
+@app.local_entrypoint()
+def convert_pkls_p1_segnn_dam2d(rollout_subdir_name: str) -> None:
+    """Standalone rung-3.5 conversion for P1 SEGNN-DAM2D pkls (rung 4c).
+
+    Use after a rung-4c inference PASSes inference but inference is killed
+    by the subprocess timeout before the embedded conversion runs (e.g. the
+    e754a4bc2e production fire converted 12 trajs of 20 before the 2400s
+    cap). Hardcodes the SEGNN-DAM2D dataset/checkpoint mappings; mirrors
+    convert_pkls_p0_segnn_tgv2d's shape.
+
+    Usage:
+        modal run external_validation/.../modal_app.py::convert_pkls_p1_segnn_dam2d \\
+            --rollout-subdir-name segnn_dam2d_e754a4bc2e
+    """
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Standalone rung-3.5 conversion: P1 SEGNN-DAM2D (rung 4c) ===")
+    print(f"  rollout_subdir_name: {rollout_subdir_name}")
+    print(f"  git_sha (full):      {git_sha_full}")
+    print()
+
+    result = lagrangebench_convert_pkls_in_volume.remote(
+        rollout_subdir_name=rollout_subdir_name,
+        dataset_lb_dirname="2D_DAM_5740_20kevery100",
+        dataset_logical_name="dam2d",
+        checkpoint_subdir="segnn_dam2d",
+        model_name="segnn",
+        git_sha_full=git_sha_full,
+    )
+
+    print("--- manifest ---")
+    print(f"  rollout_subdir:        {result['rollout_subdir']}")
+    print(f"  lagrangebench_sha:     {result['lagrangebench_sha']}")
+    print(f"  conversion_returncode: {result['conversion_returncode']}")
+    if result["conversion_error"]:
+        print(f"  conversion_error:      {result['conversion_error']}")
+    print(f"  converted_npz_count:   {len(result['converted_npz_paths'])}")
+    print()
+    if result["converted_npz_paths"]:
+        print("--- converted npz paths ---")
+        for p in sorted(result["converted_npz_paths"]):
+            print(f"  {p}")
+        print()
+    print("--- verdict ---")
+    if result["conversion_returncode"] == 0:
+        n = len(result["converted_npz_paths"])
+        print(
+            f"  -> standalone rung-3.5 conversion: PASS — produced {n} "
+            f"schema-conformant npz file(s) at {result['rollout_subdir']}."
+        )
+    else:
+        print(f"  -> standalone rung-3.5 conversion: FAIL — {result['conversion_error']}")
 
 
 @app.local_entrypoint()

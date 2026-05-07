@@ -136,3 +136,44 @@ Post-decision (2026-05-07, same session):
   class, the dispatch extends to ALL rules sharing the assumption —
   not just the one the gate is named after. To be foregrounded in
   integrating-README composition.
+
+Task 8 fire outcome (2026-05-07, same session) — D0-22 amendment 2:
+  SEGNN-dam2d production at N=20 (sha e754a4bc2e):
+    inference_returncode: -1 (TimeoutExpired after 2400s)
+    converted_npz_count via standalone path: 12
+    rollout_subdir: /vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e/
+    Amortized rate: ~200s/traj on dam-break SEGNN (~10x optimistic vs
+    plan's ~5min/20trajs estimate; dam2d has more particles + neighbour
+    list work than TGV-2D).
+
+  GNS-dam2d production at N=12 (sha e754a4bc2e):
+    inference_returncode: 0
+    inference_wall_seconds: 893.0
+    converted_npz_count: 12
+    rollout_subdir: /vol/rollouts/lagrangebench/gns_dam2d_e754a4bc2e/
+    Amortized rate: ~74s/traj on dam-break GNS.
+
+  Decision: ship rung 4c at N=12 trajs across both stacks per D0-22
+  amendment 2 (Option B over Option A "blow budget for cross-rung
+  uniformity"). Methodology-consistency with the rung-4 series's
+  smoke-discovered-drift-gets-in-rung-correction pattern weighed against
+  the small presentational cost of N=12 ≠ N=20.
+
+  Cross-stack lint_npz_dir verification on both rollouts (CPU-only):
+    36 rows per stack (3 rules x 12 trajs)
+    SEGNN-dam2d: mass=0.0 raw x12, energy_drift=SKIP D0-22a1 x12,
+                 dissipation_sign=SKIP D0-22 x12
+    GNS-dam2d:   mass=0.0 raw x12, energy_drift=SKIP D0-22a1 x12,
+                 dissipation_sign=SKIP D0-22 x12
+    Cross-stack structural identity confirmed; rung's load-bearing
+    schema-uniform claim holds at N=12.
+
+  Cumulative compute: ~$1.00 across smoke + failed SEGNN-N=20 +
+  successful GNS-N=12 + standalone SEGNN conversion. ~5x the per-rung
+  estimate; ~3% of the ~$30 total-validation budget ceiling.
+
+  Code adjustments committed alongside the amendment: both dam2d
+  rollout functions canonicalized at n_trajs=12 with inline comments
+  citing D0-22 amendment 2 + this preflight log; future re-fires
+  reproduce the N=12 ship, future N=20 re-attempts require explicit
+  timeout refactor (subprocess 2400 -> 5400+ minimum).

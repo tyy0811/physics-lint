@@ -2272,3 +2272,43 @@ To be elevated as a first-class methodology output of the rung-4 series in integ
 2. D0-08 absolute-threshold misfire on dam-break + energy_drift's strictly-dissipative-or-conservative assumption failure → D0-22 amendment 1 (SECONDARY, fixed in-rung).
 
 The smoke gate's PROCEED authorization is independent of the secondary finding (D0-22's load-bearing claim is unaffected); the amendment is "next-step refinement to close the loop the smoke opened, before the writeup hardens the artifact."
+
+### D0-22 amendment 2 — 2026-05-07 — Rung 4c ships at N=12 trajs (cost-driven N reduction; in-rung methodology-consistency over presentational uniformity)
+
+**Status:** in-rung amendment landed alongside Task 8 production fire; mirrors amendment 1's shape (smoke-discovered drift addressed in-rung rather than ship-with-caveat).
+
+**Trigger:** rung-4c production rollout (Task 8, plan §3.4 `~5 min A10G` per stack at N=20). Empirical timing on dam-break-2D:
+- Smoke 1-traj: SEGNN 159.6s, GNS 120.0s (includes JIT + 1 traj inference)
+- Production at N=20 (sha e754a4bc2e, SEGNN-dam2d): subprocess timed out at 2400s with 12/20 trajs converted-pending; amortized rate ~200s/traj
+- 20-traj projection ~67 min (SEGNN) and ~50 min (GNS) — both exceed the function's 2400s subprocess timeout
+- Plan estimate was ~10x optimistic on per-traj inference cost on dam-break (more particles, more neighbour-list work than TGV-2D)
+
+**Decision.** Ship rung 4c at N=12 trajs across both stacks rather than blow the per-rung budget to maintain N=20 cross-rung parity with rung-4a/4b:
+1. Convert the 12 SEGNN-dam2d partial pkls already on Volume via `convert_pkls_p1_segnn_dam2d` standalone path (CPU-only, ~$0.05).
+2. Fire GNS-dam2d at `n_trajs=12` (matched to SEGNN's effective N, ~15 min A10G, ~$0.21).
+3. Update both dam2d rollout functions to `eval.infer.n_trajs=12` canonically (working-tree-only override during the smoke run promoted to permanent setting; future re-fires reproduce the N=12 ship). Inline comments cite this amendment + the preflight log.
+4. Production cumulative compute: ~$1.00 (~5x the per-rung $0.20 estimate, ~3% of the ~$30 total-validation-budget ceiling).
+
+**Why amendment, not ship-with-caveat (Option A vs Option B per session log).**
+- The rung-4 series has been consistently applying a "smoke-discovered drift gets honest in-rung correction" pattern (rung 4b LB config-load → amendment 2; rung 4b latent figure-sweep → §14.6; rung 4c dam2d preemptive misclassification → caught pre-rung; rung 4c energy_drift methodologically-meaningless raw → D0-22 amendment 1).
+- Option A ("re-fire at N=20 with extended timeouts to maintain cross-rung N parity") would have been the first deviation from that pattern — spend more compute to preserve presentational uniformity rather than methodologically address the smoke-discovered finding.
+- Option B ("ship at N=12 with honest amendment") fits the established pattern: smoke surfaces a drift, the rung documents the drift, the data ships at the value the budget supports, the structural claims hold at N≥2 and are unaffected.
+- Cross-rung presentational cost of N=12 vs N=20: one-character visual on the cross-stack table ("x12 identical" vs "x20 identical"); half-line addition to the cover letter ("rung-4a TGV2D at N=20 trajs; rung-4c dam-break-2D at N=12 trajs (per-traj inference cost ~10x estimate; D0-22 amendment 2)"). Small.
+- Methodology-precedent cost of Option A: future rungs inherit "if uniformity is at risk, blow the budget" — a worse precedent than "ship at the data the budget supports, document the drift honestly."
+
+**Why this is "amendment 2" not a new D-entry.** Same shape as amendment 1: in-rung response to a smoke-discovered drift, sharpens the methodology trail, no scope expansion. The substrate-class extension principle D0-22 introduced is unchanged; amendment 2 records a separate but related precedent — when smoke surfaces unexpected per-traj cost, the disciplined response is to ship at supportable N with honest amendment rather than budget-fund presentational uniformity.
+
+**Methodology contribution this amendment elevates:**
+> Plan-estimated compute can be ~10x off — a 1-traj smoke gives an early signal but does not fully calibrate per-traj cost on a new substrate (dam-break has more particles than TGV-2D and more neighbour-list overhead). When smoke discovery surfaces this, the rung-4 series's discipline is to ship at the N the budget supports with honest acknowledgment, not to spend more compute to preserve presentational uniformity. The "smoke surfaces honest-limits, in-rung correction is the response" pattern from amendment 1 generalizes from methodology-correctness gaps (extend the SKIP gate) to data-scope gaps (reduce N with documented reasoning).
+
+To be foregrounded in integrating-README composition alongside amendment 1: the "smoke surfaces, rung corrects in-flight, writeup acknowledges honestly" trilateral is a first-class methodology contribution of the rung-4 series.
+
+**Test impact:** none. The amendment is a data-scope decision, not a code-logic change. The 458 existing tests continue to pass. The harness's substrate-class dispatch (D0-22 + amendment 1) is the same regardless of N.
+
+**SARIF impact (rung-4c artifacts at Task 9):** dam-break SARIFs will carry 36 rows each (3 rules × 12 trajs) instead of 60 rows (3 rules × 20 trajs). Renderer's D0-19 §3.4 invariants hold uniformly. Cross-stack identity check: SEGNN-dam2d and GNS-dam2d emit byte-identical structural row distributions at N=12 (verified post-fire via `lint_npz_dir` on both production rollouts at sha e754a4bc2e).
+
+**Provenance shas captured for emit_sarif (Task 9):**
+- SEGNN-dam2d: pkl_inference=`e754a4bc2e` (Task 8 fire that timed out at 12 trajs); npz_conversion=`e754a4bc2e` (standalone conversion via `convert_pkls_p1_segnn_dam2d` at same sha)
+- GNS-dam2d: pkl_inference=`e754a4bc2e` (Task 8 fire at n_trajs=12); npz_conversion=`e754a4bc2e` (in-fire conversion succeeded)
+
+**Forward-flag (future rungs / case studies):** if a future rung needs N=20 dam-break rollouts (e.g., for rung 4d gravity-direction-pinning PH-SYM-001/002/003 SKIP probe), the timeout strategy needs an explicit refactor: subprocess `timeout=2400` is a per-fire ceiling matched to TGV-2D's per-traj cost; dam-break needs `timeout=5400` minimum + corresponding function `timeout=6000`. Out of scope for rung 4c; recorded here so the timeout-as-substrate-property observation isn't lost.
