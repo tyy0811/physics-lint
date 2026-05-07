@@ -519,6 +519,7 @@ LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS: dict[str, str] = {
 # Discovered via inspection of upstream configs/<dataset>/base.yaml.
 LAGRANGEBENCH_DATASET_DIRS: dict[str, str] = {
     "tgv_2d": "2D_TGV_2500_10kevery100",
+    "dam_2d": "2D_DAM_5740_20kevery100",  # discovered rung-4c Task 5; verified at LB sha b880a6c84a93792d2499d2a9b8ba3a077ddf44e2 configs/dam_2d/base.yaml
     # extend as P1+ work scales
 }
 
@@ -1209,6 +1210,529 @@ def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
                     git_sha=full_git_sha,
                     lagrangebench_sha=manifest["lagrangebench_sha"],
                     dataset="tgv2d",
+                    model="gns",
+                    seed=manifest["inference_seed"],
+                    framework="jax+haiku",
+                    framework_version=_package_version("jax"),
+                ),
+            )
+            manifest["conversion_returncode"] = 0
+            manifest["converted_npz_paths"] = [str(p) for p in converted]
+        except Exception as e:
+            manifest["conversion_returncode"] = 1
+            manifest["conversion_error"] = f"{type(e).__name__}: {e}"
+            manifest["aborted_at_step"] = "conversion"
+
+    # Step 6: walk for files written
+    candidate_roots = [
+        "/opt/lagrangebench/outputs",
+        "/opt/lagrangebench/rollouts",
+        "/opt/lagrangebench/wandb",
+        rollout_subdir,
+    ]
+    for root in candidate_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for fn in filenames:
+                fp = os.path.join(dirpath, fn)
+                try:
+                    size = os.path.getsize(fp)
+                    if size > 50 * 1024 * 1024:
+                        manifest["files_written"].append(
+                            {"path": fp, "size": size, "sha256": "<skipped_large>"}
+                        )
+                        continue
+                    h = hashlib.sha256()
+                    with open(fp, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            h.update(chunk)
+                    manifest["files_written"].append(
+                        {"path": fp, "size": size, "sha256": h.hexdigest()}
+                    )
+                except OSError as e:
+                    manifest["files_written"].append(
+                        {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
+                    )
+
+    rollout_volume.commit()
+    return manifest
+
+
+# Rung 4c P1 SEGNN-DAM2D: structurally identical to rung-4a P0 SEGNN-TGV2D
+# (line 646), with checkpoint name + dataset name + rollout-subdir prefix
+# replaced. Deliberate minimal-edit copy rather than parameterized refactor —
+# same posture rung-4a's P0/P1 used; rung-4a P0 is well-tested at d03df3e
+# (D0-17 amendment 1) and refactoring it carries drift risk. Differences:
+#
+#   - ckpt_root         segnn_tgv2d -> segnn_dam2d
+#   - zip_path basename segnn_tgv2d.zip -> segnn_dam2d.zip
+#   - LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["segnn_tgv2d"] -> [...]["segnn_dam2d"]
+#   - rollout_subdir    segnn_tgv2d_<git_sha> -> segnn_dam2d_<git_sha>
+#   - LAGRANGEBENCH_DATASET_DIRS["tgv_2d"] -> [...]["dam_2d"]
+#   - download_data.sh tgv_2d -> dam_2d
+#   - dataset.name CLI tgv2d -> dam2d
+#   - RolloutMetadata.dataset "tgv2d" -> "dam2d"
+#
+# Per DECISIONS.md D0-22: dam2d post-rung-4c is classified
+# 'open-driven-dissipative'; the harness's substrate-detection layer
+# dispatches dissipation_sign_violation to the D0-22 SKIP path on these
+# rollouts. The Modal-side rollout function is dataset-agnostic (the
+# substrate-class dispatch happens consumer-side at SARIF emission).
+@app.function(
+    image=rollout_image,
+    gpu=ROLLOUT_GENERATION_GPU_CLASS,
+    volumes={"/vol": rollout_volume},
+    timeout=3600,
+)
+def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dict:
+    """Rung 4c P1: SEGNN-DAM2D inference + SCHEMA.md npz materialization (D0-22).
+
+    Mirrors lagrangebench_rollout_p0_segnn_tgv2d with checkpoint /
+    dataset substitutions per the comment block above. Same image,
+    same conversion pipeline, same patch ledger. The cross-stack
+    comparison (SEGNN vs GNS on identical dam-break test split) is
+    the load-bearing claim of rung-4c plan §3.1's P1 dual-stack work.
+    """
+    import hashlib
+    import os
+    import subprocess
+    import time
+
+    manifest: dict = {
+        "git_sha": git_sha,
+        "full_git_sha": full_git_sha,
+        "lagrangebench_sha": None,
+        "inference_seed": 0,
+        "aborted_at_step": None,
+        "checkpoint_download_skipped": False,
+        "checkpoint_gdown_returncode": None,
+        "checkpoint_gdown_stderr_tail": "",
+        "checkpoint_unzip_returncode": None,
+        "checkpoint_unzip_stderr_tail": "",
+        "dataset_download_skipped": False,
+        "dataset_download_returncode": None,
+        "dataset_download_stderr_tail": "",
+        "inference_returncode": None,
+        "inference_wall_seconds": None,
+        "inference_stdout_tail": "",
+        "inference_stderr_tail": "",
+        "rollout_subdir": None,
+        "conversion_attempted": False,
+        "conversion_returncode": None,
+        "conversion_error": None,
+        "converted_npz_paths": [],
+        "files_written": [],
+    }
+
+    # Step 1: checkpoint download (gdown) + unzip
+    ckpt_root = "/vol/checkpoints/lagrangebench/segnn_dam2d"
+    ckpt_dir = f"{ckpt_root}/best"
+    if os.path.isdir(ckpt_dir):
+        manifest["checkpoint_download_skipped"] = True
+    else:
+        os.makedirs(ckpt_root, exist_ok=True)
+        zip_path = f"{ckpt_root}/segnn_dam2d.zip"
+        gdown_id = LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["segnn_dam2d"]
+
+        gdown_proc = subprocess.run(
+            ["gdown", gdown_id, "-O", zip_path],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        manifest["checkpoint_gdown_returncode"] = gdown_proc.returncode
+        manifest["checkpoint_gdown_stderr_tail"] = gdown_proc.stderr[-2000:]
+        if gdown_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_gdown"
+            return manifest
+
+        unzip_proc = subprocess.run(
+            ["unzip", "-o", zip_path, "-d", ckpt_root],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        manifest["checkpoint_unzip_returncode"] = unzip_proc.returncode
+        manifest["checkpoint_unzip_stderr_tail"] = unzip_proc.stderr[-2000:]
+        if unzip_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_unzip"
+            return manifest
+
+        if not os.path.isdir(ckpt_dir):
+            for entry in os.listdir(ckpt_root):
+                candidate = os.path.join(ckpt_root, entry, "best")
+                if os.path.isdir(candidate):
+                    os.rename(candidate, ckpt_dir)
+                    break
+        rollout_volume.commit()
+
+    # Step 2: dataset download via upstream's download_data.sh
+    dataset_root = "/vol/datasets/lagrangebench"
+    dataset_dir = f"{dataset_root}/{LAGRANGEBENCH_DATASET_DIRS['dam_2d']}"
+    if os.path.isdir(dataset_dir):
+        manifest["dataset_download_skipped"] = True
+    else:
+        os.makedirs(dataset_root, exist_ok=True)
+        os.chdir("/opt/lagrangebench")
+        ds_proc = subprocess.run(
+            ["bash", "download_data.sh", "dam_2d", dataset_root + "/"],
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        manifest["dataset_download_returncode"] = ds_proc.returncode
+        manifest["dataset_download_stderr_tail"] = (
+            (ds_proc.stdout[-1000:] + "\n--- stderr ---\n" + ds_proc.stderr[-1500:])
+            if ds_proc.stderr
+            else ds_proc.stdout[-2000:]
+        )
+        if ds_proc.returncode != 0:
+            manifest["aborted_at_step"] = "dataset_download"
+            return manifest
+        rollout_volume.commit()
+
+    # Step 3: inference — same CLI shape as rung-4a P0 (only dataset.name
+    # and rollout_subdir differ).
+    rollout_dir_root = "/vol/rollouts/lagrangebench"
+    rollout_subdir = f"{rollout_dir_root}/segnn_dam2d_{git_sha}"
+    os.makedirs(rollout_subdir, exist_ok=True)
+    manifest["rollout_subdir"] = rollout_subdir
+
+    os.chdir("/opt/lagrangebench")
+    inf_args = [
+        "python",
+        "main.py",
+        "mode=infer",
+        "eval.test=True",
+        f"load_ckp={ckpt_dir}",
+        "eval.n_rollout_steps=100",
+        "eval.infer.n_trajs=20",
+        f"dataset.src={dataset_dir}",
+        # dataset.name=dam2d (no underscore): required by current
+        # upstream runner.py:148. Valid name space per upstream
+        # data.py: {tgv2d, tgv3d, rpf2d, rpf3d, ldc2d, ldc3d, dam2d}.
+        "dataset.name=dam2d",
+        "eval.infer.metrics=[mse,e_kin]",
+        f"eval.rollout_dir={rollout_subdir}",
+        "eval.infer.out_type=pkl",
+        "seed=0",
+    ]
+    inf_start = time.monotonic()
+    try:
+        inf_proc = subprocess.run(
+            inf_args,
+            capture_output=True,
+            text=True,
+            timeout=2400,
+        )
+        manifest["inference_returncode"] = inf_proc.returncode
+        manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
+        manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
+    except subprocess.TimeoutExpired as e:
+        manifest["inference_returncode"] = -1
+        manifest["inference_stdout_tail"] = (
+            e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
+        )[-3000:]
+        manifest["inference_stderr_tail"] = (
+            f"TimeoutExpired after {e.timeout}s. Stderr tail: "
+            + ((e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or ""))[-2500:])
+        )
+    except Exception as e:
+        manifest["inference_returncode"] = -2
+        manifest["inference_stderr_tail"] = f"Uncaught {type(e).__name__}: {e}"
+    manifest["inference_wall_seconds"] = round(time.monotonic() - inf_start, 1)
+    if manifest["inference_returncode"] != 0:
+        manifest["aborted_at_step"] = "inference"
+
+    # Step 4: capture lagrangebench_sha
+    lb_sha_proc = subprocess.run(
+        ["git", "-C", "/opt/lagrangebench", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if lb_sha_proc.returncode == 0:
+        manifest["lagrangebench_sha"] = lb_sha_proc.stdout.strip()
+    else:
+        manifest["lagrangebench_sha"] = f"<git_rev_parse_failed_rc={lb_sha_proc.returncode}>"
+
+    # Step 5: rung-3.5 conversion (model="segnn", dataset="dam2d")
+    if manifest["inference_returncode"] == 0:
+        manifest["conversion_attempted"] = True
+        try:
+            import sys as _sys
+
+            if _REMOTE_HARNESS_DIR not in _sys.path:
+                _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+            from lagrangebench_pkl_to_npz import (
+                RolloutMetadata,
+                convert_rollout_dir,
+            )
+
+            converted = convert_rollout_dir(
+                rollout_dir=rollout_subdir,
+                dataset_metadata_path=os.path.join(dataset_dir, "metadata.json"),
+                ckpt_dir=ckpt_dir,
+                metadata=RolloutMetadata(
+                    git_sha=full_git_sha,
+                    lagrangebench_sha=manifest["lagrangebench_sha"],
+                    dataset="dam2d",
+                    model="segnn",
+                    seed=manifest["inference_seed"],
+                    framework="jax+haiku",
+                    framework_version=_package_version("jax"),
+                ),
+            )
+            manifest["conversion_returncode"] = 0
+            manifest["converted_npz_paths"] = [str(p) for p in converted]
+        except Exception as e:
+            manifest["conversion_returncode"] = 1
+            manifest["conversion_error"] = f"{type(e).__name__}: {e}"
+            manifest["aborted_at_step"] = "conversion"
+
+    # Step 6: walk for files written
+    candidate_roots = [
+        "/opt/lagrangebench/outputs",
+        "/opt/lagrangebench/rollouts",
+        "/opt/lagrangebench/wandb",
+        rollout_subdir,
+    ]
+    for root in candidate_roots:
+        if not os.path.isdir(root):
+            continue
+        for dirpath, _, filenames in os.walk(root):
+            for fn in filenames:
+                fp = os.path.join(dirpath, fn)
+                try:
+                    size = os.path.getsize(fp)
+                    if size > 50 * 1024 * 1024:
+                        manifest["files_written"].append(
+                            {"path": fp, "size": size, "sha256": "<skipped_large>"}
+                        )
+                        continue
+                    h = hashlib.sha256()
+                    with open(fp, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            h.update(chunk)
+                    manifest["files_written"].append(
+                        {"path": fp, "size": size, "sha256": h.hexdigest()}
+                    )
+                except OSError as e:
+                    manifest["files_written"].append(
+                        {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
+                    )
+
+    rollout_volume.commit()
+    return manifest
+
+
+# Rung 4c P1 GNS-DAM2D: structurally identical to rung-4a P1 GNS-TGV2D
+# (line 1021), with dataset replaced. Differences:
+#
+#   - ckpt_root         gns_tgv2d -> gns_dam2d
+#   - zip_path basename gns_tgv2d.zip -> gns_dam2d.zip
+#   - LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["gns_tgv2d"] -> [...]["gns_dam2d"]
+#   - rollout_subdir    gns_tgv2d_<git_sha> -> gns_dam2d_<git_sha>
+#   - LAGRANGEBENCH_DATASET_DIRS["tgv_2d"] -> [...]["dam_2d"]
+#   - download_data.sh tgv_2d -> dam_2d
+#   - dataset.name CLI tgv2d -> dam2d
+#   - RolloutMetadata.dataset "tgv2d" -> "dam2d"
+@app.function(
+    image=rollout_image,
+    gpu=ROLLOUT_GENERATION_GPU_CLASS,
+    volumes={"/vol": rollout_volume},
+    timeout=3600,
+)
+def lagrangebench_rollout_p1_gns_dam2d(git_sha: str, full_git_sha: str) -> dict:
+    """Rung 4c P1: GNS-DAM2D inference + SCHEMA.md npz materialization (D0-22).
+
+    Mirrors lagrangebench_rollout_p1_gns_tgv2d with checkpoint /
+    dataset substitutions per the comment block above. Same image,
+    same conversion pipeline, same patch ledger.
+    """
+    import hashlib
+    import os
+    import subprocess
+    import time
+
+    manifest: dict = {
+        "git_sha": git_sha,
+        "full_git_sha": full_git_sha,
+        "lagrangebench_sha": None,
+        "inference_seed": 0,
+        "aborted_at_step": None,
+        "checkpoint_download_skipped": False,
+        "checkpoint_gdown_returncode": None,
+        "checkpoint_gdown_stderr_tail": "",
+        "checkpoint_unzip_returncode": None,
+        "checkpoint_unzip_stderr_tail": "",
+        "dataset_download_skipped": False,
+        "dataset_download_returncode": None,
+        "dataset_download_stderr_tail": "",
+        "inference_returncode": None,
+        "inference_wall_seconds": None,
+        "inference_stdout_tail": "",
+        "inference_stderr_tail": "",
+        "rollout_subdir": None,
+        "conversion_attempted": False,
+        "conversion_returncode": None,
+        "conversion_error": None,
+        "converted_npz_paths": [],
+        "files_written": [],
+    }
+
+    # Step 1: checkpoint download (gdown) + unzip
+    ckpt_root = "/vol/checkpoints/lagrangebench/gns_dam2d"
+    ckpt_dir = f"{ckpt_root}/best"
+    if os.path.isdir(ckpt_dir):
+        manifest["checkpoint_download_skipped"] = True
+    else:
+        os.makedirs(ckpt_root, exist_ok=True)
+        zip_path = f"{ckpt_root}/gns_dam2d.zip"
+        gdown_id = LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS["gns_dam2d"]
+
+        gdown_proc = subprocess.run(
+            ["gdown", gdown_id, "-O", zip_path],
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        manifest["checkpoint_gdown_returncode"] = gdown_proc.returncode
+        manifest["checkpoint_gdown_stderr_tail"] = gdown_proc.stderr[-2000:]
+        if gdown_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_gdown"
+            return manifest
+
+        unzip_proc = subprocess.run(
+            ["unzip", "-o", zip_path, "-d", ckpt_root],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        manifest["checkpoint_unzip_returncode"] = unzip_proc.returncode
+        manifest["checkpoint_unzip_stderr_tail"] = unzip_proc.stderr[-2000:]
+        if unzip_proc.returncode != 0:
+            manifest["aborted_at_step"] = "checkpoint_unzip"
+            return manifest
+
+        if not os.path.isdir(ckpt_dir):
+            for entry in os.listdir(ckpt_root):
+                candidate = os.path.join(ckpt_root, entry, "best")
+                if os.path.isdir(candidate):
+                    os.rename(candidate, ckpt_dir)
+                    break
+        rollout_volume.commit()
+
+    # Step 2: dataset download (cached from SEGNN-DAM2D run if it ran first)
+    dataset_root = "/vol/datasets/lagrangebench"
+    dataset_dir = f"{dataset_root}/{LAGRANGEBENCH_DATASET_DIRS['dam_2d']}"
+    if os.path.isdir(dataset_dir):
+        manifest["dataset_download_skipped"] = True
+    else:
+        os.makedirs(dataset_root, exist_ok=True)
+        os.chdir("/opt/lagrangebench")
+        ds_proc = subprocess.run(
+            ["bash", "download_data.sh", "dam_2d", dataset_root + "/"],
+            capture_output=True,
+            text=True,
+            timeout=1800,
+        )
+        manifest["dataset_download_returncode"] = ds_proc.returncode
+        manifest["dataset_download_stderr_tail"] = (
+            (ds_proc.stdout[-1000:] + "\n--- stderr ---\n" + ds_proc.stderr[-1500:])
+            if ds_proc.stderr
+            else ds_proc.stdout[-2000:]
+        )
+        if ds_proc.returncode != 0:
+            manifest["aborted_at_step"] = "dataset_download"
+            return manifest
+        rollout_volume.commit()
+
+    # Step 3: inference
+    rollout_dir_root = "/vol/rollouts/lagrangebench"
+    rollout_subdir = f"{rollout_dir_root}/gns_dam2d_{git_sha}"
+    os.makedirs(rollout_subdir, exist_ok=True)
+    manifest["rollout_subdir"] = rollout_subdir
+
+    os.chdir("/opt/lagrangebench")
+    inf_args = [
+        "python",
+        "main.py",
+        "mode=infer",
+        "eval.test=True",
+        f"load_ckp={ckpt_dir}",
+        "eval.n_rollout_steps=100",
+        "eval.infer.n_trajs=20",
+        f"dataset.src={dataset_dir}",
+        "dataset.name=dam2d",
+        "eval.infer.metrics=[mse,e_kin]",
+        f"eval.rollout_dir={rollout_subdir}",
+        "eval.infer.out_type=pkl",
+        "seed=0",
+    ]
+    inf_start = time.monotonic()
+    try:
+        inf_proc = subprocess.run(
+            inf_args,
+            capture_output=True,
+            text=True,
+            timeout=2400,
+        )
+        manifest["inference_returncode"] = inf_proc.returncode
+        manifest["inference_stdout_tail"] = inf_proc.stdout[-3000:]
+        manifest["inference_stderr_tail"] = inf_proc.stderr[-3000:]
+    except subprocess.TimeoutExpired as e:
+        manifest["inference_returncode"] = -1
+        manifest["inference_stdout_tail"] = (
+            e.stdout.decode() if isinstance(e.stdout, bytes) else (e.stdout or "")
+        )[-3000:]
+        manifest["inference_stderr_tail"] = (
+            f"TimeoutExpired after {e.timeout}s. Stderr tail: "
+            + ((e.stderr.decode() if isinstance(e.stderr, bytes) else (e.stderr or ""))[-2500:])
+        )
+    except Exception as e:
+        manifest["inference_returncode"] = -2
+        manifest["inference_stderr_tail"] = f"Uncaught {type(e).__name__}: {e}"
+    manifest["inference_wall_seconds"] = round(time.monotonic() - inf_start, 1)
+    if manifest["inference_returncode"] != 0:
+        manifest["aborted_at_step"] = "inference"
+
+    # Step 4: capture lagrangebench_sha
+    lb_sha_proc = subprocess.run(
+        ["git", "-C", "/opt/lagrangebench", "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    if lb_sha_proc.returncode == 0:
+        manifest["lagrangebench_sha"] = lb_sha_proc.stdout.strip()
+    else:
+        manifest["lagrangebench_sha"] = f"<git_rev_parse_failed_rc={lb_sha_proc.returncode}>"
+
+    # Step 5: rung-3.5 conversion (model="gns", dataset="dam2d")
+    if manifest["inference_returncode"] == 0:
+        manifest["conversion_attempted"] = True
+        try:
+            import sys as _sys
+
+            if _REMOTE_HARNESS_DIR not in _sys.path:
+                _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+            from lagrangebench_pkl_to_npz import (
+                RolloutMetadata,
+                convert_rollout_dir,
+            )
+
+            converted = convert_rollout_dir(
+                rollout_dir=rollout_subdir,
+                dataset_metadata_path=os.path.join(dataset_dir, "metadata.json"),
+                ckpt_dir=ckpt_dir,
+                metadata=RolloutMetadata(
+                    git_sha=full_git_sha,
+                    lagrangebench_sha=manifest["lagrangebench_sha"],
+                    dataset="dam2d",
                     model="gns",
                     seed=manifest["inference_seed"],
                     framework="jax+haiku",
@@ -2119,6 +2643,201 @@ def rollout_p1_gns_tgv2d() -> None:
     else:
         print(
             f"  -> rung 3 P1 verdict: FAIL — inference returncode "
+            f"{result['inference_returncode']}. Inspect stderr above; "
+            f"conversion not attempted (skipped on inference failure)."
+        )
+
+
+@app.local_entrypoint()
+def rollout_p1_segnn_dam2d() -> None:
+    """Fire the rung-4c P1 SEGNN-DAM2D rollout (D0-22).
+
+    Mirrors rollout_p0_segnn_tgv2d in printer shape. The rung-4c
+    plan §3.1 dual-stack scope (SEGNN + GNS on dam-break-2D) is the
+    cross-validation in the substrate-class-extension framing.
+    """
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_short = subprocess.check_output(
+        ["git", "rev-parse", "--short=10", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Rung 4c P1 SEGNN-DAM2D rollout (D0-22) ===")
+    print(f"  gpu_class:           {ROLLOUT_GENERATION_GPU_CLASS}")
+    print(f"  git_sha (short):     {git_sha_short}")
+    print(f"  git_sha (full):      {git_sha_full}")
+    print(f"  checkpoint gdown id: {LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS['segnn_dam2d']}")
+    print()
+    result = lagrangebench_rollout_p1_segnn_dam2d.remote(
+        git_sha=git_sha_short, full_git_sha=git_sha_full
+    )
+    print("--- manifest ---")
+    print(f"  aborted_at_step:                {result['aborted_at_step'] or '<none>'}")
+    print(f"  lagrangebench_sha:              {result['lagrangebench_sha']}")
+    print(f"  inference_seed:                 {result['inference_seed']}")
+    print(f"  rollout_subdir:                 {result['rollout_subdir']}")
+    print(f"  checkpoint_download_skipped:    {result['checkpoint_download_skipped']}")
+    print(f"  checkpoint_gdown_returncode:    {result['checkpoint_gdown_returncode']}")
+    print(f"  checkpoint_unzip_returncode:    {result['checkpoint_unzip_returncode']}")
+    print(f"  dataset_download_skipped:       {result['dataset_download_skipped']}")
+    print(f"  dataset_download_returncode:    {result['dataset_download_returncode']}")
+    print(f"  inference_returncode:           {result['inference_returncode']}")
+    print(f"  inference_wall_seconds:         {result['inference_wall_seconds']}")
+    print(f"  conversion_attempted:           {result['conversion_attempted']}")
+    print(f"  conversion_returncode:          {result['conversion_returncode']}")
+    if result["conversion_error"]:
+        print(f"  conversion_error:               {result['conversion_error']}")
+    print(f"  converted_npz_count:            {len(result['converted_npz_paths'])}")
+    print()
+    if result["converted_npz_paths"]:
+        print("--- converted npz paths ---")
+        for p in result["converted_npz_paths"][:25]:
+            print(f"  {p}")
+        if len(result["converted_npz_paths"]) > 25:
+            print(f"  ... ({len(result['converted_npz_paths']) - 25} more)")
+        print()
+    if result["checkpoint_gdown_stderr_tail"]:
+        print("--- checkpoint gdown stderr (last 2 KB) ---")
+        print(result["checkpoint_gdown_stderr_tail"])
+        print()
+    if result["checkpoint_unzip_stderr_tail"]:
+        print("--- checkpoint unzip stderr (last 2 KB) ---")
+        print(result["checkpoint_unzip_stderr_tail"])
+        print()
+    if result["dataset_download_stderr_tail"]:
+        print("--- dataset download stdout/stderr (last 2 KB) ---")
+        print(result["dataset_download_stderr_tail"])
+        print()
+    print("--- inference stdout (last 3 KB) ---")
+    print(result["inference_stdout_tail"] or "(empty)")
+    print()
+    print("--- inference stderr (last 3 KB) ---")
+    print(result["inference_stderr_tail"] or "(empty)")
+    print()
+    print(f"--- files written ({len(result['files_written'])} entries) ---")
+    for f in result["files_written"][:80]:
+        print(f"  {f['size']:>12}  {f['sha256'][:16]}...  {f['path']}")
+    if len(result["files_written"]) > 80:
+        print(f"  ... ({len(result['files_written']) - 80} more)")
+    print()
+    print("--- verdict ---")
+    inf_ok = result["inference_returncode"] == 0
+    conv_ok = result["conversion_returncode"] == 0
+    if inf_ok and conv_ok:
+        n = len(result["converted_npz_paths"])
+        print(
+            f"  -> rung 4c P1 SEGNN-DAM2D verdict: PASS — inference returncode 0; "
+            f"conversion produced {n} schema-conformant npz file(s)."
+        )
+        print("     Next: rung 4c emit_sarif (D0-22 SKIP rows on dissipation_sign_violation).")
+    elif inf_ok and not conv_ok:
+        print(
+            f"  -> SEGNN-DAM2D inference PASS / conversion FAIL: "
+            f"{result['conversion_error']}. Native pkls persisted at "
+            f"{result['rollout_subdir']}; reproduce conversion locally."
+        )
+    else:
+        print(
+            f"  -> rung 4c P1 SEGNN-DAM2D verdict: FAIL — inference returncode "
+            f"{result['inference_returncode']}. Inspect stderr above; "
+            f"conversion not attempted (skipped on inference failure)."
+        )
+
+
+@app.local_entrypoint()
+def rollout_p1_gns_dam2d() -> None:
+    """Fire the rung-4c P1 GNS-DAM2D rollout (D0-22).
+
+    Mirrors rollout_p1_gns_tgv2d in printer shape; second leg of
+    the dual-stack dam-break scope per rung-4c plan §3.1.
+    """
+    import subprocess
+
+    repo_root = "/Users/zenith/Desktop/physics-lint"
+    git_sha_short = subprocess.check_output(
+        ["git", "rev-parse", "--short=10", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+    git_sha_full = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=repo_root, text=True
+    ).strip()
+
+    print("=== Rung 4c P1 GNS-DAM2D rollout (D0-22) ===")
+    print(f"  gpu_class:           {ROLLOUT_GENERATION_GPU_CLASS}")
+    print(f"  git_sha (short):     {git_sha_short}")
+    print(f"  git_sha (full):      {git_sha_full}")
+    print(f"  checkpoint gdown id: {LAGRANGEBENCH_CHECKPOINT_GDOWN_IDS['gns_dam2d']}")
+    print()
+    result = lagrangebench_rollout_p1_gns_dam2d.remote(
+        git_sha=git_sha_short, full_git_sha=git_sha_full
+    )
+    print("--- manifest ---")
+    print(f"  aborted_at_step:                {result['aborted_at_step'] or '<none>'}")
+    print(f"  lagrangebench_sha:              {result['lagrangebench_sha']}")
+    print(f"  inference_seed:                 {result['inference_seed']}")
+    print(f"  rollout_subdir:                 {result['rollout_subdir']}")
+    print(f"  checkpoint_download_skipped:    {result['checkpoint_download_skipped']}")
+    print(f"  checkpoint_gdown_returncode:    {result['checkpoint_gdown_returncode']}")
+    print(f"  checkpoint_unzip_returncode:    {result['checkpoint_unzip_returncode']}")
+    print(f"  dataset_download_skipped:       {result['dataset_download_skipped']}")
+    print(f"  dataset_download_returncode:    {result['dataset_download_returncode']}")
+    print(f"  inference_returncode:           {result['inference_returncode']}")
+    print(f"  inference_wall_seconds:         {result['inference_wall_seconds']}")
+    print(f"  conversion_attempted:           {result['conversion_attempted']}")
+    print(f"  conversion_returncode:          {result['conversion_returncode']}")
+    if result["conversion_error"]:
+        print(f"  conversion_error:               {result['conversion_error']}")
+    print(f"  converted_npz_count:            {len(result['converted_npz_paths'])}")
+    print()
+    if result["converted_npz_paths"]:
+        print("--- converted npz paths ---")
+        for p in result["converted_npz_paths"][:25]:
+            print(f"  {p}")
+        if len(result["converted_npz_paths"]) > 25:
+            print(f"  ... ({len(result['converted_npz_paths']) - 25} more)")
+        print()
+    if result["checkpoint_gdown_stderr_tail"]:
+        print("--- checkpoint gdown stderr (last 2 KB) ---")
+        print(result["checkpoint_gdown_stderr_tail"])
+        print()
+    if result["checkpoint_unzip_stderr_tail"]:
+        print("--- checkpoint unzip stderr (last 2 KB) ---")
+        print(result["checkpoint_unzip_stderr_tail"])
+        print()
+    print("--- inference stdout (last 3 KB) ---")
+    print(result["inference_stdout_tail"] or "(empty)")
+    print()
+    print("--- inference stderr (last 3 KB) ---")
+    print(result["inference_stderr_tail"] or "(empty)")
+    print()
+    print(f"--- files written ({len(result['files_written'])} entries) ---")
+    for f in result["files_written"][:80]:
+        print(f"  {f['size']:>12}  {f['sha256'][:16]}...  {f['path']}")
+    if len(result["files_written"]) > 80:
+        print(f"  ... ({len(result['files_written']) - 80} more)")
+    print()
+    print("--- verdict ---")
+    inf_ok = result["inference_returncode"] == 0
+    conv_ok = result["conversion_returncode"] == 0
+    if inf_ok and conv_ok:
+        n = len(result["converted_npz_paths"])
+        print(
+            f"  -> rung 4c P1 GNS-DAM2D verdict: PASS — inference returncode 0; "
+            f"conversion produced {n} schema-conformant npz file(s)."
+        )
+        print("     Next: rung 4c emit_sarif (cross-stack dam-break SARIFs).")
+    elif inf_ok and not conv_ok:
+        print(
+            f"  -> GNS-DAM2D inference PASS / conversion FAIL: "
+            f"{result['conversion_error']}. Native pkls persisted at "
+            f"{result['rollout_subdir']}; reproduce conversion locally."
+        )
+    else:
+        print(
+            f"  -> rung 4c P1 GNS-DAM2D verdict: FAIL — inference returncode "
             f"{result['inference_returncode']}. Inspect stderr above; "
             f"conversion not attempted (skipped on inference failure)."
         )

@@ -122,3 +122,30 @@ def test_lagrangebench_eps_entrypoints_use_a10g() -> None:
         assert match is not None, (
             f"{fn_name}: expected @app.function decorator with gpu=ROLLOUT_GENERATION_GPU_CLASS"
         )
+
+
+def test_lagrangebench_dam2d_rollout_entrypoints_use_a10g() -> None:
+    """Rung-4c P1 dam2d rollout entrypoints must use ROLLOUT_GENERATION_GPU_CLASS (A10G).
+
+    Drift-guard for the rung-4c ``lagrangebench_rollout_p1_{segnn,gns}_dam2d``
+    Modal functions. Same A10G discipline as rung-4a P0/P1 TGV2D rollouts
+    (D0-13 stage-2). If a future change wants to graduate the dam2d
+    rollout to a different GPU class, the change must land alongside a
+    DECISIONS sub-entry under D0-13 or D0-22.
+    """
+    import re
+
+    assert MODAL_APP_PATH.is_file(), f"modal_app.py not found at {MODAL_APP_PATH}"
+    text = MODAL_APP_PATH.read_text(encoding="utf-8")
+    for fn_name in (
+        "lagrangebench_rollout_p1_segnn_dam2d",
+        "lagrangebench_rollout_p1_gns_dam2d",
+    ):
+        pattern = (
+            r"@app\.function\([^)]*?gpu=ROLLOUT_GENERATION_GPU_CLASS[^)]*?\)\s*\ndef "
+            + re.escape(fn_name)
+        )
+        match = re.search(pattern, text, flags=re.DOTALL)
+        assert match is not None, (
+            f"{fn_name}: expected @app.function decorator with gpu=ROLLOUT_GENERATION_GPU_CLASS"
+        )
