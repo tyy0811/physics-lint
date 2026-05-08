@@ -6,11 +6,12 @@
         "checkpoint_id": "segnn_dam2d",
         "dataset_name": "dam2d",
         "harness_sarif_schema_version": "1.0",
+        "inference_run_status": "from_aborted_inference",
         "lagrangebench_sha": "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2",
         "model_name": "segnn",
         "physics_lint_sha_npz_conversion": "e754a4bc2e",
         "physics_lint_sha_pkl_inference": "e754a4bc2e",
-        "physics_lint_sha_sarif_emission": "69267191a9",
+        "physics_lint_sha_sarif_emission": "bc3bae929d",
         "rollout_subdir": "/vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e/",
         "source": "rollout-anchor-harness"
       },

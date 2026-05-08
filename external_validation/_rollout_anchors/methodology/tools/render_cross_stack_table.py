@@ -238,6 +238,28 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
     md_lines.append("")
     md_lines.extend(sha_lines)
 
+    # Optional inference-run-status section (rung-4c §9 review-gate fold-in).
+    # Each stack's SARIF may carry an optional `inference_run_status`
+    # property in run-level properties (one of `from_completed_inference`,
+    # `from_aborted_inference`, `from_unknown_inference`); when at least
+    # one stack carries it, render the section with explicit values.
+    # Stacks without the field (rung-4a/4b legacy SARIFs, pre-fold-in)
+    # render as `n/a (pre-salvage-tag-schema)` — honest absence rather
+    # than assumed-clean default, parallel to the gate's refuse-by-default
+    # posture. If ALL stacks lack the field, the section is omitted
+    # entirely so legacy outputs render byte-identically to pre-fold-in.
+    status_entries: list[tuple[str, str | None]] = []
+    for _path, run_props, _results in stacks:
+        stack_label = f"{run_props['model_name']}-{run_props['dataset_name']}"
+        status_entries.append((stack_label, run_props.get("inference_run_status")))
+    if any(status is not None for _label, status in status_entries):
+        md_lines.append("")
+        md_lines.append("**Inference run status (rung-4c §9 review-gate fold-in):**")
+        md_lines.append("")
+        for stack_label, status in status_entries:
+            display = status if status is not None else "n/a (pre-salvage-tag-schema)"
+            md_lines.append(f"- **{stack_label}**: {display}")
+
     return "\n".join(md_lines) + "\n"
 
 

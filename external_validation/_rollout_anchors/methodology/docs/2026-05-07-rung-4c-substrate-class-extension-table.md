@@ -6,8 +6,8 @@
 
 **Design doc:** [`./2026-05-07-rung-4c-substrate-class-extension-design.md`](./2026-05-07-rung-4c-substrate-class-extension-design.md)
 **Plan doc:** [`./2026-05-07-rung-4c-substrate-class-extension-plan.md`](./2026-05-07-rung-4c-substrate-class-extension-plan.md)
-**SARIF artifacts:** [`../../01-lagrangebench/outputs/sarif/segnn_dam2d_69267191a9.sarif`](../../01-lagrangebench/outputs/sarif/segnn_dam2d_69267191a9.sarif), [`../../01-lagrangebench/outputs/sarif/gns_dam2d_69267191a9.sarif`](../../01-lagrangebench/outputs/sarif/gns_dam2d_69267191a9.sarif).
-**Rendered table:** [`../../01-lagrangebench/outputs/sarif/dam2d_table_69267191a9.md`](../../01-lagrangebench/outputs/sarif/dam2d_table_69267191a9.md).
+**SARIF artifacts:** [`../../01-lagrangebench/outputs/sarif/segnn_dam2d_bc3bae929d.sarif`](../../01-lagrangebench/outputs/sarif/segnn_dam2d_bc3bae929d.sarif), [`../../01-lagrangebench/outputs/sarif/gns_dam2d_bc3bae929d.sarif`](../../01-lagrangebench/outputs/sarif/gns_dam2d_bc3bae929d.sarif). *Re-emitted at sha `bc3bae929d` (post-§9-review-gate-fold-in) to surface the optional `inference_run_status` run-level property; pre-fold-in artifacts at sha `69267191a9` superseded.*
+**Rendered table:** [`../../01-lagrangebench/outputs/sarif/dam2d_table_bc3bae929d.md`](../../01-lagrangebench/outputs/sarif/dam2d_table_bc3bae929d.md).
 **Pre-flight log:** [`../../../../preflight/2026-05-07-rung-4c.txt`](../../../../preflight/2026-05-07-rung-4c.txt).
 **Methodology pre-registrations:** [D0-22 + amendments 1, 2](../DECISIONS.md#d0-22--2026-05-07--rung-4c-substrate-class-extension-to-dam-break-2d-pre-registration), [D0-19](../DECISIONS.md#d0-19--2026-05-04--harness-sarif-result-schema-rung-4a-pre-registration), [D0-21](../DECISIONS.md#d0-21--2026-05-05--rung-4b-cross-stack-equivariance-pre-registration), [D0-08](../DECISIONS.md#d0-08).
 
@@ -35,8 +35,15 @@ The "12 trajectories per (rule, stack)" claim binds at the same two enforcement 
 
 **Provenance (D0-19 three-sha):**
 
-- **gns-dam2d**: pkl_inference=`e754a4bc2e`, npz_conversion=`e754a4bc2e`, sarif_emission=`69267191a9`
-- **segnn-dam2d**: pkl_inference=`e754a4bc2e`, npz_conversion=`e754a4bc2e`, sarif_emission=`69267191a9`
+- **gns-dam2d**: pkl_inference=`e754a4bc2e`, npz_conversion=`e754a4bc2e`, sarif_emission=`bc3bae929d`
+- **segnn-dam2d**: pkl_inference=`e754a4bc2e`, npz_conversion=`e754a4bc2e`, sarif_emission=`bc3bae929d`
+
+**Inference run status (rung-4c §9 review-gate fold-in):**
+
+- **gns-dam2d**: `from_completed_inference` (clean N=12 fire; `inference_returncode=0`)
+- **segnn-dam2d**: `from_aborted_inference` (timeout-salvage; `inference_returncode=-1`, `aborted_at_step="inference"`; D0-22 amendment 2)
+
+The `inference_run_status` field is the artifact-level provenance complement to the writeup-level §6 item 8 transparency on the SEGNN-dam2d salvage path. A reader of just the SARIFs (or the rendered table) sees the per-stack salvage classification without needing the writeup in hand. The field is optional in the harness SARIF schema (still v1.0; additive); legacy rung-4a/4b SARIFs without it render with an explicit `n/a (pre-salvage-tag-schema)` marker rather than a defaulted clean classification, parallel to the gate's refuse-by-default posture.
 
 **Empirical justification for `dam2d → "open-driven-dissipative"`** (pre-flight smoke at sha `a2119906bb`):
 
@@ -181,7 +188,7 @@ Re-run at the same sha with the committed SARIFs at that sha → identical outpu
 |---|---|---|
 | pkl_inference | `e754a4bc2e` | `e754a4bc2e` |
 | npz_conversion | `e754a4bc2e` | `e754a4bc2e` |
-| sarif_emission | `69267191a9` | `69267191a9` |
+| sarif_emission | `bc3bae929d` | `bc3bae929d` |
 
 Both stacks share the inference + conversion sha because both were fired at the same physics-lint sha (`e754a4bc2e` — the post-D0-22-amendment-1 commit). SEGNN's npz_conversion came via the standalone `convert_pkls_p1_segnn_dam2d` entrypoint after the production inference timed out at 12/20 trajs (D0-22 amendment 2 §rationale); GNS's came via the in-fire conversion at n_trajs=12. Both produce N=12 schema-conformant npzs at the rung-4c canonical N.
 

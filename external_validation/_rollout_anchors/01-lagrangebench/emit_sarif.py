@@ -31,6 +31,8 @@ matches the run-level physics_lint_sha_sarif_emission field.
 
 from __future__ import annotations
 
+import argparse
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -115,6 +117,44 @@ def _git_short_sha() -> str:
     return result.stdout.strip()
 
 
+def _read_inference_manifest_status(mirror_subdir: Path) -> str | None:
+    """Read ``<mirror_subdir>/_inference_manifest.json`` and classify the run.
+
+    Returns one of:
+
+    - ``"from_completed_inference"`` — manifest present, returncode 0,
+      no aborted_at_step (clean run).
+    - ``"from_aborted_inference"`` — manifest present but the upstream
+      inference did not complete cleanly (returncode != 0 or
+      aborted_at_step set; rung-4c SEGNN-DAM2D timeout-salvage is the
+      canonical instance).
+    - ``None`` — manifest absent on disk (e.g., pre-rung-4c artifacts
+      that predate the manifest convention; or local mirror not yet
+      refreshed post-backfill). Caller treats as legacy and omits the
+      optional SARIF property; the renderer surfaces the absence as
+      "n/a (pre-salvage-tag-schema)" rather than assuming clean.
+
+    Mirror of ``modal_app.py::_classify_inference_run_status`` for the
+    local-side path. Logic is intentionally duplicated rather than
+    imported because modal_app runs inside Modal containers and is not
+    importable locally without modal-CLI auth context. Promotion to a
+    shared `_harness/inference_manifest.py` helper is a v2.1 absorption
+    candidate per writeup §5.2.
+    """
+    target = mirror_subdir / "_inference_manifest.json"
+    if not target.is_file():
+        return None
+    try:
+        persisted = json.loads(target.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    returncode = persisted.get("inference_returncode")
+    aborted_at = persisted.get("aborted_at_step")
+    if returncode == 0 and aborted_at is None:
+        return "from_completed_inference"
+    return "from_aborted_inference"
+
+
 def _build_run_properties(
     *,
     model_name: str,
@@ -124,9 +164,17 @@ def _build_run_properties(
     npz_conversion_sha: str,
     sarif_emission_sha: str,
     rollout_subdir_volume_path: str,
+    inference_run_status: str | None = None,
 ) -> dict[str, str]:
-    """Assemble the 10 D0-19 run-level fields for one stack."""
-    return {
+    """Assemble the 10 D0-19 run-level fields for one stack.
+
+    The optional 11th field ``inference_run_status`` is populated when
+    the local mirror carries a `_inference_manifest.json` (rung-4c §9
+    review-gate fold-in). Schema version stays at 1.0 — this is an
+    optional additive field, not a required-field bump; renderer's
+    fail-loud schema check still passes for legacy SARIFs without it.
+    """
+    properties: dict[str, str] = {
         "source": "rollout-anchor-harness",
         "harness_sarif_schema_version": HARNESS_SARIF_SCHEMA_VERSION,
         "physics_lint_sha_pkl_inference": pkl_inference_sha,
@@ -138,6 +186,9 @@ def _build_run_properties(
         "dataset_name": dataset_name,
         "rollout_subdir": rollout_subdir_volume_path,
     }
+    if inference_run_status is not None:
+        properties["inference_run_status"] = inference_run_status
+    return properties
 
 
 def _emit_for_stack(
@@ -151,7 +202,16 @@ def _emit_for_stack(
     checkpoint_id: str,
     expected_traj_count: int,
 ) -> Path:
-    """Run lint_npz_dir + emit_sarif for one stack."""
+    """Run lint_npz_dir + emit_sarif for one stack.
+
+    Reads ``<mirror_subdir>/_inference_manifest.json`` if present and
+    merges the classification into ``run_properties`` as the optional
+    ``inference_run_status`` field (rung-4c §9 review-gate fold-in).
+    Pre-rung-4c local mirrors lack the manifest; the field is omitted
+    and the renderer surfaces the absence explicitly as
+    "n/a (pre-salvage-tag-schema)" rather than defaulting to a clean
+    classification (parallel to the gate's refuse-by-default posture).
+    """
     if not mirror_subdir.exists() or not any(mirror_subdir.glob("particle_rollout_traj*.npz")):
         raise MissingLocalMirrorError(
             f"Local mirror missing or empty at {mirror_subdir}. "
@@ -164,6 +224,9 @@ def _emit_for_stack(
             f"{expected_traj_count}. The writeup's "
             f'"{expected_traj_count} identical fires" claim binds on this count.'
         )
+    inference_run_status = _read_inference_manifest_status(mirror_subdir)
+    if inference_run_status is not None:
+        run_properties = {**run_properties, "inference_run_status": inference_run_status}
     results = lint_npz_dir(
         mirror_subdir,
         case_study=case_study_name,
@@ -178,10 +241,37 @@ def _emit_for_stack(
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--stacks",
+        choices=["all", "tgv2d", "dam2d"],
+        default="all",
+        help=(
+            "Which rung's stacks to emit. 'tgv2d' = rung-4a (SEGNN-TGV2D + GNS-TGV2D); "
+            "'dam2d' = rung-4c (SEGNN-DAM2D + GNS-DAM2D); 'all' = both. Default: all. "
+            "Use 'dam2d' when re-emitting only rung-4c (e.g. after a rung-4c-scoped "
+            "local-mirror refresh) so rung-4a SARIFs stay at their existing "
+            "sarif_emission_sha and the rung-4a writeup's provenance line stays valid."
+        ),
+    )
+    args = parser.parse_args(argv)
+
     sarif_emission_sha = _git_short_sha()
     SARIF_OUTPUT_ROOT.mkdir(parents=True, exist_ok=True)
 
+    if args.stacks not in ("all", "tgv2d"):
+        # Skip rung-4a TGV2D stacks.
+        pass
+    if args.stacks in ("all", "tgv2d"):
+        _emit_rung_4a_tgv2d_stacks(sarif_emission_sha)
+    if args.stacks in ("all", "dam2d"):
+        _emit_rung_4c_dam2d_stacks(sarif_emission_sha)
+    return 0
+
+
+def _emit_rung_4a_tgv2d_stacks(sarif_emission_sha: str) -> None:
+    """Emit rung-4a SEGNN-TGV2D + GNS-TGV2D SARIFs at the given emission sha."""
     # SEGNN-TGV2D
     segnn_mirror = LOCAL_MIRROR_ROOT / f"segnn_tgv2d_{SEGNN_PKL_INFERENCE_SHA}"
     segnn_props = _build_run_properties(
@@ -230,6 +320,16 @@ def main() -> int:
     )
     print(f"GNS SARIF: {out_gns}")
 
+
+def _emit_rung_4c_dam2d_stacks(sarif_emission_sha: str) -> None:
+    """Emit rung-4c SEGNN-DAM2D + GNS-DAM2D SARIFs at the given emission sha.
+
+    Picks up ``inference_run_status`` from each stack's local-mirror
+    ``_inference_manifest.json`` (backfilled at the rung-4c §9
+    review-gate fold-in). SEGNN-DAM2D's manifest classifies the run as
+    ``from_aborted_inference`` (timeout-salvage; D0-22 amendment 2);
+    GNS-DAM2D's classifies as ``from_completed_inference`` (clean N=12).
+    """
     # SEGNN-DAM2D (rung 4c, D0-22 + amendment 1 + amendment 2)
     segnn_dam2d_mirror = LOCAL_MIRROR_ROOT / f"segnn_dam2d_{SEGNN_DAM2D_PKL_INFERENCE_SHA}"
     segnn_dam2d_props = _build_run_properties(
@@ -277,7 +377,6 @@ def main() -> int:
         expected_traj_count=EXPECTED_TRAJ_COUNT_DAM2D,
     )
     print(f"GNS-DAM2D SARIF: {out_gns_dam2d}")
-    return 0
 
 
 if __name__ == "__main__":

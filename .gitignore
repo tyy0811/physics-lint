@@ -60,3 +60,16 @@ dogfood/_predictions/
 
 # rollout-anchor harness local cache (populated by `modal volume get`)
 external_validation/_rollout_anchors/01-lagrangebench/outputs/_local_mirror/
+
+# Repo-root diagnostic-log directory. Per the rung-4c convention,
+# `/outputs/` at the repo root accumulates Modal-CLI run logs and
+# pre-flight smoke artifacts that document validation work but are NOT
+# part of the deliverable (deliverable = writeup + committed SARIFs +
+# DECISIONS + Modal volume artifacts with backfilled manifests).
+# Gitignored so a `git add -A` cannot accidentally promote a diagnostic
+# log to release evidence; this hardens the rung-4c §9 review-gate
+# fold-in's structural-not-hygiene posture (see Codex round-2 finding).
+# LEADING SLASH required: `outputs/` without anchor would match any
+# nested outputs/ dir, including the committed SARIF deliverable at
+# external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/.
+/outputs/

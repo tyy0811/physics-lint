@@ -181,3 +181,68 @@ def test_renderer_golden_output_matches_expected_table() -> None:
         f"  python external_validation/_rollout_anchors/methodology/tools/"
         f"regenerate_expected_table.py"
     )
+
+
+# ---------------------------------------------------------------------------
+# 7. Optional inference_run_status section (rung-4c §9 review-gate fold-in)
+# ---------------------------------------------------------------------------
+
+
+def test_renderer_renders_inference_run_status_when_all_present(tmp_path: Path) -> None:
+    """When both stacks carry the optional `inference_run_status` field,
+    the renderer adds a dedicated section after the three-sha provenance
+    listing each stack's status. Programmatically derived from the
+    canonical fixtures (per memory: don't commit a separate fixture).
+    """
+    segnn_with_status = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_with_status["runs"][0]["properties"]["inference_run_status"] = "from_aborted_inference"
+    gns_with_status = copy.deepcopy(_load(GNS_FIXTURE))
+    gns_with_status["runs"][0]["properties"]["inference_run_status"] = "from_completed_inference"
+    segnn_path = tmp_path / "segnn_with_status.sarif"
+    gns_path = tmp_path / "gns_with_status.sarif"
+    _write(segnn_with_status, segnn_path)
+    _write(gns_with_status, gns_path)
+
+    rendered = render_cross_stack_table([segnn_path, gns_path])
+
+    assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
+    # Each stack's per-stack line carries the explicit value, not a defaulted one.
+    assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
+    assert "synthetic_gns-synthetic_dissipative_d**: from_completed_inference" in rendered
+    # Honest-absence marker should NOT appear when both stacks are present.
+    assert "n/a (pre-salvage-tag-schema)" not in rendered
+
+
+def test_renderer_omits_inference_run_status_when_all_absent() -> None:
+    """When NO stack carries `inference_run_status`, the renderer omits
+    the optional section entirely so legacy SARIFs (rung-4a/4b
+    pre-fold-in) render byte-identically to before. Companion to the
+    golden-output test, with an explicit named pin on the absence
+    behavior.
+    """
+    rendered = render_cross_stack_table([SEGNN_FIXTURE, GNS_FIXTURE])
+    assert "Inference run status" not in rendered
+    assert "from_completed_inference" not in rendered
+    assert "from_aborted_inference" not in rendered
+    assert "n/a (pre-salvage-tag-schema)" not in rendered
+
+
+def test_renderer_marks_absent_status_as_n_a_in_mixed_set(tmp_path: Path) -> None:
+    """When ONE stack carries `inference_run_status` and the other does
+    not (mixed set), the renderer renders the section with the absent
+    stack explicitly marked `n/a (pre-salvage-tag-schema)` rather than
+    defaulting to a clean classification. Parallel to the gate's
+    refuse-by-default posture: the absence of evidence is not evidence
+    of absence-of-abort.
+    """
+    segnn_with_status = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_with_status["runs"][0]["properties"]["inference_run_status"] = "from_aborted_inference"
+    segnn_path = tmp_path / "segnn_with_status.sarif"
+    _write(segnn_with_status, segnn_path)
+    # GNS fixture as-is — no inference_run_status field.
+
+    rendered = render_cross_stack_table([segnn_path, GNS_FIXTURE])
+
+    assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
+    assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
+    assert "synthetic_gns-synthetic_dissipative_d**: n/a (pre-salvage-tag-schema)" in rendered
