@@ -140,6 +140,115 @@ def _capture_pjrt_api_version() -> str:
     return "<unknown>"
 
 
+# Inference-manifest persistence + standalone-conversion gate
+# (rung-4c §9 review-gate fold-in). Codex adversarial review of rung-4c
+# artifacts surfaced that the standalone-conversion entrypoint
+# `convert_pkls_p1_segnn_dam2d` (added at D0-22 amendment 2) could be
+# fired against a timed-out rollout subdir and emit a generic PASS
+# verdict with no signal that the upstream inference was aborted —
+# the orchestrator manifest was previously only printed to stdout, not
+# persisted to the rollout subdir. The two helpers below close that
+# gap: orchestrators atomic-write the gate-relevant manifest fields to
+# `<rollout_subdir>/_inference_manifest.json` at end-of-function;
+# `lagrangebench_convert_pkls_in_volume` reads that file to classify
+# the run status and refuses by default on aborted-inference subdirs.
+# Pre-rung-4c artifacts (rung-4a/4b) predate the manifest convention
+# and read as `from_unknown_inference` (warn-allow). See writeup
+# 2026-05-07-rung-4c-substrate-class-extension-table.md §5.2 for the
+# bilateral-exercise framing alongside the renderer fixes.
+_INFERENCE_MANIFEST_FILENAME = "_inference_manifest.json"
+_INFERENCE_MANIFEST_GATED_FIELDS = (
+    "git_sha",
+    "full_git_sha",
+    "lagrangebench_sha",
+    "inference_seed",
+    "inference_returncode",
+    "inference_wall_seconds",
+    "aborted_at_step",
+    "conversion_attempted",
+    "conversion_returncode",
+    "rollout_subdir",
+)
+
+
+def _persist_inference_manifest_to_rollout_subdir(manifest: dict, rollout_subdir: object) -> object:
+    """Atomic-write the gate-relevant manifest subset to the rollout subdir.
+
+    Skips silently when ``rollout_subdir`` is None or missing on disk
+    (covers the early-abort cases in the rollout functions where we
+    return before the subdir is created). The atomic write uses a
+    tempfile in the target directory plus ``os.replace`` so a
+    half-written manifest can never masquerade as complete if the
+    container is killed mid-write.
+
+    Returns the absolute path written, or None on skip.
+    """
+    import contextlib
+    import json
+    import os
+    import tempfile
+
+    if not rollout_subdir or not os.path.isdir(rollout_subdir):
+        return None
+
+    payload = {k: manifest.get(k) for k in _INFERENCE_MANIFEST_GATED_FIELDS}
+    payload["_schema_version"] = "1"
+
+    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix="._inference_manifest.",
+        suffix=".json.tmp",
+        dir=rollout_subdir,
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(payload, f, indent=2, sort_keys=True)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, target)
+    except Exception:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_path)
+        raise
+    return target
+
+
+def _classify_inference_run_status(rollout_subdir: str) -> tuple[str, object]:
+    """Read the persisted inference manifest and classify the run status.
+
+    Returns ``(status, manifest_or_None)`` where ``status`` is one of:
+
+    - ``"from_completed_inference"`` — manifest present, returncode 0,
+      no aborted_at_step. Standalone conversion safe by default.
+    - ``"from_aborted_inference"`` — manifest present but the upstream
+      inference did not complete cleanly (returncode != 0 or
+      aborted_at_step set). Standalone conversion default-refuses;
+      caller must opt in via ``allow_from_aborted_inference=True``.
+    - ``"from_unknown_inference"`` — no manifest at the expected path
+      (e.g., rung-4a/4b artifacts predate the convention). Standalone
+      conversion warns but does not refuse.
+
+    Pure read; no side effects.
+    """
+    import json
+    import os
+
+    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
+    if not os.path.isfile(target):
+        return "from_unknown_inference", None
+    try:
+        with open(target) as f:
+            persisted = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return "from_unknown_inference", None
+
+    returncode = persisted.get("inference_returncode")
+    aborted_at = persisted.get("aborted_at_step")
+    if returncode == 0 and aborted_at is None:
+        return "from_completed_inference", persisted
+    return "from_aborted_inference", persisted
+
+
 @app.function(image=jax_image, gpu=MICRO_GATE_GPU_CLASS, timeout=600)
 def jax_micro_gate() -> dict:
     """Hour-2 micro-gate per plan §7 / D0-10 (refined by D0-13).
@@ -989,6 +1098,12 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
                         {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
                     )
 
+    # §9 review-gate fold-in: persist gate-relevant manifest fields to
+    # the rollout subdir BEFORE the volume commit so the standalone-
+    # conversion path can read them later. Atomic write inside
+    # rollout_subdir; safe across success / inference-timeout / conversion
+    # failure paths (all of which reach this line).
+    _persist_inference_manifest_to_rollout_subdir(manifest, manifest.get("rollout_subdir"))
     rollout_volume.commit()
     return manifest
 
@@ -1255,6 +1370,12 @@ def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
                         {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
                     )
 
+    # §9 review-gate fold-in: persist gate-relevant manifest fields to
+    # the rollout subdir BEFORE the volume commit so the standalone-
+    # conversion path can read them later. Atomic write inside
+    # rollout_subdir; safe across success / inference-timeout / conversion
+    # failure paths (all of which reach this line).
+    _persist_inference_manifest_to_rollout_subdir(manifest, manifest.get("rollout_subdir"))
     rollout_volume.commit()
     return manifest
 
@@ -1530,6 +1651,12 @@ def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dic
                         {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
                     )
 
+    # §9 review-gate fold-in: persist gate-relevant manifest fields to
+    # the rollout subdir BEFORE the volume commit so the standalone-
+    # conversion path can read them later. Atomic write inside
+    # rollout_subdir; safe across success / inference-timeout / conversion
+    # failure paths (all of which reach this line).
+    _persist_inference_manifest_to_rollout_subdir(manifest, manifest.get("rollout_subdir"))
     rollout_volume.commit()
     return manifest
 
@@ -1786,6 +1913,12 @@ def lagrangebench_rollout_p1_gns_dam2d(git_sha: str, full_git_sha: str) -> dict:
                         {"path": fp, "size": -1, "sha256": f"<read_error:{e}>"}
                     )
 
+    # §9 review-gate fold-in: persist gate-relevant manifest fields to
+    # the rollout subdir BEFORE the volume commit so the standalone-
+    # conversion path can read them later. Atomic write inside
+    # rollout_subdir; safe across success / inference-timeout / conversion
+    # failure paths (all of which reach this line).
+    _persist_inference_manifest_to_rollout_subdir(manifest, manifest.get("rollout_subdir"))
     rollout_volume.commit()
     return manifest
 
@@ -2963,6 +3096,7 @@ def lagrangebench_convert_pkls_in_volume(
     model_name: str,
     git_sha_full: str,
     inference_seed: int = 0,
+    allow_from_aborted_inference: bool = False,
 ) -> dict:
     """Re-run rung-3.5 conversion against existing pkls in the Volume.
 
@@ -2972,9 +3106,21 @@ def lagrangebench_convert_pkls_in_volume(
     invokes convert_rollout_dir, writes npzs back to the same rollout
     subdir.
 
+    Inference-run-status gate (rung-4c §9 review-gate fold-in). Reads
+    ``<rollout_subdir>/_inference_manifest.json`` and classifies the
+    upstream run as ``from_completed_inference`` (allow),
+    ``from_aborted_inference`` (refuse unless ``allow_from_aborted_inference``
+    is True), or ``from_unknown_inference`` (warn but allow — pre-rung-4c
+    artifacts predate the manifest convention). The salvage path used at
+    D0-22 amendment 2 (SEGNN-DAM2D N=20 timeout → 12 NPZs) requires
+    ``allow_from_aborted_inference=True`` going forward.
+
     Returns the same manifest shape as the inference function's
     conversion-step subset (conversion_returncode, converted_npz_paths,
-    conversion_error, lagrangebench_sha) for verdict-printer reuse.
+    conversion_error, lagrangebench_sha) plus the gate-surfaced
+    ``inference_run_status`` and ``persisted_inference_manifest`` fields.
+    A ``conversion_returncode`` of 2 distinguishes a gate-refusal from
+    a substantive conversion failure (returncode 1).
     """
     import os
 
@@ -3008,6 +3154,9 @@ def lagrangebench_convert_pkls_in_volume(
         "conversion_returncode": None,
         "conversion_error": None,
         "converted_npz_paths": [],
+        "inference_run_status": None,
+        "persisted_inference_manifest": None,
+        "gate_override_used": False,
     }
 
     # Capture lagrangebench_sha for the rollout metadata audit trail
@@ -3038,6 +3187,40 @@ def lagrangebench_convert_pkls_in_volume(
         manifest["conversion_error"] = f"ckpt_dir {ckpt_dir} does not exist"
         return manifest
 
+    # Inference-run-status gate. Read the persisted inference manifest if
+    # present and classify the upstream run; refuse on aborted inference
+    # unless caller opted in. Pre-rung-4c artifacts read as unknown and
+    # are allowed with a printed warning (manifest convention added at
+    # the rung-4c §9 review-gate fold-in commit).
+    run_status, persisted = _classify_inference_run_status(rollout_subdir)
+    manifest["inference_run_status"] = run_status
+    manifest["persisted_inference_manifest"] = persisted
+    if run_status == "from_aborted_inference":
+        if not allow_from_aborted_inference:
+            manifest["conversion_returncode"] = 2
+            manifest["conversion_error"] = (
+                "gate: upstream inference at "
+                f"{rollout_subdir} did not complete cleanly "
+                f"(returncode={persisted.get('inference_returncode')!r}, "
+                f"aborted_at_step={persisted.get('aborted_at_step')!r}); "
+                "pass allow_from_aborted_inference=True to opt into the "
+                "timeout-salvage path (D0-22 amendment 2 precedent)"
+            )
+            return manifest
+        manifest["gate_override_used"] = True
+        print(
+            "[gate] override: allow_from_aborted_inference=True; "
+            f"proceeding with timeout-salvage conversion against {rollout_subdir} "
+            f"(returncode={persisted.get('inference_returncode')!r}, "
+            f"aborted_at_step={persisted.get('aborted_at_step')!r})"
+        )
+    elif run_status == "from_unknown_inference":
+        print(
+            f"[gate] no _inference_manifest.json at {rollout_subdir}; "
+            "standalone conversion proceeding without inference run-completion "
+            "verification (pre-rung-4c convention)"
+        )
+
     try:
         converted = convert_rollout_dir(
             rollout_dir=rollout_subdir,
@@ -3064,18 +3247,34 @@ def lagrangebench_convert_pkls_in_volume(
 
 
 @app.local_entrypoint()
-def convert_pkls_p1_segnn_dam2d(rollout_subdir_name: str) -> None:
+def convert_pkls_p1_segnn_dam2d(
+    rollout_subdir_name: str,
+    allow_from_aborted_inference: bool = False,
+) -> None:
     """Standalone rung-3.5 conversion for P1 SEGNN-DAM2D pkls (rung 4c).
 
-    Use after a rung-4c inference PASSes inference but inference is killed
-    by the subprocess timeout before the embedded conversion runs (e.g. the
-    e754a4bc2e production fire converted 12 trajs of 20 before the 2400s
-    cap). Hardcodes the SEGNN-DAM2D dataset/checkpoint mappings; mirrors
-    convert_pkls_p0_segnn_tgv2d's shape.
+    Two distinct callable cases:
+
+    1. Conversion-bug recovery — inference completed cleanly
+       (``inference_returncode == 0``); a downstream conversion-module
+       bug is being patched and the existing pkls re-converted. Default
+       gate (``allow_from_aborted_inference=False``) suffices.
+    2. Timeout-salvage — inference was killed by the subprocess timeout
+       before the embedded conversion runs (e.g. the ``e754a4bc2e``
+       production fire produced 12 complete trajectory pkls before the
+       2400s cap). Requires ``--allow-from-aborted-inference``; the
+       gate refuses by default to prevent silently treating a timed-out
+       run as a clean one. See D0-22 amendment 2 for the rung-4c
+       precedent and writeup §5.2 for the bilateral-exercise framing.
 
     Usage:
+        # Case 1 (default):
         modal run external_validation/.../modal_app.py::convert_pkls_p1_segnn_dam2d \\
-            --rollout-subdir-name segnn_dam2d_e754a4bc2e
+            --rollout-subdir-name segnn_dam2d_<sha>
+        # Case 2 (timeout salvage; explicit opt-in):
+        modal run external_validation/.../modal_app.py::convert_pkls_p1_segnn_dam2d \\
+            --rollout-subdir-name segnn_dam2d_e754a4bc2e \\
+            --allow-from-aborted-inference
     """
     import subprocess
 
@@ -3085,8 +3284,9 @@ def convert_pkls_p1_segnn_dam2d(rollout_subdir_name: str) -> None:
     ).strip()
 
     print("=== Standalone rung-3.5 conversion: P1 SEGNN-DAM2D (rung 4c) ===")
-    print(f"  rollout_subdir_name: {rollout_subdir_name}")
-    print(f"  git_sha (full):      {git_sha_full}")
+    print(f"  rollout_subdir_name:           {rollout_subdir_name}")
+    print(f"  git_sha (full):                {git_sha_full}")
+    print(f"  allow_from_aborted_inference:  {allow_from_aborted_inference}")
     print()
 
     result = lagrangebench_convert_pkls_in_volume.remote(
@@ -3096,11 +3296,14 @@ def convert_pkls_p1_segnn_dam2d(rollout_subdir_name: str) -> None:
         checkpoint_subdir="segnn_dam2d",
         model_name="segnn",
         git_sha_full=git_sha_full,
+        allow_from_aborted_inference=allow_from_aborted_inference,
     )
 
     print("--- manifest ---")
     print(f"  rollout_subdir:        {result['rollout_subdir']}")
     print(f"  lagrangebench_sha:     {result['lagrangebench_sha']}")
+    print(f"  inference_run_status:  {result['inference_run_status']}")
+    print(f"  gate_override_used:    {result['gate_override_used']}")
     print(f"  conversion_returncode: {result['conversion_returncode']}")
     if result["conversion_error"]:
         print(f"  conversion_error:      {result['conversion_error']}")
@@ -3114,16 +3317,24 @@ def convert_pkls_p1_segnn_dam2d(rollout_subdir_name: str) -> None:
     print("--- verdict ---")
     if result["conversion_returncode"] == 0:
         n = len(result["converted_npz_paths"])
+        run_status = result["inference_run_status"]
+        provenance_tag = "from_timeout_salvage" if result["gate_override_used"] else run_status
         print(
-            f"  -> standalone rung-3.5 conversion: PASS — produced {n} "
-            f"schema-conformant npz file(s) at {result['rollout_subdir']}."
+            f"  -> standalone rung-3.5 conversion: PASS ({provenance_tag}) — "
+            f"produced {n} schema-conformant npz file(s) at "
+            f"{result['rollout_subdir']}."
         )
+    elif result["conversion_returncode"] == 2:
+        print(f"  -> standalone rung-3.5 conversion: REFUSED (gate) — {result['conversion_error']}")
     else:
         print(f"  -> standalone rung-3.5 conversion: FAIL — {result['conversion_error']}")
 
 
 @app.local_entrypoint()
-def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
+def convert_pkls_p0_segnn_tgv2d(
+    rollout_subdir_name: str,
+    allow_from_aborted_inference: bool = False,
+) -> None:
     """Standalone rung-3.5 conversion for P0 SEGNN-TGV2D pkls (D0-17 amendment 1).
 
     Use after a rung-3 inference PASSes but the embedded conversion
@@ -3132,6 +3343,14 @@ def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
     and persisted to Volume). Hardcodes the SEGNN-TGV2D dataset/
     checkpoint mappings; sibling functions land for P1 GNS-TGV2D and
     P2/P3 when needed.
+
+    The ``--allow-from-aborted-inference`` flag is the rung-4c §9
+    review-gate-fold-in opt-in; unused for D0-17 amendment 1's
+    conversion-bug-recovery case (those runs completed cleanly), but
+    plumbed for parity with the P1 SEGNN-DAM2D entrypoint and exposed
+    in case a future P0 timeout-salvage scenario surfaces. Pre-rung-4c
+    rollout subdirs predate the manifest convention and read as
+    ``from_unknown_inference`` (warn-allow, no flag needed).
 
     Usage:
         modal run external_validation/.../modal_app.py::convert_pkls_p0_segnn_tgv2d \\
@@ -3145,8 +3364,9 @@ def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
     ).strip()
 
     print("=== Standalone rung-3.5 conversion: P0 SEGNN-TGV2D (D0-17 amendment 1) ===")
-    print(f"  rollout_subdir_name: {rollout_subdir_name}")
-    print(f"  git_sha (full):      {git_sha_full}")
+    print(f"  rollout_subdir_name:           {rollout_subdir_name}")
+    print(f"  git_sha (full):                {git_sha_full}")
+    print(f"  allow_from_aborted_inference:  {allow_from_aborted_inference}")
     print()
 
     result = lagrangebench_convert_pkls_in_volume.remote(
@@ -3156,11 +3376,14 @@ def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
         checkpoint_subdir="segnn_tgv2d",
         model_name="segnn",
         git_sha_full=git_sha_full,
+        allow_from_aborted_inference=allow_from_aborted_inference,
     )
 
     print("--- manifest ---")
     print(f"  rollout_subdir:        {result['rollout_subdir']}")
     print(f"  lagrangebench_sha:     {result['lagrangebench_sha']}")
+    print(f"  inference_run_status:  {result['inference_run_status']}")
+    print(f"  gate_override_used:    {result['gate_override_used']}")
     print(f"  conversion_returncode: {result['conversion_returncode']}")
     if result["conversion_error"]:
         print(f"  conversion_error:      {result['conversion_error']}")
@@ -3174,9 +3397,130 @@ def convert_pkls_p0_segnn_tgv2d(rollout_subdir_name: str) -> None:
     print("--- verdict ---")
     if result["conversion_returncode"] == 0:
         n = len(result["converted_npz_paths"])
+        run_status = result["inference_run_status"]
+        provenance_tag = "from_timeout_salvage" if result["gate_override_used"] else run_status
         print(
-            f"  -> standalone rung-3.5 conversion: PASS — produced {n} "
-            f"schema-conformant npz file(s) at {result['rollout_subdir']}."
+            f"  -> standalone rung-3.5 conversion: PASS ({provenance_tag}) — "
+            f"produced {n} schema-conformant npz file(s) at "
+            f"{result['rollout_subdir']}."
         )
+    elif result["conversion_returncode"] == 2:
+        print(f"  -> standalone rung-3.5 conversion: REFUSED (gate) — {result['conversion_error']}")
     else:
         print(f"  -> standalone rung-3.5 conversion: FAIL — {result['conversion_error']}")
+
+
+# Backfill entrypoint — rung-4c §9 review-gate fold-in. The manifest
+# convention was added at the same commit as the gate; existing rung-4c
+# rollout subdirs predate the persistence call and would read as
+# `from_unknown_inference` (warn-allow) without a backfill. Hardcodes
+# the two rung-4c subdirs whose manifest values are known from
+# outputs/rung4c_segnn_dam2d_run.log + outputs/rung4c_gns_dam2d_run.log.
+# Idempotent: refuses to overwrite an existing manifest unless `force`.
+@app.function(
+    image=rollout_image,
+    volumes={"/vol": rollout_volume},
+    timeout=120,
+)
+def _write_inference_manifest_to_volume(
+    rollout_subdir_name: str,
+    manifest_payload: dict,
+    force: bool,
+) -> dict:
+    """Atomic-write a manifest payload to /vol/rollouts/.../<subdir>/_inference_manifest.json.
+
+    Returns ``{"status": ..., "target": ...}``. Status is one of
+    ``written``, ``already_present`` (no force), ``overwritten`` (force=True),
+    or ``subdir_missing``.
+    """
+    import os
+
+    rollout_subdir = f"/vol/rollouts/lagrangebench/{rollout_subdir_name}"
+    if not os.path.isdir(rollout_subdir):
+        return {"status": "subdir_missing", "target": rollout_subdir}
+
+    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
+    already_present = os.path.isfile(target)
+    if already_present and not force:
+        return {"status": "already_present", "target": target}
+
+    written = _persist_inference_manifest_to_rollout_subdir(manifest_payload, rollout_subdir)
+    rollout_volume.commit()
+    status = "overwritten" if already_present else "written"
+    return {"status": status, "target": written}
+
+
+@app.local_entrypoint()
+def backfill_rung4c_inference_manifests(force: bool = False) -> None:
+    """Backfill _inference_manifest.json for rung-4c rollout subdirs.
+
+    Writes manifests for ``segnn_dam2d_e754a4bc2e`` (timed-out N=20 fire,
+    inference_returncode=-1, aborted_at_step=inference) and
+    ``gns_dam2d_e754a4bc2e`` (clean N=12 fire, returncode=0). Values
+    sourced from the committed run logs at outputs/rung4c_segnn_dam2d_run.log
+    + outputs/rung4c_gns_dam2d_run.log.
+
+    After this fires, the standalone-conversion path's gate has explicit
+    classifications for both subdirs:
+      - segnn -> from_aborted_inference (refuse without --allow-from-aborted-inference)
+      - gns   -> from_completed_inference (allow by default)
+
+    Usage:
+        modal run external_validation/.../modal_app.py::backfill_rung4c_inference_manifests
+        modal run external_validation/.../modal_app.py::backfill_rung4c_inference_manifests \
+            --force   # overwrite if already present
+    """
+    rung4c_subdirs = [
+        # SEGNN-DAM2D - N=20 attempt, timed out at 2400s, salvaged 12 trajs
+        # via standalone conversion path (D0-22 amendment 2). Values from
+        # outputs/rung4c_segnn_dam2d_run.log lines 37-51.
+        {
+            "rollout_subdir_name": "segnn_dam2d_e754a4bc2e",
+            "manifest_payload": {
+                "git_sha": "e754a4bc2e",
+                "full_git_sha": "e754a4bc2ec21ba69e534ce68152e2cb165f820e",
+                "lagrangebench_sha": "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2",
+                "inference_seed": 0,
+                "inference_returncode": -1,
+                "inference_wall_seconds": 2400.0,
+                "aborted_at_step": "inference",
+                "conversion_attempted": False,
+                "conversion_returncode": None,
+                "rollout_subdir": "/vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e",
+            },
+        },
+        # GNS-DAM2D - clean N=12 fire. Values from
+        # outputs/rung4c_gns_dam2d_run.log lines 37-51.
+        {
+            "rollout_subdir_name": "gns_dam2d_e754a4bc2e",
+            "manifest_payload": {
+                "git_sha": "e754a4bc2e",
+                "full_git_sha": "e754a4bc2ec21ba69e534ce68152e2cb165f820e",
+                "lagrangebench_sha": "b880a6c84a93792d2499d2a9b8ba3a077ddf44e2",
+                "inference_seed": 0,
+                "inference_returncode": 0,
+                "inference_wall_seconds": 893.0,
+                "aborted_at_step": None,
+                "conversion_attempted": True,
+                "conversion_returncode": 0,
+                "rollout_subdir": "/vol/rollouts/lagrangebench/gns_dam2d_e754a4bc2e",
+            },
+        },
+    ]
+
+    print("=== Backfilling rung-4c _inference_manifest.json ===")
+    print(f"  force: {force}")
+    print()
+    for entry in rung4c_subdirs:
+        result = _write_inference_manifest_to_volume.remote(
+            rollout_subdir_name=entry["rollout_subdir_name"],
+            manifest_payload=entry["manifest_payload"],
+            force=force,
+        )
+        print(f"  {entry['rollout_subdir_name']}:")
+        print(f"    status: {result['status']}")
+        print(f"    target: {result['target']}")
+        print()
+    print("--- verdict ---")
+    print("  -> rung-4c manifest backfill complete; standalone-conversion")
+    print("     gate now reads explicit classifications for both subdirs.")
