@@ -250,12 +250,12 @@ KE_REST_THRESHOLD: float = 1e-10
 # fire-raw-value behavior absent positive evidence on either axis.
 LAGRANGEBENCH_DATASET_SYSTEM_CLASS: dict[str, str] = {
     "tgv2d": "dissipative",
-    "rpf2d": "dissipative",
-    "ldc2d": "dissipative",
-    "dam2d": "dissipative",
-    "tgv3d": "dissipative",
-    "rpf3d": "dissipative",
-    "ldc3d": "dissipative",
+    "rpf2d": "dissipative",  # forward-flag D0-22: forced flow, almost certainly should be open-driven-dissipative; awaiting empirical probe
+    "ldc2d": "dissipative",  # forward-flag D0-22: forced flow, almost certainly should be open-driven-dissipative; awaiting empirical probe
+    "dam2d": "open-driven-dissipative",  # D0-22: empirically reclassified after rung-4c 1-traj smoke confirmed rise-then-fall KE shape
+    "tgv3d": "dissipative",  # likely correct (3D inherits 2D-TGV physics) but unverified
+    "rpf3d": "dissipative",  # forward-flag D0-22: forced flow, almost certainly should be open-driven-dissipative; awaiting empirical probe
+    "ldc3d": "dissipative",  # forward-flag D0-22: forced flow, almost certainly should be open-driven-dissipative; awaiting empirical probe
 }
 
 
@@ -468,7 +468,7 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
     `_rollout_anchors/README.md`).
 
     Zero for conservative rollouts; non-zero and growing for dissipative
-    rollouts. Two skip-with-reason paths:
+    rollouts. Three skip-with-reason paths:
 
     1. **KE-rest** (DECISIONS.md D0-08): SKIPS when KE(0) <
        ``KE_REST_THRESHOLD``. A near-zero KE(0) makes the relative
@@ -486,6 +486,20 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
        dissipative ones. Both halves of the gate required to avoid
        masking buggy supposed-conservative surrogates.
 
+    3. **Open-driven-dissipative** (DECISIONS.md D0-22 amendment 1):
+       SKIPS when ``rollout.metadata["dataset"]`` resolves to
+       ``"open-driven-dissipative"``. The same strictly-dissipative-
+       or-conservative assumption that D0-22 catches on
+       dissipation_sign_violation also fails for energy_drift on
+       gravity-loaded or forced-flow systems — KE rises by orders of
+       magnitude due to physics, making the relative-drift form
+       methodologically meaningless. Surfaced empirically by rung-4c
+       pre-flight smoke (preflight/2026-05-07-rung-4c.txt) where
+       KE(0)=0.47 and max(KE)=O(1000) on dam-break-2D produced raw
+       energy_drift ~ 2500-2700 — large but uninformative. Gate is
+       purely system_class-conditioned (parallel to D0-22's gate on
+       dissipation_sign_violation).
+
     The harness emits the raw drift (or a SKIP); downstream
     interpretation against PH-CON-002's tristate floor classification
     is left to the test harness or to Day 1+'s SARIF emitter.
@@ -500,7 +514,11 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
                 f"rest; relative drift undefined; see DECISIONS.md D0-08)"
             ),
         )
-    # D0-18 skip-with-reason gate: positive evidence on both axes.
+    # D0-18 / D0-22 substrate-class dispatch. Both gates use the same
+    # dataset -> system_class lookup; D0-18 fires on closed-dissipative
+    # (with KE-monotone co-condition); D0-22 amendment 1 fires on
+    # open-driven-dissipative (purely system_class-conditioned, parallel
+    # to D0-22's gate on dissipation_sign_violation).
     dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
     system_class = LAGRANGEBENCH_DATASET_SYSTEM_CLASS.get(dataset_name)
     is_monotone_decreasing = bool(np.all(np.diff(e_series) <= 0))
@@ -517,20 +535,40 @@ def energy_drift(rollout: ParticleRollout) -> HarnessDefect:
                 "for the load-bearing test on this system class."
             ),
         )
+    if system_class == "open-driven-dissipative":
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "KE grows by orders of magnitude due to physics (gravitational PE → "
+                "KE conversion); the strictly-dissipative-or-conservative assumption "
+                "underpinning energy_drift does not apply. See DECISIONS.md D0-22 "
+                "(amendment 1)."
+            ),
+        )
     drift = float(np.max(np.abs(e_series - e0)))
     return HarnessDefect(value=drift / abs(e0))
 
 
 def dissipation_sign_violation(rollout: ParticleRollout) -> HarnessDefect:
-    """max(0, max(dE/dt)) / max(|E_max|, eps), or SKIP if max(KE) below threshold.
+    """max(0, max(dE/dt)) / max(|E_max|, eps), or SKIP on substrate-incompatibility.
 
     Mirrors PH-CON-003's emitted `violation` form. Zero for strictly
     dissipative or strictly conservative rollouts (dE/dt ≤ 0 or = 0
     everywhere); non-zero for rollouts where the model spuriously gains
-    energy at any timestep. SKIPS with reason when ``max(KE) <
-    KE_REST_THRESHOLD`` (the trajectory has effectively no kinetic
-    energy at any timestep, so the dissipation question is meaningless;
-    pre-registered in DECISIONS.md D0-08).
+    energy at any timestep. Two skip-with-reason paths:
+
+    1. **KE-rest** (DECISIONS.md D0-08): SKIPS when ``max(KE) <
+       KE_REST_THRESHOLD`` (the trajectory has effectively no kinetic
+       energy at any timestep, so the dissipation question is meaningless).
+
+    2. **Open-driven-dissipative** (DECISIONS.md D0-22): SKIPS when
+       ``rollout.metadata["dataset"]`` resolves to ``"open-driven-dissipative"``
+       via ``LAGRANGEBENCH_DATASET_SYSTEM_CLASS``. The rule's strictly-
+       dissipative-or-conservative assumption does not apply to gravity-
+       loaded or forced-flow systems where dE/dt > 0 over a stretch by
+       physics; emitting a raw value would falsely flag the substrate's
+       physics as a model violation.
 
     Uses forward differences ``np.diff(E) / dt`` to match PH-CON-003's
     Week-2 endpoint-pathology fix verbatim — second-order ``np.gradient``
@@ -551,6 +589,25 @@ def dissipation_sign_violation(rollout: ParticleRollout) -> HarnessDefect:
                 f"max(KE)={e_max:.3e} < {KE_REST_THRESHOLD:.0e} (trajectory "
                 f"has no kinetic energy; dissipation question undefined; "
                 f"see DECISIONS.md D0-08)"
+            ),
+        )
+    # D0-22 skip-with-reason gate: open-driven-dissipative substrate class.
+    # The rule's strictly-dissipative-or-conservative assumption (zero for
+    # strictly dissipative or strictly conservative rollouts) does not apply
+    # to gravity-loaded or forced-flow systems where dE/dt > 0 over a stretch
+    # by physics. Gate is purely system_class-conditioned by design (an
+    # open-driven system with monotone KE due to a model bug should still
+    # SKIP — surfacing the bug is the job of a different rule).
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = LAGRANGEBENCH_DATASET_SYSTEM_CLASS.get(dataset_name)
+    if system_class == "open-driven-dissipative":
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "dE/dt > 0 over a stretch by physics (gravitational PE → KE conversion); "
+                "the strictly-dissipative-or-conservative assumption underpinning "
+                "dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
             ),
         )
     de_dt = np.diff(e_series) / rollout.dt

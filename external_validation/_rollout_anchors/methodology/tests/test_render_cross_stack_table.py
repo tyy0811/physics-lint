@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from external_validation._rollout_anchors.methodology.tools.render_cross_stack_table import (
+    DuplicateStackLabelError,
     MissingRunLevelFieldError,
     ResultRowInvariantError,
     SchemaVersionMismatchError,
@@ -25,6 +26,14 @@ from external_validation._rollout_anchors.methodology.tools.render_cross_stack_t
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SEGNN_FIXTURE = FIXTURES_DIR / "segnn_tgv2d_fixture.sarif"
 GNS_FIXTURE = FIXTURES_DIR / "gns_tgv2d_fixture.sarif"
+
+# Mirror of the renderer's D-entry regex (single source of truth would be
+# ideal but introduces a circular module dependency; the inline copy is a
+# deliberate drift-guard — if the renderer's regex in
+# external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py
+# changes, the regex below must change in lockstep, which is exactly the
+# contract these tests pin).
+DENTRY_REGEX = r"DECISIONS\.md\s+(D0-\d+(?:\s+\(amendment\s+\d+\))?)"
 
 
 def _load(path: Path) -> dict:
@@ -181,3 +190,219 @@ def test_renderer_golden_output_matches_expected_table() -> None:
         f"  python external_validation/_rollout_anchors/methodology/tools/"
         f"regenerate_expected_table.py"
     )
+
+
+# ---------------------------------------------------------------------------
+# Round-codex-2 follow-up B: contract test for the D-entry regex extraction.
+# The renderer parses each SKIP row's skip_reason via a regex to extract
+# the cited D-entry for the cell label. The emitter
+# (_harness/particle_rollout_adapter.py) produces skip_reasons in five
+# distinct formats; if the regex doesn't match one of them, the cell
+# label silently degrades to "?". Drift-guard: feed each actual emitter
+# skip_reason format through the regex + assert the expected D-entry is
+# extracted.
+# ---------------------------------------------------------------------------
+
+
+# Skip_reason templates copied verbatim from
+# external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py.
+# Each tuple is (skip_reason_text, expected_d_entry_match). If the emitter's
+# skip_reason format changes, this list must be updated in lockstep.
+@pytest.mark.parametrize(
+    "skip_reason, expected_d_entry",
+    [
+        # energy_drift KE-rest gate (D0-08)
+        (
+            "KE(0)=1.234e-12 < 1e-10 (rollout starts at "
+            "rest; relative drift undefined; see DECISIONS.md D0-08)",
+            "D0-08",
+        ),
+        # energy_drift dissipative-by-design gate (D0-18)
+        (
+            "system_class='dissipative' (dataset='tgv2d'); "
+            "KE(t) monotone-non-increasing across the rollout; "
+            "see properties.ke_initial / ke_final for values; "
+            "relative drift is a misfire for dissipative-by-design "
+            "systems where the dissipation magnitude IS the physics. "
+            "See DECISIONS.md D0-18; consult dissipation_sign_violation "
+            "for the load-bearing test on this system class.",
+            "D0-18",
+        ),
+        # energy_drift open-driven gate (D0-22 amendment 1)
+        (
+            "system_class='open-driven-dissipative' (dataset='dam2d'); "
+            "KE grows by orders of magnitude due to physics (gravitational PE → "
+            "KE conversion); the strictly-dissipative-or-conservative assumption "
+            "underpinning energy_drift does not apply. See DECISIONS.md D0-22 "
+            "(amendment 1).",
+            "D0-22 (amendment 1)",
+        ),
+        # dissipation_sign_violation KE-rest gate (D0-08)
+        (
+            "max(KE)=1.234e-12 < 1e-10 (trajectory "
+            "has no kinetic energy; dissipation question undefined; "
+            "see DECISIONS.md D0-08)",
+            "D0-08",
+        ),
+        # dissipation_sign_violation open-driven gate (D0-22)
+        (
+            "system_class='open-driven-dissipative' (dataset='dam2d'); "
+            "dE/dt > 0 over a stretch by physics (gravitational PE → KE conversion); "
+            "the strictly-dissipative-or-conservative assumption underpinning "
+            "dissipation_sign_violation does not apply. See DECISIONS.md D0-22.",
+            "D0-22",
+        ),
+    ],
+)
+def test_renderer_d_entry_regex_extracts_emitter_skip_reasons(
+    skip_reason: str, expected_d_entry: str
+) -> None:
+    """Drift-guard for the emitter↔renderer skip_reason ↔ D-entry contract.
+
+    The renderer's D-entry extraction regex
+    (``r"DECISIONS\\.md\\s+(D0-\\d+(?:\\s+\\(amendment\\s+\\d+\\))?)"``)
+    must match each of the five emitter skip_reason formats. If a future
+    emitter change alters the citation format (e.g., omits the prefix,
+    uses lowercase d0, etc.), this test fails before the renderer
+    silently degrades cells to "?". The contract is implicit between
+    two source files; this test makes it explicit.
+    """
+    import re
+
+    match = re.search(DENTRY_REGEX, skip_reason)
+    assert match is not None, (
+        f"Renderer's D-entry regex failed to match skip_reason: {skip_reason!r}. "
+        "Either the emitter's citation format changed (update particle_rollout_adapter.py "
+        "or render_cross_stack_table.py to match), or this test's fixture is stale."
+    )
+    assert match.group(1) == expected_d_entry, (
+        f"Renderer's D-entry regex extracted {match.group(1)!r}, expected "
+        f"{expected_d_entry!r}, from skip_reason: {skip_reason!r}"
+    )
+
+
+def test_renderer_rejects_duplicate_stack_labels(tmp_path: Path) -> None:
+    """Two SARIFs with the same (model_name, dataset_name) must raise.
+
+    Codex round-codex-3 finding 2. Pre-fix, the renderer collected
+    stack labels via simple append + indexed by (rule_id, stack_label);
+    if the SARIF directory contained two files for the same stack
+    (e.g., post-re-emission with old SARIFs still present), the
+    rendered table would have duplicate columns whose cells were
+    overwritten under one key. The renderer must fail fast on this
+    rather than producing an ambiguous table silently.
+    """
+    # Two SARIFs at different shas but with the same model_name +
+    # dataset_name (simulating two SEGNN-TGV2D emissions at different
+    # sarif_emission shas left in the same directory).
+    segnn_v1 = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_v2 = copy.deepcopy(_load(SEGNN_FIXTURE))
+    # Vary the sarif_emission_sha so the two files aren't byte-identical,
+    # but keep model_name + dataset_name the same (the duplicate-label trigger)
+    segnn_v2["runs"][0]["properties"]["physics_lint_sha_sarif_emission"] = "FFFFFFFFFF"
+
+    v1_path = tmp_path / "segnn_tgv2d_AAAAAAAAAA.sarif"
+    v2_path = tmp_path / "segnn_tgv2d_FFFFFFFFFF.sarif"
+    _write(segnn_v1, v1_path)
+    _write(segnn_v2, v2_path)
+
+    # The fixtures use synthetic names; the duplicate-label is whatever
+    # the fixture's model_name-dataset_name resolves to.
+    with pytest.raises(DuplicateStackLabelError, match="Two SARIFs map to the same stack label"):
+        render_cross_stack_table([v1_path, v2_path])
+
+
+def test_renderer_distinct_stack_labels_still_render() -> None:
+    """Sanity: distinct (model_name, dataset_name) labels still work post-fix.
+
+    The canonical fixtures have distinct synthetic labels; post-fix,
+    they must still render without raising DuplicateStackLabelError.
+    """
+    # Should NOT raise — both fixtures have distinct synthetic labels.
+    table = render_cross_stack_table([SEGNN_FIXTURE, GNS_FIXTURE])
+    assert isinstance(table, str) and len(table) > 0
+
+
+def test_renderer_d_entry_regex_rejects_incidental_d0_mentions() -> None:
+    """The regex must NOT match incidental D0-NN mentions without the prefix.
+
+    Pre-fix, a skip_reason mentioning "D0-19 §3.4" (citing the schema
+    invariant) could have been picked up by a looser regex. The
+    "DECISIONS.md " prefix requirement prevents this — if it drops,
+    cell labels could silently cite the wrong D-entry.
+    """
+    import re
+
+    # Incidental mention without the DECISIONS.md prefix
+    assert re.search(DENTRY_REGEX, "this references D0-19 §3.4 but is not a citation") is None
+    # Citation through punctuation that breaks the prefix
+    assert (
+        re.search(DENTRY_REGEX, "see (DECISIONS.md D0-22) — picked up") is not None
+    )  # ok, prefix present
+    # Pure mention without prefix
+    assert re.search(DENTRY_REGEX, "D0-22 is irrelevant here") is None
+
+
+# ---------------------------------------------------------------------------
+# 7. Optional inference_run_status section (rung-4c §9 review-gate fold-in)
+# ---------------------------------------------------------------------------
+
+
+def test_renderer_renders_inference_run_status_when_all_present(tmp_path: Path) -> None:
+    """When both stacks carry the optional `inference_run_status` field,
+    the renderer adds a dedicated section after the three-sha provenance
+    listing each stack's status. Programmatically derived from the
+    canonical fixtures (per memory: don't commit a separate fixture).
+    """
+    segnn_with_status = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_with_status["runs"][0]["properties"]["inference_run_status"] = "from_aborted_inference"
+    gns_with_status = copy.deepcopy(_load(GNS_FIXTURE))
+    gns_with_status["runs"][0]["properties"]["inference_run_status"] = "from_completed_inference"
+    segnn_path = tmp_path / "segnn_with_status.sarif"
+    gns_path = tmp_path / "gns_with_status.sarif"
+    _write(segnn_with_status, segnn_path)
+    _write(gns_with_status, gns_path)
+
+    rendered = render_cross_stack_table([segnn_path, gns_path])
+
+    assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
+    # Each stack's per-stack line carries the explicit value, not a defaulted one.
+    assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
+    assert "synthetic_gns-synthetic_dissipative_d**: from_completed_inference" in rendered
+    # Honest-absence marker should NOT appear when both stacks are present.
+    assert "n/a (pre-salvage-tag-schema)" not in rendered
+
+
+def test_renderer_omits_inference_run_status_when_all_absent() -> None:
+    """When NO stack carries `inference_run_status`, the renderer omits
+    the optional section entirely so legacy SARIFs (rung-4a/4b
+    pre-fold-in) render byte-identically to before. Companion to the
+    golden-output test, with an explicit named pin on the absence
+    behavior.
+    """
+    rendered = render_cross_stack_table([SEGNN_FIXTURE, GNS_FIXTURE])
+    assert "Inference run status" not in rendered
+    assert "from_completed_inference" not in rendered
+    assert "from_aborted_inference" not in rendered
+    assert "n/a (pre-salvage-tag-schema)" not in rendered
+
+
+def test_renderer_marks_absent_status_as_n_a_in_mixed_set(tmp_path: Path) -> None:
+    """When ONE stack carries `inference_run_status` and the other does
+    not (mixed set), the renderer renders the section with the absent
+    stack explicitly marked `n/a (pre-salvage-tag-schema)` rather than
+    defaulting to a clean classification. Parallel to the gate's
+    refuse-by-default posture: the absence of evidence is not evidence
+    of absence-of-abort.
+    """
+    segnn_with_status = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_with_status["runs"][0]["properties"]["inference_run_status"] = "from_aborted_inference"
+    segnn_path = tmp_path / "segnn_with_status.sarif"
+    _write(segnn_with_status, segnn_path)
+    # GNS fixture as-is — no inference_run_status field.
+
+    rendered = render_cross_stack_table([segnn_path, GNS_FIXTURE])
+
+    assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
+    assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
+    assert "synthetic_gns-synthetic_dissipative_d**: n/a (pre-salvage-tag-schema)" in rendered

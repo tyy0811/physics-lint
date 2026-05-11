@@ -2166,3 +2166,149 @@ DECISIONS.md.
 
 **Realized.** [Filled in post-execution at the rung 4b table writeup
 step, naming the merge sha that closes this rung's loop.]
+
+## D0-22 — 2026-05-07 — Rung 4c substrate-class extension to dam-break-2D (pre-registration)
+
+**Status:** pre-registered before code change.
+**Predecessor:** D0-21 (rung-4b cross-stack equivariance), D0-18 (dissipative-system skip-with-reason), D0-19 (harness SARIF result schema), D0-08 (KE-rest skip on `energy_drift`).
+**Trigger:** rung-4c design pass (`methodology/docs/2026-05-07-rung-4c-substrate-class-extension-design.md`); source review of `_harness/particle_rollout_adapter.py` surfaced that `LAGRANGEBENCH_DATASET_SYSTEM_CLASS["dam2d"]` was preemptively classified as `"dissipative"` during the D0-18 design pass, before any dam-break-2D rollout was measured.
+
+**Decision.** Extend the harness's substrate-detection layer to a second LagrangeBench substrate class — `open-driven-dissipative` — via:
+
+1. **Taxonomy bump.** `LAGRANGEBENCH_DATASET_SYSTEM_CLASS` shifts from implicit-binary (`"dissipative"` or absent → fire-raw) to explicit-tri-state at minimum: `"dissipative"`, `"open-driven-dissipative"`, absent. Future taxonomy entries (e.g., `"strictly-conservative"` for case study 02 anchor) are forward-compatible.
+
+2. **`dam2d` reclassified empirically** from `"dissipative"` to `"open-driven-dissipative"`. Justification: dam-break-2D's KE rises during gravity-loaded fall (gravitational PE → KE conversion), violating the closed-dissipative class's monotone-non-increasing precondition. Empirical verification via 1-traj Modal smoke at pre-flight step 4 (rung-4c design §3.3); the reclassification ships as a TDD-green hypothesis at implementation time, with the smoke at pre-flight step 4 as the gating empirical verification — ABORT-on-smoke-fail triggers a revert of the reclassification commit before any 20-traj fire (pre-flight log records the gate decision).
+
+3. **New SKIP path on `dissipation_sign_violation`** for `system_class == "open-driven-dissipative"`. The rule's strictly-dissipative-or-conservative assumption (docstring-stated zero-for-strictly-dissipative-or-conservative behavior) doesn't apply to open-driven systems where `dE/dt > 0` over a stretch by physics. SKIP-reason template:
+
+   ```
+   system_class='open-driven-dissipative' (dataset='<name>'); dE/dt > 0
+   over a stretch by physics (gravitational PE → KE conversion); the
+   strictly-dissipative-or-conservative assumption underpinning
+   dissipation_sign_violation does not apply. See DECISIONS.md D0-22.
+   ```
+
+4. **Forward-flag two-tier split** for catalogue-wide reclassification:
+   - **Almost certainly misclassified, awaiting empirical probe:** `rpf2d` (reverse Poiseuille, forced flow), `ldc2d` (lid-driven cavity, forced flow), `rpf3d`, `ldc3d` (3D variants).
+   - **Likely correctly classified but unverified:** `tgv3d` (3D-TGV inherits 2D-TGV physics; closed dissipative system, KE monotone-non-increasing as turbulent KE decays).
+   The two-tier split preserves future-rung actionability: a rung exercising rpf or ldc walks into a known-misclassification (and the empirical probe is its first move); a rung exercising tgv3d treats it as inherited-from-validated.
+
+5. **D0-08 (KE-rest IC SKIP) is NOT absorbed into D0-22.** D0-08 gates on `KE(0) < KE_REST_THRESHOLD`, orthogonal to the `system_class` taxonomy. D0-22 gates on `system_class == "open-driven-dissipative"`. The two SKIP gates are sibling members of a "substrate-detection family" — distinct physical preconditions, distinct SKIP reasons. On dam-break-2D specifically, D0-08 fires on `energy_drift` (start-at-rest IC) and D0-22 fires on `dissipation_sign_violation` (open-driven by physics); both fire on the same rollout but on different rules.
+
+6. **(rule, substrate) compatibility matrix forward-flag from D0-21 cited but not promoted.** D0-21 §forward-flag-2 named "the (rule, substrate) compatibility matrix as a future generalization." Rung 4c demonstrates that pattern's empirical instance (`dissipation_sign_violation × open-driven-dissipative` becomes a new SKIP cell) without yet promoting the matrix to a first-class rule-schema field. Promotion is post-rung-4c work.
+
+**"Classify when you exercise" empirical-classification principle.** Named here as a first-class methodology output of the rung-4 series, generalizing the precedent set by rung-4b's PH-SYM-003 PBC-square-SO(2) substrate-incompatibility SKIP (classified only for the substrate measured, not retrospectively over all (rule, substrate) combinations). Pattern reads as: **substrate properties get verdicts only after empirical probing, never on theoretical intuition alone, even when the theoretical guess is almost certainly correct.** Applies to any future rung exercising a previously-unmeasured substrate.
+
+**Source-review-catches-issue-before-compute pattern (now trilateral).**
+1. Rung 4b first-pass math correction (TRAIN_PUSHFORWARD_UNROLLS_LAST=3 conflated +1 target with pushforward count) — caught at LB source review at sha `b880a6c`.
+2. Rung 4b first-pass latent figure-sweep failure (`valid.h5` hardcoded `subseq_length=10` vs. dynamic upstream value) — caught at the same source review pass.
+3. Rung 4c catalogue-misclassification (`dam2d → "dissipative"` was preemptive and wrong; `rpf2d`/`ldc2d` likely the same) — caught at source review of `particle_rollout_adapter.py` during this design pass.
+
+Three instances at $0 Modal cost. To be elevated as a first-class methodology contribution of the rung-4 series in integrating-README composition rather than three scattered amendments. The pattern reads as: **a source-review pre-flight pass between design and execution catches issues that brainstorm-only and execution-only review miss; the cost is hours of source reading, the saving is multiple GPU runs and methodology errors that would otherwise land in writeups.**
+
+**Forward flags carried into D0-22:**
+- Bilateral D0-18 still requires a strictly conservative substrate anchor (case study 02 territory); rung 4c does not exercise this.
+- PH-SYM substrate-symmetry-SKIP (gravity-direction-pinning breaks SO(2) on dam-break-2D) → rung 4d.
+- PH-BC-particle-wall not in v1.0 rule path → out of scope; plan v2.1 amendment removes "PH-BC (wall)" from §3.1 P1.
+- Catalogue-wide reclassification (`rpf2d`/`ldc2d`/`rpf3d`/`ldc3d`) deferred to future rungs; D0-22 records the two-tier split for actionability.
+
+**Implementation:** rung-4c plan (`methodology/docs/2026-05-07-rung-4c-substrate-class-extension-plan.md`). Acceptance criteria in design §8.
+
+**Plan-diff (Task 1 step 1.2 retrofit):** rung-4c plan §Task 1 step 1.2 stated `grep -c "^## D0-" DECISIONS.md` should return 8 ("D0-15 through D0-22"); the actual returns the full file count, which is 22 after this commit. Plan expectation was an off-by-counting-scope error; the commit count check is unchanged in intent (verify the new entry parsed cleanly), only the expected number is updated.
+
+**Plan-diff (Task 1 D0-22 §2 wording reconciliation):** the plan's §2 text said "reclassification commits *after* smoke confirms the rise-then-fall shape, not before." This conflicts with Task 4's commit ordering (which lands the dam2d label flip before Task 7's smoke). Reconciled here as TDD-green hypothesis with smoke as gating verification + ABORT-on-fail revert path; preserves the empirical-justification discipline while letting the test-driven plan order proceed. The substantive contract is unchanged — Task 7 ABORT means the reclassification does not survive in the production fire.
+
+### D0-22 amendment 1 — 2026-05-07 — Extend SKIP gate to `energy_drift` on `open-driven-dissipative`
+
+**Status:** in-rung amendment landed alongside the parent D0-22 entry; mirrors D0-15's amendment-layered pattern (D0-15 amendments 1-4 were all within-rung refinements surfaced during execution).
+
+**Trigger:** rung-4c pre-flight smoke (`preflight/2026-05-07-rung-4c.txt`, Step 5 pipeline smoke) surfaced that `energy_drift` fires a methodologically meaningless raw value of ~2500-2700 on dam-break-2D. Mechanism:
+- KE(0)=0.4703 (input window has the column already falling at t=0)
+- max(KE)=O(1000) (gravity-loaded fall + dissipation phase)
+- `KE_REST_THRESHOLD=1e-10` is an absolute threshold; KE(0)=0.47 clears it by 9 orders of magnitude
+- D0-08 KE-rest gate does NOT fire; energy_drift falls through to raw computation
+- Raw value: `max|KE(t)-KE(0)|/|KE(0)|` ≈ 2700 — large but uninformative because the KE rise IS the physics, not a model defect
+
+The same strictly-dissipative-or-conservative assumption that D0-22 catches on `dissipation_sign_violation` (the rule assumes `dE/dt ≤ 0` everywhere) ALSO fails for `energy_drift` (the rule assumes `|E(t)-E(0)|` stays small relative to E(0)). Both rules' assumptions fail under the same physics and on the same substrate class.
+
+**Decision.** Extend D0-22's substrate-class dispatch to cover `energy_drift` on `open-driven-dissipative`:
+
+```python
+if system_class == "open-driven-dissipative":
+    return HarnessDefect(
+        value=None,
+        skip_reason=(
+            f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+            "KE grows by orders of magnitude due to physics (gravitational PE → "
+            "KE conversion); the strictly-dissipative-or-conservative assumption "
+            "underpinning energy_drift does not apply. See DECISIONS.md D0-22 "
+            "(amendment 1)."
+        ),
+    )
+```
+
+Gate is purely `system_class`-conditioned (parallel to D0-22's `dissipation_sign_violation` gate; no co-condition on KE shape). D0-08 takes precedence over D0-22 amendment 1 on `energy_drift` (KE-rest IC → D0-08 wins) — verified by `test_energy_drift_d0_08_takes_precedence_over_d0_22_amendment_1`. D0-18 and D0-22 are mutually exclusive on `system_class` value, so order between them is irrelevant.
+
+**Why amendment, not new D-entry.** Within-rung refinement of the principle D0-22 already established. The substrate class (`open-driven-dissipative`), the failing assumption (strictly-dissipative-or-conservative), the SKIP-with-reason mechanism, and the D0-19 §3.4 template-constant invariant are all unchanged from D0-22 §3. The only new fact is that the principle generalizes from `dissipation_sign_violation` to `energy_drift` — an empirical observation the smoke surfaced. Mirrors D0-15 amendment 4 (rollout-persistence enablement surfaced during rung-3 execution) and D0-17 amendment 1 (PBC-truncation convention surfaced during rung-3.5 execution) — both within-rung amendments to existing decisions when in-rung work surfaced the gap.
+
+**Why not Option C (rework D0-08 as relative threshold).** Rejected. D0-08's absolute threshold is validated against rung-4a's TGV2D conservation behavior; cross-cutting it now risks regressing rung 4a. D0-22's substrate-class dispatch is the right surface for "this rule's assumption fails on this substrate class" — exactly what amendment 1 captures.
+
+**Test coverage:** 3 new tests in `test_d0_22_open_driven_skip.py`:
+1. `test_energy_drift_skip_when_open_driven_with_rise_then_fall_ke` — positive path
+2. `test_energy_drift_d0_08_takes_precedence_over_d0_22_amendment_1` — sibling-gate precedence
+3. `test_energy_drift_d0_22_amendment_1_reason_template_constant` — D0-19 §3.4 invariant
+
+Plus the existing 7 tests continue to cover the dissipation_sign_violation gate; total D0-22 coverage = 10 tests.
+
+**SARIF impact (rung-4c artifacts):** the dam-break SARIFs emitted at Task 9 will now show `energy_drift: SKIP D0-22 amendment 1` instead of `energy_drift: raw=2700-ish`. Two distinct skip_reasons within the same rule across stacks (one per class label); the renderer's D0-19 §3.4 template-constant invariant holds within each (rule, stack) pair.
+
+**Methodology contribution this amendment elevates:**
+> The substrate-class-extension principle that D0-22 introduced for one rule (`dissipation_sign_violation`) generalizes naturally to OTHER rules with the same failing assumption (`energy_drift`). When an empirical probe surfaces that a rule's assumption fails on a specific substrate class, the dispatch should extend to ALL rules that share the assumption — not just the one the rule's named after.
+
+To be elevated as a first-class methodology output of the rung-4 series in integrating-README composition: substrate-class dispatch is per-substrate-class, not per-rule; the rule-axis enumeration follows from the assumption-axis enumeration.
+
+**"Smoke surfaces honest-limits" pattern (now bilateral within rung 4c).** Smoke caught:
+1. Empirical confirmation of dam2d rise-then-fall KE → D0-22 reclassification justified (PRIMARY).
+2. D0-08 absolute-threshold misfire on dam-break + energy_drift's strictly-dissipative-or-conservative assumption failure → D0-22 amendment 1 (SECONDARY, fixed in-rung).
+
+The smoke gate's PROCEED authorization is independent of the secondary finding (D0-22's load-bearing claim is unaffected); the amendment is "next-step refinement to close the loop the smoke opened, before the writeup hardens the artifact."
+
+### D0-22 amendment 2 — 2026-05-07 — Rung 4c ships at N=12 trajs (cost-driven N reduction; in-rung methodology-consistency over presentational uniformity)
+
+**Status:** in-rung amendment landed alongside Task 8 production fire; mirrors amendment 1's shape (smoke-discovered drift addressed in-rung rather than ship-with-caveat).
+
+**Trigger:** rung-4c production rollout (Task 8, plan §3.4 `~5 min A10G` per stack at N=20). Empirical timing on dam-break-2D:
+- Smoke 1-traj: SEGNN 159.6s, GNS 120.0s (includes JIT + 1 traj inference)
+- Production at N=20 (sha e754a4bc2e, SEGNN-dam2d): subprocess timed out at 2400s with 12/20 trajs converted-pending; amortized rate ~200s/traj
+- 20-traj projection ~67 min (SEGNN) and ~50 min (GNS) — both exceed the function's 2400s subprocess timeout
+- Plan estimate was ~10x optimistic on per-traj inference cost on dam-break (more particles, more neighbour-list work than TGV-2D)
+
+**Decision.** Ship rung 4c at N=12 trajs across both stacks rather than blow the per-rung budget to maintain N=20 cross-rung parity with rung-4a/4b:
+1. Convert the 12 SEGNN-dam2d partial pkls already on Volume via `convert_pkls_p1_segnn_dam2d` standalone path (CPU-only, ~$0.05).
+2. Fire GNS-dam2d at `n_trajs=12` (matched to SEGNN's effective N, ~15 min A10G, ~$0.21).
+3. Update both dam2d rollout functions to `eval.infer.n_trajs=12` canonically (working-tree-only override during the smoke run promoted to permanent setting; future re-fires reproduce the N=12 ship). Inline comments cite this amendment + the preflight log.
+4. Production cumulative compute: ~$1.00 (~5x the per-rung $0.20 estimate, ~3% of the ~$30 total-validation-budget ceiling).
+
+**Why amendment, not ship-with-caveat (Option A vs Option B per session log).**
+- The rung-4 series has been consistently applying a "smoke-discovered drift gets honest in-rung correction" pattern (rung 4b LB config-load → amendment 2; rung 4b latent figure-sweep → §14.6; rung 4c dam2d preemptive misclassification → caught pre-rung; rung 4c energy_drift methodologically-meaningless raw → D0-22 amendment 1).
+- Option A ("re-fire at N=20 with extended timeouts to maintain cross-rung N parity") would have been the first deviation from that pattern — spend more compute to preserve presentational uniformity rather than methodologically address the smoke-discovered finding.
+- Option B ("ship at N=12 with honest amendment") fits the established pattern: smoke surfaces a drift, the rung documents the drift, the data ships at the value the budget supports, the structural claims hold at N≥2 and are unaffected.
+- Cross-rung presentational cost of N=12 vs N=20: one-character visual on the cross-stack table ("x12 identical" vs "x20 identical"); half-line addition to the cover letter ("rung-4a TGV2D at N=20 trajs; rung-4c dam-break-2D at N=12 trajs (per-traj inference cost ~10x estimate; D0-22 amendment 2)"). Small.
+- Methodology-precedent cost of Option A: future rungs inherit "if uniformity is at risk, blow the budget" — a worse precedent than "ship at the data the budget supports, document the drift honestly."
+
+**Why this is "amendment 2" not a new D-entry.** Same shape as amendment 1: in-rung response to a smoke-discovered drift, sharpens the methodology trail, no scope expansion. The substrate-class extension principle D0-22 introduced is unchanged; amendment 2 records a separate but related precedent — when smoke surfaces unexpected per-traj cost, the disciplined response is to ship at supportable N with honest amendment rather than budget-fund presentational uniformity.
+
+**Methodology contribution this amendment elevates:**
+> Plan-estimated compute can be ~10x off — a 1-traj smoke gives an early signal but does not fully calibrate per-traj cost on a new substrate (dam-break has more particles than TGV-2D and more neighbour-list overhead). When smoke discovery surfaces this, the rung-4 series's discipline is to ship at the N the budget supports with honest acknowledgment, not to spend more compute to preserve presentational uniformity. The "smoke surfaces honest-limits, in-rung correction is the response" pattern from amendment 1 generalizes from methodology-correctness gaps (extend the SKIP gate) to data-scope gaps (reduce N with documented reasoning).
+
+To be foregrounded in integrating-README composition alongside amendment 1: the "smoke surfaces, rung corrects in-flight, writeup acknowledges honestly" trilateral is a first-class methodology contribution of the rung-4 series.
+
+**Test impact:** none. The amendment is a data-scope decision, not a code-logic change. The 458 existing tests continue to pass. The harness's substrate-class dispatch (D0-22 + amendment 1) is the same regardless of N.
+
+**SARIF impact (rung-4c artifacts at Task 9):** dam-break SARIFs will carry 36 rows each (3 rules × 12 trajs) instead of 60 rows (3 rules × 20 trajs). Renderer's D0-19 §3.4 invariants hold uniformly. Cross-stack identity check: SEGNN-dam2d and GNS-dam2d emit byte-identical structural row distributions at N=12 (verified post-fire via `lint_npz_dir` on both production rollouts at sha e754a4bc2e).
+
+**Provenance shas captured for emit_sarif (Task 9):**
+- SEGNN-dam2d: pkl_inference=`e754a4bc2e` (Task 8 fire that timed out at 12 trajs); npz_conversion=`e754a4bc2e` (standalone conversion via `convert_pkls_p1_segnn_dam2d` at same sha)
+- GNS-dam2d: pkl_inference=`e754a4bc2e` (Task 8 fire at n_trajs=12); npz_conversion=`e754a4bc2e` (in-fire conversion succeeded)
+
+**Forward-flag (future rungs / case studies):** if a future rung needs N=20 dam-break rollouts (e.g., for rung 4d gravity-direction-pinning PH-SYM-001/002/003 SKIP probe), the timeout strategy needs an explicit refactor: subprocess `timeout=2400` is a per-fire ceiling matched to TGV-2D's per-traj cost; dam-break needs `timeout=5400` minimum + corresponding function `timeout=6000`. Out of scope for rung 4c; recorded here so the timeout-as-substrate-property observation isn't lost.

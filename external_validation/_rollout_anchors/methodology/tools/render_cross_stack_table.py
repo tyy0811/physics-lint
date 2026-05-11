@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -67,6 +68,23 @@ class SourceTagMismatchError(Exception):
 class MissingRunLevelFieldError(Exception):
     """Raised when a SARIF is missing one or more of the 10 required
     D0-19 run-level fields. No defaulting.
+    """
+
+
+class DuplicateStackLabelError(Exception):
+    """Raised when two input SARIFs map to the same ``model_name-dataset_name``.
+
+    Pre-round-codex-3, the renderer accepted duplicate stack labels and
+    silently overwrote cells under one key while emitting duplicate
+    columns in the header. This is a realistic workflow failure because
+    ``emit_sarif.py`` writes sha-named SARIFs without removing older
+    ones, so a re-emission leaves both old and new SARIFs in the same
+    directory; ``--include-glob '*dam2d*.sarif'`` then picks up both.
+    Fail-loud rather than produce an ambiguous table.
+
+    Callers should either (a) clean up stale SARIFs before rendering,
+    (b) use a sha-specific glob like ``--include-glob '*<sha>*.sarif'``,
+    or (c) pass exact file paths.
     """
 
 
@@ -135,6 +153,27 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
         "harness:dissipation_sign_violation",
     )
 
+    # Round-codex-3 finding 2: detect duplicate (model_name, dataset_name)
+    # stack labels before building the table. Two SARIFs for the same
+    # stack (e.g., post-re-emission with old SARIFs still in the dir)
+    # would silently produce duplicate header columns and overwriting
+    # cells. Fail-loud with the specific file paths so the caller can
+    # disambiguate via a tighter --include-glob or explicit paths.
+    seen_labels: dict[str, Path] = {}
+    for path, run_props, _results in stacks:
+        label = f"{run_props['model_name']}-{run_props['dataset_name']}"
+        if label in seen_labels:
+            raise DuplicateStackLabelError(
+                f"Two SARIFs map to the same stack label {label!r}: "
+                f"{seen_labels[label].name} and {path.name}. The renderer "
+                "cannot produce a coherent table with duplicate stack "
+                "columns. Disambiguate by passing exact file paths or by "
+                "tightening --include-glob to a sha-specific pattern such "
+                f"as '*{label.replace('-', '_')}_<sarif_emission_sha>.sarif' "
+                "(round-codex-3 finding 2)."
+            )
+        seen_labels[label] = path
+
     cells: dict[tuple[str, str], str] = {}
     stack_labels: list[str] = []
     sha_lines: list[str] = []
@@ -190,7 +229,20 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
                         f"across SKIP rows. D0-19 §3.4 requires guaranteed-"
                         f"identical message.text co-varying with skip_reason."
                     )
-                cells[(rule_id, stack_label)] = f"SKIP (x{n}, D0-18)"
+                # Extract the cited D-entry from the skip_reason for the cell
+                # label. Pre-rung-4c the only SKIP path was D0-18 so the label
+                # was hardcoded; post-rung-4c skip_reasons cite D0-08 (KE-rest),
+                # D0-18 (dissipative-monotone), D0-22 (open-driven on
+                # dissipation_sign_violation), or D0-22 (amendment 1) (open-
+                # driven on energy_drift). Regex requires the "DECISIONS.md "
+                # prefix so it doesn't pick up incidental D0-NN mentions
+                # (e.g., "D0-19 §3.4" referencing the schema invariant).
+                d_entry_match = re.search(
+                    r"DECISIONS\.md\s+(D0-\d+(?:\s+\(amendment\s+\d+\))?)",
+                    skip_reasons[0],
+                )
+                d_entry = d_entry_match.group(1) if d_entry_match else "?"
+                cells[(rule_id, stack_label)] = f"SKIP (x{n}, {d_entry})"
             else:
                 # all_raw: per-row raw_value may legitimately vary across trajs
                 # (e.g., conservation defect differs by initial conditions).
@@ -224,6 +276,28 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
     md_lines.append("")
     md_lines.extend(sha_lines)
 
+    # Optional inference-run-status section (rung-4c §9 review-gate fold-in).
+    # Each stack's SARIF may carry an optional `inference_run_status`
+    # property in run-level properties (one of `from_completed_inference`,
+    # `from_aborted_inference`, `from_unknown_inference`); when at least
+    # one stack carries it, render the section with explicit values.
+    # Stacks without the field (rung-4a/4b legacy SARIFs, pre-fold-in)
+    # render as `n/a (pre-salvage-tag-schema)` — honest absence rather
+    # than assumed-clean default, parallel to the gate's refuse-by-default
+    # posture. If ALL stacks lack the field, the section is omitted
+    # entirely so legacy outputs render byte-identically to pre-fold-in.
+    status_entries: list[tuple[str, str | None]] = []
+    for _path, run_props, _results in stacks:
+        stack_label = f"{run_props['model_name']}-{run_props['dataset_name']}"
+        status_entries.append((stack_label, run_props.get("inference_run_status")))
+    if any(status is not None for _label, status in status_entries):
+        md_lines.append("")
+        md_lines.append("**Inference run status (rung-4c §9 review-gate fold-in):**")
+        md_lines.append("")
+        for stack_label, status in status_entries:
+            display = status if status is not None else "n/a (pre-salvage-tag-schema)"
+            md_lines.append(f"- **{stack_label}**: {display}")
+
     return "\n".join(md_lines) + "\n"
 
 
@@ -235,10 +309,26 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="Directory containing the harness SARIF files (e.g., outputs/sarif/).",
     )
+    parser.add_argument(
+        "--include-glob",
+        type=str,
+        default="*.sarif",
+        help=(
+            "Glob pattern (relative to --sarif-dir) for files to include. Defaults to "
+            "'*.sarif'. Use to render a subset of SARIFs in a directory that mixes "
+            "schema versions (e.g., '--include-glob \"*tgv2d*.sarif\"' to skip "
+            "rung-4b eps SARIFs at v1.1, or '--include-glob \"*dam2d*.sarif\"' for "
+            "rung-4c dam-break-only). The fail-loud schema-mismatch assertion still "
+            "applies to the filtered set."
+        ),
+    )
     args = parser.parse_args(argv)
-    sarif_paths = sorted(args.sarif_dir.glob("*.sarif"))
+    sarif_paths = sorted(args.sarif_dir.glob(args.include_glob))
     if not sarif_paths:
-        print(f"No .sarif files found in {args.sarif_dir}", file=sys.stderr)
+        print(
+            f"No SARIF files matching glob {args.include_glob!r} in {args.sarif_dir}",
+            file=sys.stderr,
+        )
         return 2
     print(render_cross_stack_table(sarif_paths))
     return 0

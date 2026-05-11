@@ -122,3 +122,148 @@ def test_lagrangebench_eps_entrypoints_use_a10g() -> None:
         assert match is not None, (
             f"{fn_name}: expected @app.function decorator with gpu=ROLLOUT_GENERATION_GPU_CLASS"
         )
+
+
+def test_lagrangebench_dam2d_rollout_entrypoints_use_a10g() -> None:
+    """Rung-4c P1 dam2d rollout entrypoints must use ROLLOUT_GENERATION_GPU_CLASS (A10G).
+
+    Drift-guard for the rung-4c ``lagrangebench_rollout_p1_{segnn,gns}_dam2d``
+    Modal functions. Same A10G discipline as rung-4a P0/P1 TGV2D rollouts
+    (D0-13 stage-2). If a future change wants to graduate the dam2d
+    rollout to a different GPU class, the change must land alongside a
+    DECISIONS sub-entry under D0-13 or D0-22.
+    """
+    import re
+
+    assert MODAL_APP_PATH.is_file(), f"modal_app.py not found at {MODAL_APP_PATH}"
+    text = MODAL_APP_PATH.read_text(encoding="utf-8")
+    for fn_name in (
+        "lagrangebench_rollout_p1_segnn_dam2d",
+        "lagrangebench_rollout_p1_gns_dam2d",
+    ):
+        pattern = (
+            r"@app\.function\([^)]*?gpu=ROLLOUT_GENERATION_GPU_CLASS[^)]*?\)\s*\ndef "
+            + re.escape(fn_name)
+        )
+        match = re.search(pattern, text, flags=re.DOTALL)
+        assert match is not None, (
+            f"{fn_name}: expected @app.function decorator with gpu=ROLLOUT_GENERATION_GPU_CLASS"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Round-codex-2 drift-guards: manifest_required threading on the standalone-
+# conversion gate. Without these, a future refactor could silently drop the
+# `manifest_required=True` argument from `convert_pkls_p1_segnn_dam2d` and
+# re-open the Codex-flagged delete-to-bypass path (see plan v2.1 §3
+# round-codex-2 absorption + DECISIONS.md D0-22 amendment 3 if filed).
+# ---------------------------------------------------------------------------
+
+
+def _read_function_def_source(source_path: Path, function_name: str) -> str | None:
+    """Return the raw source slice for a module-level function named ``function_name``.
+
+    Returns None if the function is not found. The slice is from the
+    ``def`` keyword through the function body's end. Uses AST line
+    numbers for precision (handles decorators above the def).
+    """
+    import ast
+
+    tree = ast.parse(source_path.read_text(encoding="utf-8"))
+    lines = source_path.read_text(encoding="utf-8").splitlines()
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef) and node.name == function_name:
+            # Use end_lineno (inclusive) for the slice
+            end = node.end_lineno or len(lines)
+            return "\n".join(lines[node.lineno - 1 : end])
+    return None
+
+
+def test_gate_function_has_manifest_required_parameter() -> None:
+    """``lagrangebench_convert_pkls_in_volume`` must accept ``manifest_required``.
+
+    Drift-guard for the round-codex-2 fix: the conversion gate's signature
+    must include ``manifest_required: bool = False`` so post-fold-in
+    entrypoints can opt into refuse-on-missing behavior. Default is False
+    for legacy entrypoints (rung-3.5 / rung-4a/4b convert_pkls_p0_*).
+    """
+    source = _read_function_def_source(MODAL_APP_PATH, "lagrangebench_convert_pkls_in_volume")
+    assert source is not None, (
+        "lagrangebench_convert_pkls_in_volume function not found in modal_app.py"
+    )
+    assert "manifest_required: bool = False" in source, (
+        "lagrangebench_convert_pkls_in_volume must accept 'manifest_required: bool = False' "
+        "(round-codex-2 fix; closes the delete-to-bypass path for post-fold-in stacks)"
+    )
+
+
+def test_convert_pkls_p1_segnn_dam2d_passes_manifest_required_true() -> None:
+    """``convert_pkls_p1_segnn_dam2d`` must pass ``manifest_required=True`` to the gate.
+
+    Drift-guard for the round-codex-2 fix: the rung-4c-specific standalone-
+    conversion entrypoint is post-fold-in by definition, so missing manifest
+    is a failure mode (stale local mirror, backfill not run, manifest
+    deleted), not legacy absence. Operator must repair via
+    ``backfill_rung4c_inference_manifests``, not delete to bypass.
+    """
+    source = _read_function_def_source(MODAL_APP_PATH, "convert_pkls_p1_segnn_dam2d")
+    assert source is not None, "convert_pkls_p1_segnn_dam2d function not found in modal_app.py"
+    assert "manifest_required=True" in source, (
+        "convert_pkls_p1_segnn_dam2d must pass 'manifest_required=True' to "
+        "lagrangebench_convert_pkls_in_volume.remote(...) (round-codex-2 fix)"
+    )
+
+
+def test_convert_pkls_p0_segnn_tgv2d_does_not_pass_manifest_required() -> None:
+    """``convert_pkls_p0_segnn_tgv2d`` (legacy) must NOT set ``manifest_required=True``.
+
+    Pre-rung-4c rollout subdirs predate the manifest convention; setting
+    manifest_required=True would break legacy convert_pkls usage (D0-17
+    amendment 1 conversion-bug-recovery case). Default False is correct
+    for this entrypoint.
+    """
+    source = _read_function_def_source(MODAL_APP_PATH, "convert_pkls_p0_segnn_tgv2d")
+    assert source is not None, "convert_pkls_p0_segnn_tgv2d function not found in modal_app.py"
+    assert "manifest_required=True" not in source, (
+        "convert_pkls_p0_segnn_tgv2d must NOT set manifest_required=True — "
+        "pre-rung-4c stacks predate the manifest convention and rely on "
+        "the legacy warn-allow path (manifest_required=False default)"
+    )
+
+
+def test_gate_has_missing_required_manifest_refuse_branch() -> None:
+    """The gate must have a branch refusing ``STATUS_FROM_UNKNOWN_INFERENCE`` when required.
+
+    Drift-guard for the round-codex-2 fix: refuse_reason 'missing_required_manifest'
+    must appear in the gate logic with returncode=2 + a specific error message
+    naming the bypass-prevention rationale. Without this branch, the
+    delete-to-bypass path that Codex flagged remains open.
+    """
+    source = _read_function_def_source(MODAL_APP_PATH, "lagrangebench_convert_pkls_in_volume")
+    assert source is not None
+    assert 'refuse_reason == "missing_required_manifest"' in source, (
+        "Gate must check for refuse_reason == 'missing_required_manifest' "
+        "(round-codex-2 fail-open closure)"
+    )
+    assert "manifest_required=True" in source, (
+        "Gate's missing-required error message must reference manifest_required=True "
+        "so operators understand the policy"
+    )
+
+
+def test_gate_invalid_error_does_not_advertise_delete_to_bypass() -> None:
+    """The manifest_invalid error message must NOT advertise deletion as a fix path.
+
+    Pre-round-codex-2, the manifest_invalid error said 'repair or delete
+    the manifest (deletion falls back to the warn-allow from_unknown_inference
+    path)' — a documented bypass. Round-codex-2 removed that language and
+    added the missing-required gate. Drift-guard: don't let the bypass
+    language re-appear.
+    """
+    source = _read_function_def_source(MODAL_APP_PATH, "lagrangebench_convert_pkls_in_volume")
+    assert source is not None
+    forbidden = "deletion falls back to the warn-allow"
+    assert forbidden not in source, (
+        f"Forbidden phrase {forbidden!r} reappeared in gate error message; "
+        "this advertises the round-codex-2 bypass and must stay removed"
+    )

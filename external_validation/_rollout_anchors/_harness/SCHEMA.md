@@ -305,6 +305,34 @@ Consumers MAY assert these invariants at render time. The schema makes them chec
 
 Per D0-19, the `harness:energy_drift` SKIP path uses a template-constant skip_reason (no per-row value interpolation). Per-row varying KE values move to `properties.ke_initial` / `properties.ke_final`. See `_harness/particle_rollout_adapter.py:energy_drift` for the canonical template; renderer-side documentation cites that path.
 
+##### `energy_drift` D0-22 amendment 1 SKIP-reason template (open-driven-dissipative)
+
+Fires when `metadata["dataset"]` resolves to `system_class == "open-driven-dissipative"` AND existing D0-08 KE-rest gate did not fire. Parallel to D0-22's gate on `dissipation_sign_violation`; introduced in DECISIONS.md D0-22 amendment 1 after rung-4c pre-flight smoke surfaced that energy_drift fires methodologically meaningless raw values (~2500-2700) on dam-break-2D.
+
+**Template (verbatim):**
+
+```
+system_class='open-driven-dissipative' (dataset='<dataset_name>'); KE grows by orders of magnitude due to physics (gravitational PE → KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1).
+```
+
+The `<dataset_name>` placeholder is interpolated from `rollout.metadata["dataset"]` at emission time; the rest of the template is identical across (rule, stack) emissions per D0-19 §3.4. This is a different template-constant string from the `dissipation_sign_violation` D0-22 SKIP (the rule-specific failing assumption differs); the renderer's per-(rule, stack) invariant assertion still holds because each rule has its own constant template.
+
+#### `dissipation_sign_violation` SKIP-reason template (D0-22)
+
+Fires when `metadata["dataset"]` resolves to `system_class == "open-driven-dissipative"` via `LAGRANGEBENCH_DATASET_SYSTEM_CLASS`. Emitted as `properties.skip_reason` per D0-19 §3.4.
+
+**Template (verbatim):**
+
+```
+system_class='open-driven-dissipative' (dataset='<dataset_name>'); dE/dt > 0 over a stretch by physics (gravitational PE → KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22.
+```
+
+The `<dataset_name>` placeholder is interpolated from `rollout.metadata["dataset"]` at emission time; the rest of the template is identical across (rule, stack) emissions per D0-19 §3.4.
+
+**Trigger gate:** `system_class == "open-driven-dissipative"` AND existing D0-08 KE-rest gate did not fire (max(KE) > KE_REST_THRESHOLD). Orthogonal to KE-shape conditions; the gate is purely `system_class`-conditioned by design (an open-driven system with monotone-decreasing KE due to a model bug should still SKIP — surfacing the bug requires a different rule, not this one).
+
+**Sibling-gate relationship.** D0-22 (dissipation_sign_violation, open-driven) and D0-18 (energy_drift, dissipative-monotone) and D0-08 (energy_drift, KE-rest) are members of a "substrate-detection family" with distinct physical preconditions and distinct SKIP-row outputs. Future generalization to a (rule, substrate) compatibility matrix is forward-flagged in D0-21 §forward-flag-2 and D0-22 §6.
+
 ---
 
 ### 3.5 SARIF schema_version v1.1 — rung 4b PH-SYM extensions

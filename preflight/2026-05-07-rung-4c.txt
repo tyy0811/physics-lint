@@ -1,0 +1,179 @@
+Rung 4c pre-flight log — 2026-05-07
+====================================
+
+Branch: feature/rung-4c-substrate-class-extension
+Predecessor sha: a2119906bb (Task 6 commit)
+Compute used: 2 x ~5 min A10G (dataset download dominated SEGNN; cached for GNS)
+LB pinned sha: b880a6c84a93792d2499d2a9b8ba3a077ddf44e2
+Dataset dir: 2D_DAM_5740_20kevery100 (verified Task 5)
+
+Step 1 — Data inspection
+  Status: DEFERRED -> covered by Step 4 manifest
+  Note: dataset_download_returncode=0 in SEGNN smoke; metadata.json
+        readable by lagrangebench_pkl_to_npz (Step 4 conversion succeeded).
+
+Step 2 — Conversion round-trip (pkl_to_npz tests, local CPU)
+  Status: PASS
+  Test: pytest external_validation/_rollout_anchors/_harness/tests/test_lagrangebench_pkl_to_npz.py
+  Result: 36 passed in 1.34s
+
+Step 3 — Rule sanity test (D0-22 SKIP-gate tests, local CPU)
+  Status: PASS
+  Test: pytest external_validation/_rollout_anchors/_harness/tests/test_d0_22_open_driven_skip.py
+  Result: 7 passed in 0.70s
+
+Step 4 — 1-traj smoke per stack (Modal A10G)
+  Status: PASS
+  Approach: temporary working-tree edit n_trajs=20 -> n_trajs=1 in both
+            dam2d rollout functions; fired both modal runs; reverted edit.
+
+  SEGNN-dam2d smoke:
+    modal app: ap-D4hNLomq9uS9Sl3KqYym1a
+    rollout_subdir: /vol/rollouts/lagrangebench/segnn_dam2d_a2119906bb/
+    inference_returncode: 0
+    conversion: 1 npz produced (9.8 MB)
+    KE(0)=4.703e-01  max(KE)=1.304e+03  KE(end)=1.239e+03  peak_t=88/105  rises=True
+
+  GNS-dam2d smoke:
+    modal app: ap-I3MGwZZynBvxNFPZikWfPL
+    rollout_subdir: /vol/rollouts/lagrangebench/gns_dam2d_a2119906bb/
+    inference_returncode: 0
+    conversion: 1 npz produced (9.8 MB)
+    KE(0)=4.703e-01  max(KE)=1.106e+03  KE(end)=1.092e+03  peak_t=98/105  rises=True
+
+  KE(t) shape verification: PASS on both stacks
+    Both stacks confirm gravity-loaded rise-then-fall KE shape (KE(0) << max(KE),
+    peak in interior, monotone-decreasing after peak). The empirical premise of
+    D0-22's dam2d -> "open-driven-dissipative" reclassification is supported.
+
+  KE(0) identity across stacks: KE(0)=0.4703 to 4 sig figs on both, because
+    the input window is read from the same dataset test split; KE(0) is a
+    dataset property, not a model property.
+
+Step 5 — End-to-end pipeline smoke (local CPU on smoke npzs)
+  Status: PASS-with-finding
+  lint_npz_dir output (3 rows per stack):
+
+    SEGNN-dam2d:
+      harness:mass_conservation_defect    raw=0.0                                 (PASS-equivalent)
+      harness:energy_drift                raw=2771.39                             (FIRES, NOT SKIP — see finding below)
+      harness:dissipation_sign_violation  SKIP  D0-22 open-driven-dissipative     (as designed)
+
+    GNS-dam2d:
+      harness:mass_conservation_defect    raw=0.0                                 (PASS-equivalent)
+      harness:energy_drift                raw=2349.83                             (FIRES, NOT SKIP — see finding below)
+      harness:dissipation_sign_violation  SKIP  D0-22 open-driven-dissipative     (as designed)
+
+  PRIMARY: D0-22 SKIP path fires correctly on both stacks; mass row trivially 0.0.
+
+  SECONDARY FINDING (plan-vs-reality drift on D0-08):
+    Design §1.2 + plan §Step 7.6 predicted "energy_drift: SKIP via existing D0-08
+    (KE-rest IC, since dam-break starts at rest before column release)." Empirically
+    that prediction is wrong. KE(0)=0.4703 is well above the absolute
+    KE_REST_THRESHOLD=1e-10 (the threshold is in absolute energy units; dam-break
+    KE scale is O(1000), so the relative ratio KE(0)/max(KE)=3.6e-4 is tiny but
+    the absolute value clears the threshold by 9 orders of magnitude).
+
+    Concretely, energy_drift fires its raw value (E_max - E_0) / max(|E_0|, eps)
+    = ~2500-2700 on both stacks, methodologically meaningless on a gravity-loaded
+    open-driven system (the rule's strictly-dissipative-or-conservative assumption
+    fails for energy_drift the same way it does for dissipation_sign_violation).
+
+    D0-22 was scoped to dissipation_sign_violation specifically; it does NOT
+    extend to energy_drift. Generalizing D0-22 to energy_drift on
+    open-driven-dissipative substrates is a future-rung design decision, not a
+    rung-4c amendment. The honest writeup posture is:
+      - report the energy_drift raw value (~2500-2700)
+      - observe that the rule misfires on open-driven systems (not just D0-08
+        threshold issue, but the same strictly-dissipative-or-conservative
+        assumption that D0-22 catches on dissipation_sign_violation)
+      - forward-flag for a future rung: extend D0-22's substrate-class dispatch
+        to energy_drift OR rework D0-08 as a relative-threshold gate
+
+    This finding does NOT block PROCEED: D0-22's load-bearing SKIP fires correctly,
+    and the rung's headline (substrate-class extension to open-driven-dissipative
+    via D0-22) is unaffected. The drift is a SECONDARY observation — sharper
+    framing for the writeup honest-limits section, not a design pivot.
+
+Decision: PROCEED
+Justification:
+  - Steps 2, 3, 4 all PASS; Step 5 PASS-with-finding (D0-22 fires correctly).
+  - Empirical KE rise-then-fall shape confirmed on both stacks at sha a2119906bb,
+    validating the dam2d -> "open-driven-dissipative" reclassification committed
+    at 12338ec as a TDD-green hypothesis.
+  - SECONDARY plan-vs-reality drift on D0-08-fires prediction is non-blocking;
+    feeds the writeup's honest-limits section as a forward-flag for a future
+    rung addressing energy_drift on open-driven substrates.
+  - 20-traj Modal fire authorized for Task 8.
+
+Post-decision (2026-05-07, same session):
+  Secondary finding addressed within-rung as D0-22 amendment 1 (Option B
+  rather than the original Option A "ship with honest-limits caveat" path).
+  Reasoning: the principle D0-22 established (substrate-class dispatch
+  on open-driven-dissipative) generalizes naturally to energy_drift —
+  same physical reason, same substrate class, same SKIP shape — just a
+  second rule instance of the same principle. Mirrors D0-15 / D0-17 /
+  D0-18 amendment-layered patterns where in-rung work surfaced the gap.
+
+  Re-run pipeline smoke on cached npzs post-amendment:
+    SEGNN-dam2d:
+      mass_conservation_defect    raw=0.0
+      energy_drift                SKIP D0-22 amendment 1 (was raw=2771.39)
+      dissipation_sign_violation  SKIP D0-22
+    GNS-dam2d:
+      mass_conservation_defect    raw=0.0
+      energy_drift                SKIP D0-22 amendment 1 (was raw=2349.83)
+      dissipation_sign_violation  SKIP D0-22
+
+  Cleaner SARIF artifact (no methodologically-meaningless raw values
+  for the writeup to caveat); test coverage extended (10 D0-22 tests
+  total, was 7); DECISIONS.md D0-22 amendment 1 records the empirical-
+  discovery-during-smoke origin and the within-rung-refinement framing.
+
+  Methodology contribution elevated by amendment 1: substrate-class
+  dispatch is per-substrate-class, not per-rule. When an empirical
+  probe surfaces that a rule's assumption fails on a specific substrate
+  class, the dispatch extends to ALL rules sharing the assumption —
+  not just the one the gate is named after. To be foregrounded in
+  integrating-README composition.
+
+Task 8 fire outcome (2026-05-07, same session) — D0-22 amendment 2:
+  SEGNN-dam2d production at N=20 (sha e754a4bc2e):
+    inference_returncode: -1 (TimeoutExpired after 2400s)
+    converted_npz_count via standalone path: 12
+    rollout_subdir: /vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e/
+    Amortized rate: ~200s/traj on dam-break SEGNN (~10x optimistic vs
+    plan's ~5min/20trajs estimate; dam2d has more particles + neighbour
+    list work than TGV-2D).
+
+  GNS-dam2d production at N=12 (sha e754a4bc2e):
+    inference_returncode: 0
+    inference_wall_seconds: 893.0
+    converted_npz_count: 12
+    rollout_subdir: /vol/rollouts/lagrangebench/gns_dam2d_e754a4bc2e/
+    Amortized rate: ~74s/traj on dam-break GNS.
+
+  Decision: ship rung 4c at N=12 trajs across both stacks per D0-22
+  amendment 2 (Option B over Option A "blow budget for cross-rung
+  uniformity"). Methodology-consistency with the rung-4 series's
+  smoke-discovered-drift-gets-in-rung-correction pattern weighed against
+  the small presentational cost of N=12 ≠ N=20.
+
+  Cross-stack lint_npz_dir verification on both rollouts (CPU-only):
+    36 rows per stack (3 rules x 12 trajs)
+    SEGNN-dam2d: mass=0.0 raw x12, energy_drift=SKIP D0-22a1 x12,
+                 dissipation_sign=SKIP D0-22 x12
+    GNS-dam2d:   mass=0.0 raw x12, energy_drift=SKIP D0-22a1 x12,
+                 dissipation_sign=SKIP D0-22 x12
+    Cross-stack structural identity confirmed; rung's load-bearing
+    schema-uniform claim holds at N=12.
+
+  Cumulative compute: ~$1.00 across smoke + failed SEGNN-N=20 +
+  successful GNS-N=12 + standalone SEGNN conversion. ~5x the per-rung
+  estimate; ~3% of the ~$30 total-validation budget ceiling.
+
+  Code adjustments committed alongside the amendment: both dam2d
+  rollout functions canonicalized at n_trajs=12 with inline comments
+  citing D0-22 amendment 2 + this preflight log; future re-fires
+  reproduce the N=12 ship, future N=20 re-attempts require explicit
+  timeout refactor (subprocess 2400 -> 5400+ minimum).
