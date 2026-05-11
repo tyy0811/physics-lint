@@ -27,6 +27,16 @@ being `master` means branch from `master`."*
 **Realized.** `feature/rollout-anchors` created at the tip of `master`,
 SHA `e50c134` (pre-rollout-anchors).
 
+**Sub-bullet — 2026-05-11 — case-study-02 branch base.** The Phase 1
+plan (`methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-phase-1-plan.md`)
+required choosing a base for `feature/case-study-02-physicsnemo-mgn`
+depending on PR #9 status. PR #9 (`feature/rung-4c-substrate-class-extension`)
+was still **OPEN + MERGEABLE** at the start of Phase 1 execution
+(2026-05-11), so the new branch was created off the rung-4c branch
+head at SHA `891a13e` (= PR #9 head; tip of
+`feature/rung-4c-substrate-class-extension`). Plan dependency: D0-2X
+verdicts (Phase 1) layer on top of D0-22 substrate-class taxonomy.
+
 ---
 
 ## D0-02 — 2026-05-04 — Audit Q1 (Gate A) deferred to Modal session
@@ -2312,6 +2322,57 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
 - GNS-dam2d: pkl_inference=`e754a4bc2e` (Task 8 fire at n_trajs=12); npz_conversion=`e754a4bc2e` (in-fire conversion succeeded)
 
 **Forward-flag (future rungs / case studies):** if a future rung needs N=20 dam-break rollouts (e.g., for rung 4d gravity-direction-pinning PH-SYM-001/002/003 SKIP probe), the timeout strategy needs an explicit refactor: subprocess `timeout=2400` is a per-fire ceiling matched to TGV-2D's per-traj cost; dam-break needs `timeout=5400` minimum + corresponding function `timeout=6000`. Out of scope for rung 4c; recorded here so the timeout-as-substrate-property observation isn't lost.
+
+---
+
+## D0-23 — 2026-05-11 — Case Study 02 Phase 1 audit verdicts (open)
+
+**Status:** open. Skeleton pre-registered before Phase 1 fires; verdicts populate as audit tasks land per `methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-phase-1-plan.md`.
+
+**Predecessor:** D0-02 (Gate A deferred to Day 2), D0-11 (Day 2 hour 1 NGC audit decision criterion), D0-22 (substrate-class taxonomy).
+
+**Verdicts (populated by Phase 1 tasks):**
+
+1. **BLOCKING-1 (Task 1 + 7):** NGC checkpoint ↔ PhysicsNeMo v2.0.0 state-dict compatibility.
+   - Verdict: [pending]
+   - Source: state-dict-key smoke test result.
+
+2. **NGC audit findings (Task 5):** velocity-field key in `node_values`; DGL topology coercibility; primitive-vs-derived emission.
+   - Verdict: [pending]
+   - Source: V1-V18 audit per preflight mgn_loader_contract.md.
+
+3. **Gate A verdict (Task 6):** PASS / PARTIAL / FAIL for DGL → MeshField materialization.
+   - Verdict: [pending]
+   - Source: scikit-fem Basis reconstruction attempt on NGC sample.
+
+4. **NGC sample reproduction (Task 7):** max-abs-error on velocity against shipped expected output.
+   - Verdict: [pending]
+   - Tolerance: 10⁻³ (plan §4 default; refined per NGC documentation).
+
+5. **Gate D composite verdict (Task 8):** PASS (checkpoint usable for case study 02) / FAIL-with-FNO-fallback.
+   - Verdict: [pending]
+   - Composite of: BLOCKING-1 + NGC sample reproduction.
+
+6. **Substrate-class empirical verdict (Task 9):** cylinder wake fits `open-driven-dissipative` (default) OR new class label.
+   - Verdict: [pending]
+   - Three discriminating observables: ∫|∇·v|dV, KE budget dKE/dt, Strouhal St ∈ [0.16, 0.21] for Re ∈ [100, 300].
+
+7. **Persistent-volume decision (Task 9 sub-step):** Modal MGN inference writes to persistent volume? Y/N.
+   - Verdict: [pending]
+   - Implication: rollout-dir isolation pattern (round-codex-4) applies if Y.
+
+8. **`_expect_velocity` helper key resolution (Task 10):** actual NGC velocity-field key name.
+   - Verdict: [pending]
+
+9. **`MGN_DATASET_SYSTEM_CLASS` dispatch (Task 11):** introduced; class label per verdict 6.
+   - Verdict: [pending]
+
+10. **Pre-flight assertions (Task 12):** loader-contract assertions written in `_harness/mesh_rollout_adapter.py`.
+    - Verdict: [pending]
+
+**Phase 1 boundary cross-review (Task 14):** Codex pass against verdicts 1-10 + code-absorption (Tasks 10-12). Findings triaged per pattern-C four-cell framework. Cell distributions populated post-cross-review.
+
+**Why pre-registered as skeleton:** mirrors D0-22's pre-registration-before-implementation pattern. Audit-trail discipline: by the time Phase 1 completes, every verdict has a recorded place; no audit finding lands without an entry.
 
 ---
 
