@@ -285,6 +285,8 @@ Before moving to Day 2:
 
 ## 4. Case Study 02: NVIDIA PhysicsNeMo MeshGraphNet (Day 2, 4–6 hours)
 
+> **Status:** Superseded by `methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-design.md`. §4 below is preserved as historical context; it does not reflect v2.1 methodology evolution (pattern A+B+C, smoke/source/cross triple, bilateral schema framing, layered-fail-open observation). Also corrects plan §4 §2.2's rule table, which listed PH-SYM-* as in-scope for vortex shedding contra spec §1.2's particle-side restriction. Read the new design doc for the current case study 02 plan.
+
 ### 4.1 Targets
 
 Two checkpoints, both already on NGC:
