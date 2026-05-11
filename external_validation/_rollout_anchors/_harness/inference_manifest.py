@@ -228,7 +228,17 @@ def gate_verdict_for_status(
       ``"manifest_invalid"``. No override flag — corruption is structural,
       not policy. Independent of ``manifest_required`` and
       ``allow_from_aborted_inference``.
+
+    Unknown status strings (typos, version skew between classifier and
+    gate, future-added classifier outputs not yet wired into the gate)
+    raise ``ValueError``. Pre-round-codex-4 the function fell through to
+    ``return True, None`` for any unrecognized status — a fail-open
+    default at a trust-boundary gate. Codex round-4 finding 2 flagged
+    this; the explicit raise surfaces the programmer error loudly rather
+    than silently unlocking conversion.
     """
+    if status == STATUS_FROM_COMPLETED_INFERENCE:
+        return True, None
     if status == STATUS_MANIFEST_INVALID:
         return False, "manifest_invalid"
     if status == STATUS_FROM_ABORTED_INFERENCE:
@@ -239,8 +249,15 @@ def gate_verdict_for_status(
         if manifest_required:
             return False, "missing_required_manifest"
         return True, None
-    # STATUS_FROM_COMPLETED_INFERENCE (and any future allow-by-default status)
-    return True, None
+    raise ValueError(
+        f"gate_verdict_for_status received unknown status {status!r}; "
+        f"expected one of: {STATUS_FROM_COMPLETED_INFERENCE!r}, "
+        f"{STATUS_FROM_ABORTED_INFERENCE!r}, "
+        f"{STATUS_FROM_UNKNOWN_INFERENCE!r}, "
+        f"{STATUS_MANIFEST_INVALID!r}. Unknown statuses fail closed at "
+        f"the trust boundary — a classifier/gate version skew or typo "
+        f"must not default to allow."
+    )
 
 
 def read_inference_manifest_status(

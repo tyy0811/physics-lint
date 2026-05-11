@@ -200,6 +200,45 @@ def _persist_inference_manifest_to_rollout_subdir(manifest: dict, rollout_subdir
     )
 
 
+@functools.lru_cache(maxsize=1)
+def _import_rollout_dir_helper():
+    """Locate the rollout-subdir isolation helper across local + Modal contexts.
+
+    Parallels ``_import_inference_manifest_helper`` (round-3 helper-promotion
+    pattern). Added at round-codex-4 to back the pre-fire emptiness check
+    that closes Codex round-codex-4 finding 1's same-dir retry-contamination
+    fail-open.
+    """
+    try:
+        from external_validation._rollout_anchors._harness import (
+            rollout_dir as _module,
+        )
+
+        return _module
+    except ImportError:
+        import sys as _sys
+
+        if _REMOTE_HARNESS_DIR not in _sys.path:
+            _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+        import rollout_dir as _module
+
+        return _module
+
+
+def _prepare_empty_rollout_subdir(rollout_subdir: object, *, clean_existing: bool) -> None:
+    """Delegate to the shared helper (rung-4c §9 fold-in round-codex-4 absorption).
+
+    Creates the rollout subdir if absent; refuses if it exists and is
+    non-empty unless ``clean_existing=True``. Round-codex-3's manifest
+    basename-binding does NOT catch same-directory retry contamination
+    (basenames match because the directory is the same); this helper
+    closes that path.
+    """
+    return _import_rollout_dir_helper().prepare_empty_rollout_subdir(
+        rollout_subdir, clean_existing=clean_existing
+    )
+
+
 def _classify_inference_run_status(rollout_subdir: str) -> tuple[str, object]:
     """Delegate to the shared helper (rung-4c §9 fold-in round 3 helper promotion).
 
@@ -540,6 +579,10 @@ _HARNESS_T7_MODULES = (
     # the duplicate implementations made the round-3 fix harder than
     # it should have been).
     "inference_manifest.py",
+    # rung-4c §9 fold-in round-codex-4: rollout subdir isolation helper
+    # (closes the same-dir retry-contamination fail-open that round-codex-3's
+    # basename-binding doesn't catch — Codex round-codex-4 finding 1, HIGH).
+    "rollout_dir.py",
 )
 _REMOTE_HARNESS_DIR = "/opt/physics_lint_harness"
 rollout_image = (
@@ -722,7 +765,9 @@ UPSTREAM_COMPAT_PATCHES: list[dict[str, str]] = [
     volumes={"/vol": rollout_volume},
     timeout=3600,
 )
-def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dict:
+def lagrangebench_rollout_p0_segnn_tgv2d(
+    git_sha: str, full_git_sha: str, clean_existing: bool = False
+) -> dict:
     """Rung 3 + 3.5 P0: SEGNN-10-64 inference + SCHEMA.md npz materialization (D0-15).
 
     Steps:
@@ -884,7 +929,7 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     # files alongside per the D0-15 amendment 4 directory layout.
     rollout_dir_root = "/vol/rollouts/lagrangebench"
     rollout_subdir = f"{rollout_dir_root}/segnn_tgv2d_{git_sha}"
-    os.makedirs(rollout_subdir, exist_ok=True)
+    _prepare_empty_rollout_subdir(rollout_subdir, clean_existing=clean_existing)
     manifest["rollout_subdir"] = rollout_subdir
 
     os.chdir("/opt/lagrangebench")
@@ -1103,7 +1148,9 @@ def lagrangebench_rollout_p0_segnn_tgv2d(git_sha: str, full_git_sha: str) -> dic
     volumes={"/vol": rollout_volume},
     timeout=3600,
 )
-def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
+def lagrangebench_rollout_p1_gns_tgv2d(
+    git_sha: str, full_git_sha: str, clean_existing: bool = False
+) -> dict:
     """Rung 3 + 3.5 P1: GNS-10-128 inference + SCHEMA.md npz materialization.
 
     Mirrors lagrangebench_rollout_p0_segnn_tgv2d with checkpoint /
@@ -1214,7 +1261,7 @@ def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
     # stays; only load_ckp + rollout_subdir differ).
     rollout_dir_root = "/vol/rollouts/lagrangebench"
     rollout_subdir = f"{rollout_dir_root}/gns_tgv2d_{git_sha}"
-    os.makedirs(rollout_subdir, exist_ok=True)
+    _prepare_empty_rollout_subdir(rollout_subdir, clean_existing=clean_existing)
     manifest["rollout_subdir"] = rollout_subdir
 
     os.chdir("/opt/lagrangebench")
@@ -1375,7 +1422,9 @@ def lagrangebench_rollout_p1_gns_tgv2d(git_sha: str, full_git_sha: str) -> dict:
     volumes={"/vol": rollout_volume},
     timeout=3600,
 )
-def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dict:
+def lagrangebench_rollout_p1_segnn_dam2d(
+    git_sha: str, full_git_sha: str, clean_existing: bool = False
+) -> dict:
     """Rung 4c P1: SEGNN-DAM2D inference + SCHEMA.md npz materialization (D0-22).
 
     Mirrors lagrangebench_rollout_p0_segnn_tgv2d with checkpoint /
@@ -1486,7 +1535,7 @@ def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dic
     # and rollout_subdir differ).
     rollout_dir_root = "/vol/rollouts/lagrangebench"
     rollout_subdir = f"{rollout_dir_root}/segnn_dam2d_{git_sha}"
-    os.makedirs(rollout_subdir, exist_ok=True)
+    _prepare_empty_rollout_subdir(rollout_subdir, clean_existing=clean_existing)
     manifest["rollout_subdir"] = rollout_subdir
 
     os.chdir("/opt/lagrangebench")
@@ -1647,7 +1696,9 @@ def lagrangebench_rollout_p1_segnn_dam2d(git_sha: str, full_git_sha: str) -> dic
     volumes={"/vol": rollout_volume},
     timeout=3600,
 )
-def lagrangebench_rollout_p1_gns_dam2d(git_sha: str, full_git_sha: str) -> dict:
+def lagrangebench_rollout_p1_gns_dam2d(
+    git_sha: str, full_git_sha: str, clean_existing: bool = False
+) -> dict:
     """Rung 4c P1: GNS-DAM2D inference + SCHEMA.md npz materialization (D0-22).
 
     Mirrors lagrangebench_rollout_p1_gns_tgv2d with checkpoint /
@@ -1755,7 +1806,7 @@ def lagrangebench_rollout_p1_gns_dam2d(git_sha: str, full_git_sha: str) -> dict:
     # Step 3: inference
     rollout_dir_root = "/vol/rollouts/lagrangebench"
     rollout_subdir = f"{rollout_dir_root}/gns_dam2d_{git_sha}"
-    os.makedirs(rollout_subdir, exist_ok=True)
+    _prepare_empty_rollout_subdir(rollout_subdir, clean_existing=clean_existing)
     manifest["rollout_subdir"] = rollout_subdir
 
     os.chdir("/opt/lagrangebench")

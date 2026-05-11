@@ -403,6 +403,85 @@ def test_gate_invalid_always_refuses() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Round-codex-4 finding 2: unknown status strings must fail-closed at the
+# trust boundary. Pre-fix, gate_verdict_for_status enumerated three known
+# non-clean statuses and returned (True, None) for everything else, including
+# typos, version skew between classifier and gate, and future-added statuses.
+# That was a fail-open default at a trust-boundary function — the opposite
+# of the defensive posture the gate is meant to enforce.
+# Fix: enumerate STATUS_FROM_COMPLETED_INFERENCE as the only allow-by-default
+# status; raise ValueError on anything else so a programmer error (typo or
+# classifier/gate version skew) surfaces loudly rather than silently
+# unlocking conversion.
+# ---------------------------------------------------------------------------
+
+
+def test_gate_unknown_status_string_raises() -> None:
+    """Unknown status strings must raise rather than allow-by-default.
+
+    Round-codex-4 finding 2: pre-fix the function had a fall-through
+    ``return True, None`` for any status not matching the four known
+    constants. A typo, a version skew between classifier and gate, or a
+    future-added status (e.g., new classifier output paired with an
+    out-of-date gate) would default to allow — the wrong direction for
+    a trust-boundary gate. Post-fix, unknown statuses raise ValueError.
+    """
+    for unknown_status in (
+        "typo_status",
+        "from_future_status",
+        "",
+        "FROM_COMPLETED_INFERENCE",  # case-mismatch typo
+        "completed",  # plausible-looking but wrong
+    ):
+        with pytest.raises(ValueError, match="unknown status"):
+            gate_verdict_for_status(
+                unknown_status,
+                allow_from_aborted_inference=False,
+                manifest_required=False,
+            )
+
+
+def test_gate_unknown_status_raises_regardless_of_flags() -> None:
+    """The fail-closed posture for unknown statuses must not be bypassable by flags."""
+    for allow_aborted in (False, True):
+        for manifest_req in (False, True):
+            with pytest.raises(ValueError, match="unknown status"):
+                gate_verdict_for_status(
+                    "typo_status",
+                    allow_from_aborted_inference=allow_aborted,
+                    manifest_required=manifest_req,
+                )
+
+
+def test_gate_all_four_known_statuses_dispatch_explicitly() -> None:
+    """Every defined status constant must dispatch through a named branch.
+
+    Drift-guard: if a new status constant is added to inference_manifest.py
+    without a paired branch in gate_verdict_for_status, this test surfaces
+    the gap by exercising every constant in the module. Pre-round-codex-4
+    a new status would have silently allowed conversion via the fall-
+    through default; post-fix it raises until the gate is updated.
+    """
+    for status in (
+        STATUS_FROM_COMPLETED_INFERENCE,
+        STATUS_FROM_ABORTED_INFERENCE,
+        STATUS_FROM_UNKNOWN_INFERENCE,
+        STATUS_MANIFEST_INVALID,
+    ):
+        # Should not raise for any defined status, regardless of flags.
+        gate_verdict_for_status(
+            status,
+            allow_from_aborted_inference=True,
+            manifest_required=False,
+        )
+        gate_verdict_for_status(
+            status,
+            allow_from_aborted_inference=False,
+            manifest_required=True,
+        )
+
+
+# ---------------------------------------------------------------------------
 # Round-codex-3 finding 1: classifier must bind manifest to rollout directory.
 # Pre-fix, a manifest persisted in one rollout directory could be copied/
 # moved to another and would still classify as completed/aborted based only
