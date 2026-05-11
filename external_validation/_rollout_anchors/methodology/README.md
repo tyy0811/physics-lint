@@ -291,15 +291,22 @@ production runtime context):
   or-failed-inference scenario.
 - **§2.4 Rung-4a/4b SARIF backfill of `inference_run_status`**
   (companion to §2.1).
-- **§2.5 Cross-rung N=12 vs N=20 framing sharpening** — only if
-  Stuttgart/Munich review reads the N-asymmetry as a methodology gap
-  rather than as methodology-consistency-honoring (D0-22 amendment 2).
 
 §2.3 (`_classify_inference_run_status` shared helper promotion) was
 **resolved at §9 fold-in round 3** when the duplicate-logic-drift
 failure mode manifested concretely (both copies carrying the same
 fail-open bug); see plan v2.1 §2.3 for the revised resolution
 narrative.
+
+§2.5 (cross-rung N=12 vs N=20 framing sharpening) was **resolved at
+round-prose-2 (2026-05-11)** when a Codex/GPT-5-CLI Stuttgart/Munich
+prose cross-review found the N=12 choice substantively defensible but
+the application-facing §5.3 cover-letter sentence under-framed (cost-
+driven N reduction lands before the structural-claim premise). Three
+prose surfaces sharpened (§3.1 P1 item 3, §5.3, §6 risks register); N=12
+decision itself unchanged. See plan v2.1 §2.5 + §3 round-prose-2
+changelog entry, and the cross-review findings at
+[`docs/2026-05-11-v2.1-round-prose-2-n-asymmetry-cross-review.md`](docs/2026-05-11-v2.1-round-prose-2-n-asymmetry-cross-review.md).
 
 ---
 
