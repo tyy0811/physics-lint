@@ -26,6 +26,14 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 SEGNN_FIXTURE = FIXTURES_DIR / "segnn_tgv2d_fixture.sarif"
 GNS_FIXTURE = FIXTURES_DIR / "gns_tgv2d_fixture.sarif"
 
+# Mirror of the renderer's D-entry regex (single source of truth would be
+# ideal but introduces a circular module dependency; the inline copy is a
+# deliberate drift-guard — if the renderer's regex in
+# external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py
+# changes, the regex below must change in lockstep, which is exactly the
+# contract these tests pin).
+DENTRY_REGEX = r"DECISIONS\.md\s+(D0-\d+(?:\s+\(amendment\s+\d+\))?)"
+
 
 def _load(path: Path) -> dict:
     return json.loads(path.read_text())
@@ -181,6 +189,115 @@ def test_renderer_golden_output_matches_expected_table() -> None:
         f"  python external_validation/_rollout_anchors/methodology/tools/"
         f"regenerate_expected_table.py"
     )
+
+
+# ---------------------------------------------------------------------------
+# Round-codex-2 follow-up B: contract test for the D-entry regex extraction.
+# The renderer parses each SKIP row's skip_reason via a regex to extract
+# the cited D-entry for the cell label. The emitter
+# (_harness/particle_rollout_adapter.py) produces skip_reasons in five
+# distinct formats; if the regex doesn't match one of them, the cell
+# label silently degrades to "?". Drift-guard: feed each actual emitter
+# skip_reason format through the regex + assert the expected D-entry is
+# extracted.
+# ---------------------------------------------------------------------------
+
+
+# Skip_reason templates copied verbatim from
+# external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py.
+# Each tuple is (skip_reason_text, expected_d_entry_match). If the emitter's
+# skip_reason format changes, this list must be updated in lockstep.
+@pytest.mark.parametrize(
+    "skip_reason, expected_d_entry",
+    [
+        # energy_drift KE-rest gate (D0-08)
+        (
+            "KE(0)=1.234e-12 < 1e-10 (rollout starts at "
+            "rest; relative drift undefined; see DECISIONS.md D0-08)",
+            "D0-08",
+        ),
+        # energy_drift dissipative-by-design gate (D0-18)
+        (
+            "system_class='dissipative' (dataset='tgv2d'); "
+            "KE(t) monotone-non-increasing across the rollout; "
+            "see properties.ke_initial / ke_final for values; "
+            "relative drift is a misfire for dissipative-by-design "
+            "systems where the dissipation magnitude IS the physics. "
+            "See DECISIONS.md D0-18; consult dissipation_sign_violation "
+            "for the load-bearing test on this system class.",
+            "D0-18",
+        ),
+        # energy_drift open-driven gate (D0-22 amendment 1)
+        (
+            "system_class='open-driven-dissipative' (dataset='dam2d'); "
+            "KE grows by orders of magnitude due to physics (gravitational PE → "
+            "KE conversion); the strictly-dissipative-or-conservative assumption "
+            "underpinning energy_drift does not apply. See DECISIONS.md D0-22 "
+            "(amendment 1).",
+            "D0-22 (amendment 1)",
+        ),
+        # dissipation_sign_violation KE-rest gate (D0-08)
+        (
+            "max(KE)=1.234e-12 < 1e-10 (trajectory "
+            "has no kinetic energy; dissipation question undefined; "
+            "see DECISIONS.md D0-08)",
+            "D0-08",
+        ),
+        # dissipation_sign_violation open-driven gate (D0-22)
+        (
+            "system_class='open-driven-dissipative' (dataset='dam2d'); "
+            "dE/dt > 0 over a stretch by physics (gravitational PE → KE conversion); "
+            "the strictly-dissipative-or-conservative assumption underpinning "
+            "dissipation_sign_violation does not apply. See DECISIONS.md D0-22.",
+            "D0-22",
+        ),
+    ],
+)
+def test_renderer_d_entry_regex_extracts_emitter_skip_reasons(
+    skip_reason: str, expected_d_entry: str
+) -> None:
+    """Drift-guard for the emitter↔renderer skip_reason ↔ D-entry contract.
+
+    The renderer's D-entry extraction regex
+    (``r"DECISIONS\\.md\\s+(D0-\\d+(?:\\s+\\(amendment\\s+\\d+\\))?)"``)
+    must match each of the five emitter skip_reason formats. If a future
+    emitter change alters the citation format (e.g., omits the prefix,
+    uses lowercase d0, etc.), this test fails before the renderer
+    silently degrades cells to "?". The contract is implicit between
+    two source files; this test makes it explicit.
+    """
+    import re
+
+    match = re.search(DENTRY_REGEX, skip_reason)
+    assert match is not None, (
+        f"Renderer's D-entry regex failed to match skip_reason: {skip_reason!r}. "
+        "Either the emitter's citation format changed (update particle_rollout_adapter.py "
+        "or render_cross_stack_table.py to match), or this test's fixture is stale."
+    )
+    assert match.group(1) == expected_d_entry, (
+        f"Renderer's D-entry regex extracted {match.group(1)!r}, expected "
+        f"{expected_d_entry!r}, from skip_reason: {skip_reason!r}"
+    )
+
+
+def test_renderer_d_entry_regex_rejects_incidental_d0_mentions() -> None:
+    """The regex must NOT match incidental D0-NN mentions without the prefix.
+
+    Pre-fix, a skip_reason mentioning "D0-19 §3.4" (citing the schema
+    invariant) could have been picked up by a looser regex. The
+    "DECISIONS.md " prefix requirement prevents this — if it drops,
+    cell labels could silently cite the wrong D-entry.
+    """
+    import re
+
+    # Incidental mention without the DECISIONS.md prefix
+    assert re.search(DENTRY_REGEX, "this references D0-19 §3.4 but is not a citation") is None
+    # Citation through punctuation that breaks the prefix
+    assert (
+        re.search(DENTRY_REGEX, "see (DECISIONS.md D0-22) — picked up") is not None
+    )  # ok, prefix present
+    # Pure mention without prefix
+    assert re.search(DENTRY_REGEX, "D0-22 is irrelevant here") is None
 
 
 # ---------------------------------------------------------------------------

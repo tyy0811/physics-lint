@@ -38,6 +38,7 @@ from external_validation._rollout_anchors._harness.inference_manifest import (
     STATUS_MANIFEST_INVALID,
     ManifestInvalidError,
     classify_inference_run_status,
+    gate_verdict_for_status,
     persist_inference_manifest_to_rollout_subdir,
     read_inference_manifest_status,
 )
@@ -277,3 +278,105 @@ def test_manifest_filename_is_dotfile_convention() -> None:
     """Manifest filename starts with underscore (parallels _metadata.json convention)."""
     assert INFERENCE_MANIFEST_FILENAME.startswith("_")
     assert INFERENCE_MANIFEST_FILENAME.endswith(".json")
+
+
+# ---------------------------------------------------------------------------
+# gate_verdict_for_status — truth table for the conversion gate's allow/refuse
+# decision based on classification status + flags. Added at v2.1 round-codex-2
+# absorption after Codex review surfaced that "delete the manifest to fall
+# back to warn-allow" was a documented bypass for post-fold-in stacks. The
+# new manifest_required flag closes that path for stacks where the manifest
+# is expected to exist.
+# ---------------------------------------------------------------------------
+
+
+def test_gate_completed_always_allows() -> None:
+    """Clean completed inference is allow-by-default regardless of flags."""
+    allow, _ = gate_verdict_for_status(
+        STATUS_FROM_COMPLETED_INFERENCE,
+        allow_from_aborted_inference=False,
+        manifest_required=False,
+    )
+    assert allow is True
+
+    allow, _ = gate_verdict_for_status(
+        STATUS_FROM_COMPLETED_INFERENCE,
+        allow_from_aborted_inference=True,
+        manifest_required=True,
+    )
+    assert allow is True
+
+
+def test_gate_aborted_refuses_by_default() -> None:
+    """Aborted inference refuses without the override flag."""
+    allow, reason = gate_verdict_for_status(
+        STATUS_FROM_ABORTED_INFERENCE,
+        allow_from_aborted_inference=False,
+        manifest_required=False,
+    )
+    assert allow is False
+    assert reason == "aborted_inference"
+
+
+def test_gate_aborted_allows_with_override() -> None:
+    """Aborted inference allows when the explicit opt-in flag is set."""
+    allow, _ = gate_verdict_for_status(
+        STATUS_FROM_ABORTED_INFERENCE,
+        allow_from_aborted_inference=True,
+        manifest_required=False,
+    )
+    assert allow is True
+
+
+def test_gate_unknown_legacy_allows_when_not_required() -> None:
+    """Missing manifest on legacy stack (manifest_required=False) → warn-allow."""
+    allow, _ = gate_verdict_for_status(
+        STATUS_FROM_UNKNOWN_INFERENCE,
+        allow_from_aborted_inference=False,
+        manifest_required=False,
+    )
+    assert allow is True
+
+
+def test_gate_unknown_required_refuses(tmp_path: Path) -> None:
+    """Codex round-codex-2 finding: missing manifest on post-fold-in stack must refuse.
+
+    Before this fix, an operator could bypass `--allow-from-aborted-inference`
+    on a timed-out dam2d rollout by deleting the manifest — gate would see
+    `from_unknown_inference` and warn-allow. The fix: when manifest_required=True
+    (passed by post-fold-in entrypoints like convert_pkls_p1_segnn_dam2d),
+    missing-manifest fails closed. No override flag — the operator must
+    repair/refetch the manifest, not delete it.
+    """
+    allow, reason = gate_verdict_for_status(
+        STATUS_FROM_UNKNOWN_INFERENCE,
+        allow_from_aborted_inference=False,
+        manifest_required=True,
+    )
+    assert allow is False
+    assert reason == "missing_required_manifest"
+
+    # The override flag for aborted-inference must NOT also bypass the
+    # missing-required check — the two are independent gates.
+    allow, reason = gate_verdict_for_status(
+        STATUS_FROM_UNKNOWN_INFERENCE,
+        allow_from_aborted_inference=True,
+        manifest_required=True,
+    )
+    assert allow is False
+    assert reason == "missing_required_manifest"
+
+
+def test_gate_invalid_always_refuses() -> None:
+    """manifest_invalid refuses unconditionally — no override flag, regardless of required."""
+    for required in (False, True):
+        for allow_aborted in (False, True):
+            allow, reason = gate_verdict_for_status(
+                STATUS_MANIFEST_INVALID,
+                allow_from_aborted_inference=allow_aborted,
+                manifest_required=required,
+            )
+            assert allow is False, (
+                f"Invalid manifest must refuse (required={required}, allow_aborted={allow_aborted})"
+            )
+            assert reason == "manifest_invalid"

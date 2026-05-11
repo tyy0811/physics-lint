@@ -43,6 +43,7 @@ Run with:
 
 from __future__ import annotations
 
+import functools
 from pathlib import Path
 
 import modal
@@ -162,6 +163,7 @@ def _capture_pjrt_api_version() -> str:
 # See writeup 2026-05-07-rung-4c-substrate-class-extension-table.md §5.2
 # for the bilateral-exercise framing and plan v2.1 §1.2 + §1.3 for the
 # pattern-B/pattern-C absorption record.
+@functools.lru_cache(maxsize=1)
 def _import_inference_manifest_helper():
     """Locate the shared helper across local + Modal-container contexts.
 
@@ -169,6 +171,11 @@ def _import_inference_manifest_helper():
     is importable from the repo root.
     Container: the file is mounted at `/opt/physics_lint_harness/
     inference_manifest.py` via `add_local_file` (per `_HARNESS_T7_MODULES`).
+
+    Memoized via ``lru_cache``: the lookup is called from multiple call
+    sites per Modal invocation; caching avoids retrying the local import
+    + falling back on every call inside containers (round-codex-2
+    follow-up C from the post-§9-rounds code-review pass).
     """
     try:
         from external_validation._rollout_anchors._harness import (
@@ -3059,6 +3066,7 @@ def lagrangebench_convert_pkls_in_volume(
     git_sha_full: str,
     inference_seed: int = 0,
     allow_from_aborted_inference: bool = False,
+    manifest_required: bool = False,
 ) -> dict:
     """Re-run rung-3.5 conversion against existing pkls in the Volume.
 
@@ -3068,14 +3076,24 @@ def lagrangebench_convert_pkls_in_volume(
     invokes convert_rollout_dir, writes npzs back to the same rollout
     subdir.
 
-    Inference-run-status gate (rung-4c §9 review-gate fold-in). Reads
-    ``<rollout_subdir>/_inference_manifest.json`` and classifies the
-    upstream run as ``from_completed_inference`` (allow),
-    ``from_aborted_inference`` (refuse unless ``allow_from_aborted_inference``
-    is True), or ``from_unknown_inference`` (warn but allow — pre-rung-4c
-    artifacts predate the manifest convention). The salvage path used at
-    D0-22 amendment 2 (SEGNN-DAM2D N=20 timeout → 12 NPZs) requires
-    ``allow_from_aborted_inference=True`` going forward.
+    Inference-run-status gate (rung-4c §9 review-gate fold-in rounds 1-3
+    + round-codex-2). Reads ``<rollout_subdir>/_inference_manifest.json``
+    and classifies the upstream run, then dispatches via the shared
+    ``gate_verdict_for_status`` helper:
+
+    - ``from_completed_inference`` → allow (clean run).
+    - ``from_aborted_inference`` → refuse unless ``allow_from_aborted_inference=True``
+      (D0-22 amendment 2 salvage opt-in).
+    - ``from_unknown_inference`` (no manifest file on disk) →
+      behavior depends on ``manifest_required``:
+        * ``False`` (default; rung-4a/4b legacy stacks): warn-allow.
+        * ``True`` (rung-4c dam2d + post-fold-in entrypoints): refuse
+          with no override flag — operator must repair/refetch the
+          manifest, not delete it to bypass. Closes the round-codex-2
+          fail-open path where deleting the manifest from a timed-out
+          dam2d rollout would have bypassed ``allow_from_aborted_inference``.
+    - ``manifest_invalid`` → refuse unconditionally. Corruption is
+      structural, not policy.
 
     Returns the same manifest shape as the inference function's
     conversion-step subset (conversion_returncode, converted_npz_paths,
@@ -3149,45 +3167,40 @@ def lagrangebench_convert_pkls_in_volume(
         manifest["conversion_error"] = f"ckpt_dir {ckpt_dir} does not exist"
         return manifest
 
-    # Inference-run-status gate. Read the persisted inference manifest if
-    # present and classify the upstream run. Four outcomes:
-    #
-    #   from_completed_inference  -> allow (default safe path)
-    #   from_aborted_inference    -> refuse unless allow_from_aborted_inference=True
-    #                                 (timeout-salvage; D0-22 amendment 2 precedent)
-    #   from_unknown_inference    -> warn but allow (rung-4a/4b legacy; manifest
-    #                                 convention added at rung-4c §9 fold-in
-    #                                 round 1, post-dates pre-rung-4c artifacts)
-    #   manifest_invalid          -> REFUSE UNCONDITIONALLY (rung-4c §9 fold-in
-    #                                 round 3; corruption is not a legacy-absence
-    #                                 case and an override flag is not appropriate)
+    # Inference-run-status gate (rung-4c §9 review-gate fold-in rounds 1-3
+    # + round-codex-2). Read the persisted inference manifest, classify
+    # the upstream run, then dispatch via the shared
+    # gate_verdict_for_status helper. The helper encodes the truth
+    # table; this site does the modal_app-specific wiring (error
+    # messages, manifest dict updates).
     _helper = _import_inference_manifest_helper()
     run_status, persisted = _helper.classify_inference_run_status(rollout_subdir)
     manifest["inference_run_status"] = run_status
     manifest["persisted_inference_manifest"] = persisted
-    if run_status == _helper.STATUS_MANIFEST_INVALID:
-        # Round 3: distinct from from_unknown_inference. Pre-round-3, JSON
-        # decode failures and OSError collapsed into from_unknown_inference,
-        # which fell into the warn-allow branch — fail-opening the gate on
-        # corrupt or stale manifests. No override flag for this branch:
-        # corruption is structural, not policy. To proceed, the operator
-        # must repair or delete the manifest (the latter falls back to the
-        # legacy from_unknown_inference warn-allow path).
-        error_detail = (
-            persisted.get("_error", "unknown") if isinstance(persisted, dict) else "unknown"
-        )
+    allow, refuse_reason = _helper.gate_verdict_for_status(
+        run_status,
+        allow_from_aborted_inference=allow_from_aborted_inference,
+        manifest_required=manifest_required,
+    )
+    if not allow:
         manifest["conversion_returncode"] = 2
-        manifest["conversion_error"] = (
-            f"gate: inference manifest at {rollout_subdir}/_inference_manifest.json "
-            f"is invalid ({error_detail}); refusing unconditionally. "
-            "Corruption is not a legacy-absence case; repair or delete the "
-            "manifest before retrying (deletion falls back to the warn-allow "
-            "from_unknown_inference path)."
-        )
-        return manifest
-    if run_status == _helper.STATUS_FROM_ABORTED_INFERENCE:
-        if not allow_from_aborted_inference:
-            manifest["conversion_returncode"] = 2
+        if refuse_reason == "manifest_invalid":
+            # Round 3: corruption is structural, not policy. No override
+            # flag. Round-codex-2 also closes the delete-to-bypass path
+            # (deletion -> from_unknown_inference) when manifest_required=True.
+            error_detail = (
+                persisted.get("_error", "unknown") if isinstance(persisted, dict) else "unknown"
+            )
+            manifest["conversion_error"] = (
+                f"gate: inference manifest at {rollout_subdir}/_inference_manifest.json "
+                f"is invalid ({error_detail}); refusing unconditionally. "
+                "Corruption is structural, not policy; repair the manifest "
+                "by re-running upstream inference or refetching from a "
+                "known-good source. Do not delete the manifest to bypass — "
+                "the missing-manifest case is refused too when "
+                "manifest_required=True (round-codex-2 fix)."
+            )
+        elif refuse_reason == "aborted_inference":
             manifest["conversion_error"] = (
                 "gate: upstream inference at "
                 f"{rollout_subdir} did not complete cleanly "
@@ -3196,7 +3209,25 @@ def lagrangebench_convert_pkls_in_volume(
                 "pass allow_from_aborted_inference=True to opt into the "
                 "timeout-salvage path (D0-22 amendment 2 precedent)"
             )
-            return manifest
+        elif refuse_reason == "missing_required_manifest":
+            # Round-codex-2 fix: post-fold-in stacks (manifest_required=True)
+            # cannot bypass the gate by deleting the manifest. The operator
+            # must repair/refetch the manifest. No override flag — adding
+            # one would re-open the bypass.
+            manifest["conversion_error"] = (
+                f"gate: _inference_manifest.json missing at {rollout_subdir} "
+                "and manifest_required=True (post-fold-in stack convention; "
+                "set at the standalone-conversion entrypoint, e.g. "
+                "convert_pkls_p1_segnn_dam2d). Refusing — operator must "
+                "repair or refetch the manifest (e.g., via "
+                "backfill_rung4c_inference_manifests) rather than delete "
+                "it. Closes the round-codex-2 fail-open path where "
+                "deleting the manifest would have bypassed "
+                "allow_from_aborted_inference."
+            )
+        return manifest
+    if run_status == _helper.STATUS_FROM_ABORTED_INFERENCE:
+        # Allowed via explicit opt-in flag; log the override.
         manifest["gate_override_used"] = True
         print(
             "[gate] override: allow_from_aborted_inference=True; "
@@ -3205,10 +3236,14 @@ def lagrangebench_convert_pkls_in_volume(
             f"aborted_at_step={persisted.get('aborted_at_step')!r})"
         )
     elif run_status == _helper.STATUS_FROM_UNKNOWN_INFERENCE:
+        # Legacy warn-allow: manifest_required=False and manifest absent.
+        # Post-fold-in entrypoints (convert_pkls_p1_segnn_dam2d) set
+        # manifest_required=True which routes through the refuse branch
+        # above (round-codex-2 closure).
         print(
             f"[gate] no _inference_manifest.json at {rollout_subdir}; "
-            "standalone conversion proceeding without inference run-completion "
-            "verification (pre-rung-4c convention)"
+            "manifest_required=False (legacy stack convention); standalone "
+            "conversion proceeding without inference run-completion verification"
         )
 
     try:
@@ -3257,6 +3292,16 @@ def convert_pkls_p1_segnn_dam2d(
        run as a clean one. See D0-22 amendment 2 for the rung-4c
        precedent and writeup §5.2 for the bilateral-exercise framing.
 
+    **manifest_required=True is hardcoded** (round-codex-2 fix): this
+    entrypoint is rung-4c specific and post-dates the manifest
+    convention, so a missing manifest at the rollout subdir is a
+    failure mode (stale local mirror; backfill not run; manifest
+    deleted), not a legacy-absence case. The gate refuses missing-
+    manifest unconditionally for this entrypoint; operator must
+    repair via ``backfill_rung4c_inference_manifests`` rather than
+    delete to bypass. Closes the Codex round-codex-2 finding where
+    deletion would have bypassed ``allow_from_aborted_inference``.
+
     Usage:
         # Case 1 (default):
         modal run external_validation/.../modal_app.py::convert_pkls_p1_segnn_dam2d \\
@@ -3277,6 +3322,7 @@ def convert_pkls_p1_segnn_dam2d(
     print(f"  rollout_subdir_name:           {rollout_subdir_name}")
     print(f"  git_sha (full):                {git_sha_full}")
     print(f"  allow_from_aborted_inference:  {allow_from_aborted_inference}")
+    print("  manifest_required:             True (round-codex-2)")
     print()
 
     result = lagrangebench_convert_pkls_in_volume.remote(
@@ -3287,6 +3333,7 @@ def convert_pkls_p1_segnn_dam2d(
         model_name="segnn",
         git_sha_full=git_sha_full,
         allow_from_aborted_inference=allow_from_aborted_inference,
+        manifest_required=True,
     )
 
     print("--- manifest ---")

@@ -96,6 +96,8 @@ Rung 4c does not ship a separate figure (the cross-stack table is the artifact).
 
 **Three durable methodology outputs from this rung,** all of which generalize beyond rung-4c to future case studies (PhysicsNeMo MGN — case study 02 — and any subsequent neural-physics integration). The three are *paired* in §5.1–5.2 (different-trigger fix-in-rung patterns) and *complementary* in §5.3 (cross-rung schema-uniformity composite).
 
+> **Methodology evolved post-writeup.** This writeup is sha-bound to its committed snapshot (sha `bc3bae929d`); the methodology framing has since been refined in [plan v2.1](./physics-lint-validation-plan-v2.1.md) and the [integrating README](../README.md). Round-prose-1 (2026-05-11) added necessary conditions to pattern B (§1.2 demoted the round-3 "implementation-coordination level" framing — duplicate-logic drift is now treated as adjacent-but-distinct, not a pattern-B instance); round-codex-2 (2026-05-11) added the `manifest_required=True` policy for post-fold-in standalone-conversion entrypoints. Readers tracking the current methodology view should consult v2.1 + the integrating README alongside this writeup; readers reading this writeup for the rung-4c-snapshot view should treat the framings below as authoritative *at sha `bc3bae929d`* but not necessarily *post-rung-4c*.
+
 ### 5.1 Smoke-discovered drift → in-rung amendment (paired pattern A)
 
 Empirical observation contradicts plan prediction; the response is to amend the methodology trail (D-entry amendment) recording what was learned. Two within-rung-4c instances:

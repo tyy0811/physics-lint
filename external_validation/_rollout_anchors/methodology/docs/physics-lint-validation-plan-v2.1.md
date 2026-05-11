@@ -1,8 +1,10 @@
 # Physics-lint validation plan — v2.1
 
-**Date:** 2026-05-10 (initial) / 2026-05-11 (round-3 absorption + round-prose-1 absorption appended)
+**Date:** 2026-05-10 (initial) / 2026-05-11 (round-3 + round-prose-1 + round-codex-2 absorptions appended)
 **Status:** v2.1 amendment of [`physics-lint-validation-plan-v2.md`](physics-lint-validation-plan-v2.md). v2 stays frozen at its original path; v2.1 is the corrected and absorption-extended document.
-**Predecessor:** rung-4 series (4a + 4b + 4c) committed; rung-4c §9 review-gate fold-in rounds 1+2 closed at sha `3037209` (2026-05-10); round 3 appended at 2026-05-11 against the v2.1-committed sha `9952170`; round-prose-1 (Codex adversarial review of the v2.1 prose itself) appended at 2026-05-11 against round-3 sha `fa0133e`.
+**Predecessor:** rung-4 series (4a + 4b + 4c) committed; rung-4c §9 review-gate fold-in rounds 1+2 closed at sha `3037209` (2026-05-10); round 3 appended at 2026-05-11 against the v2.1-committed sha `9952170`; round-prose-1 (Codex adversarial review of the v2.1 prose itself) appended at 2026-05-11 against round-3 sha `fa0133e`; round-codex-2 (Codex adversarial review of the full rung-4c branch) appended at 2026-05-11 against round-prose-1 sha `720d9fa`.
+
+**Convention: v2.1 is a living amendment doc within the rung-4c session.** Unlike v2 (frozen at its original sha), v2.1 absorbs §9 cross-review findings in-place as they arrive — round-3, round-prose-1, round-codex-2 are dated entries in §3 changelog rather than separate companion docs. The "frozen v2 / living v2.1" pattern bounds the freezing to v2's original publication scope; v2.1 is the current methodology view and is expected to evolve until the rung-4c branch closes. **PR-review findings that change framing post-branch-merge land as v2.1.1 (separate companion doc, parallel to v2 → v2.1)** per §4 criterion 6 — that boundary is where the living-amendment convention ends.
 
 ## Trigger — two layers
 
@@ -297,6 +299,23 @@ Tests are explicitly **not** runtime contexts in the production sense. Tests pro
 ---
 
 ## §3. Changelog
+
+### v2.1 round-codex-2 absorption — 2026-05-11
+
+§9 fold-in round-codex-2 (Codex adversarial review of the full rung-4c PR #9 at sha `bff81d5`; target diff vs `409bee0`). One HIGH finding from Codex + five quality follow-ups from the parallel self-review pass. All triaged:
+
+- **Finding HIGH (Codex; cell 2): Missing manifest bypasses the aborted-inference gate.** Pre-round-codex-2, an operator with a timed-out dam2d rollout could bypass `--allow-from-aborted-inference` by deleting `_inference_manifest.json` — the gate would then see `from_unknown_inference` and warn-allow. The round-3 manifest_invalid error message even explicitly documented this bypass ("repair or delete the manifest; deletion falls back to the warn-allow from_unknown_inference path"). Absorbed by **(a)** adding `manifest_required: bool = False` to `lagrangebench_convert_pkls_in_volume`'s signature, **(b)** introducing the shared `gate_verdict_for_status` helper in `_harness/inference_manifest.py` encoding the truth table (completed-allow / aborted-default-refuse / aborted-allow-override / unknown-legacy-allow / unknown-required-refuse / invalid-always-refuse), **(c)** routing the gate logic through the helper with a new refuse branch for `missing_required_manifest`, **(d)** removing the delete-to-bypass language from the manifest_invalid error message, and **(e)** hardcoding `manifest_required=True` in `convert_pkls_p1_segnn_dam2d` (rung-4c-specific entrypoint, post-fold-in by definition). Six new helper-tests at `_harness/tests/test_inference_manifest.py`; five new AST drift-guard tests at `01-lagrangebench/tests/test_modal_app_gpu_class.py`.
+- **Follow-up A (cell 2): AST drift-guard for the gate's new branches.** Five new tests verifying the round-codex-2 contract: gate signature has `manifest_required` param; `convert_pkls_p1_segnn_dam2d` passes `manifest_required=True`; `convert_pkls_p0_segnn_tgv2d` (legacy) does NOT pass it; gate has the `missing_required_manifest` refuse branch; the deleted-to-bypass phrase stays removed.
+- **Follow-up B (cell 2): Parametrized renderer regex contract test.** Five parametrized cases feeding actual emitter skip_reason strings (one per emitter-side SKIP path: D0-08 ke-rest×2, D0-18 dissipative, D0-22 open-driven, D0-22 amendment 1 open-driven energy_drift) through the renderer's D-entry regex + asserting expected extraction. Plus one negative test verifying incidental "D0-NN" mentions without the `DECISIONS.md` prefix don't match.
+- **Follow-up C (cell 2): Memoize `_import_inference_manifest_helper` with `@functools.lru_cache(maxsize=1)`.** The helper lookup is called from multiple call sites per Modal invocation; caching avoids retrying the local import on every container-side call.
+- **Follow-up D (cell 2): Cross-link writeup → v2.1 + integrating README.** Added a "Methodology evolved post-writeup" callout to the rung-4c writeup §5 preamble pointing at v2.1 + integrating README for the post-writeup methodology refinements (round-prose-1 pattern B narrowing, round-codex-2 manifest_required policy). Writeup stays sha-bound to `bc3bae929d` for its rung-4c-snapshot view but no longer leaves readers without a forward-pointer.
+- **Follow-up E (cell 2): Document v2.1 living-amendment convention.** Added a "Convention" paragraph to v2.1's header making the "frozen v2 / living v2.1 within the rung-4c session / v2.1.1 post-merge for PR-review findings" pattern explicit. Future readers see the convention rather than inferring it from how v2.1 has been edited.
+
+**Pattern C self-application.** All six absorptions are **cell 2 (novel-in-scope)** — none are re-discoveries of prior decisions, all fit the v2.1 + rung-4c-branch scope. The Codex HIGH finding is the load-bearing one (a real security/correctness fail-open); the five follow-ups are quality improvements surfaced by the self-review pass. **No cell-4 invocation** this round — the absorptions extend the existing framework rather than reframing it.
+
+**Pattern B self-application.** Round-codex-2 surfaced a *pattern-B exercise that fits the canonical necessary conditions*: the gate function `lagrangebench_convert_pkls_in_volume` (single artifact) "worked" for the first use case (rung-4a/4b legacy stacks where missing-manifest is legitimate absence); when the second use case arrived (rung-4c post-fold-in stacks where missing-manifest is corruption), the hidden assumption ("missing-manifest ≡ legacy absence") surfaced. Response: generalize via `manifest_required` parameter, not special-case. This is the first post-rung-4c instance satisfying §1.2's necessary conditions; flagged as evidence that the necessary-conditions reformulation (added at round-prose-1) does meaningfully constrain the pattern's domain — both the round-3 helper promotion (now demoted) and the round-codex-2 gate parameter share surface features, but only the round-codex-2 case satisfies condition 1 (single artifact, not duplicate artifacts).
+
+**On testing.** 17 new tests landed: 6 on `gate_verdict_for_status` helper; 5 AST drift-guards on the gate's call-site contracts; 5 parametrized regex-contract tests + 1 negative test. Full suite: 813 passed, 1 skipped (796 baseline from round-prose-1 + 17 new). No regressions.
 
 ### v2.1 round-prose-1 absorption — 2026-05-11
 

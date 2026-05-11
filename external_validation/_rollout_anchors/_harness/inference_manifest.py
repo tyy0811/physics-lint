@@ -158,6 +158,54 @@ def classify_inference_run_status(
     return STATUS_FROM_ABORTED_INFERENCE, persisted
 
 
+def gate_verdict_for_status(
+    status: str,
+    *,
+    allow_from_aborted_inference: bool,
+    manifest_required: bool,
+) -> tuple[bool, str | None]:
+    """Decide whether the standalone-conversion gate allows conversion to proceed.
+
+    Returns ``(allow, refuse_reason)`` where ``refuse_reason`` is one of
+    ``None`` (allow), ``"manifest_invalid"``, ``"aborted_inference"``, or
+    ``"missing_required_manifest"``.
+
+    Truth table:
+
+    - ``STATUS_FROM_COMPLETED_INFERENCE`` → allow (clean run).
+    - ``STATUS_FROM_ABORTED_INFERENCE`` → allow only if
+      ``allow_from_aborted_inference=True``; otherwise refuse with reason
+      ``"aborted_inference"``. Caller's salvage opt-in.
+    - ``STATUS_FROM_UNKNOWN_INFERENCE`` → behavior depends on
+      ``manifest_required``:
+        - ``manifest_required=False`` (legacy stacks): allow with warning.
+          rung-4a/4b artifacts predate the manifest convention.
+        - ``manifest_required=True`` (post-fold-in stacks): refuse with
+          reason ``"missing_required_manifest"``. **No override flag** —
+          corruption of the gate is not a legacy-absence case. Operator
+          must repair the manifest rather than delete it to bypass.
+          Added at v2.1 round-codex-2 absorption after Codex review
+          surfaced that deleting the manifest was a documented bypass
+          for the aborted-inference gate.
+    - ``STATUS_MANIFEST_INVALID`` → refuse unconditionally with reason
+      ``"manifest_invalid"``. No override flag — corruption is structural,
+      not policy. Independent of ``manifest_required`` and
+      ``allow_from_aborted_inference``.
+    """
+    if status == STATUS_MANIFEST_INVALID:
+        return False, "manifest_invalid"
+    if status == STATUS_FROM_ABORTED_INFERENCE:
+        if allow_from_aborted_inference:
+            return True, None
+        return False, "aborted_inference"
+    if status == STATUS_FROM_UNKNOWN_INFERENCE:
+        if manifest_required:
+            return False, "missing_required_manifest"
+        return True, None
+    # STATUS_FROM_COMPLETED_INFERENCE (and any future allow-by-default status)
+    return True, None
+
+
 def read_inference_manifest_status(
     mirror_subdir: Path,
     *,
