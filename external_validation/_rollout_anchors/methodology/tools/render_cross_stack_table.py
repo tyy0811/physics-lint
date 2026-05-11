@@ -71,6 +71,23 @@ class MissingRunLevelFieldError(Exception):
     """
 
 
+class DuplicateStackLabelError(Exception):
+    """Raised when two input SARIFs map to the same ``model_name-dataset_name``.
+
+    Pre-round-codex-3, the renderer accepted duplicate stack labels and
+    silently overwrote cells under one key while emitting duplicate
+    columns in the header. This is a realistic workflow failure because
+    ``emit_sarif.py`` writes sha-named SARIFs without removing older
+    ones, so a re-emission leaves both old and new SARIFs in the same
+    directory; ``--include-glob '*dam2d*.sarif'`` then picks up both.
+    Fail-loud rather than produce an ambiguous table.
+
+    Callers should either (a) clean up stale SARIFs before rendering,
+    (b) use a sha-specific glob like ``--include-glob '*<sha>*.sarif'``,
+    or (c) pass exact file paths.
+    """
+
+
 class ResultRowInvariantError(Exception):
     """Raised when D0-19 §3.4's guaranteed-identical-across-rows
     invariant is violated for a (rule, stack) group: a SKIP row missing
@@ -135,6 +152,27 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
         "harness:energy_drift",
         "harness:dissipation_sign_violation",
     )
+
+    # Round-codex-3 finding 2: detect duplicate (model_name, dataset_name)
+    # stack labels before building the table. Two SARIFs for the same
+    # stack (e.g., post-re-emission with old SARIFs still in the dir)
+    # would silently produce duplicate header columns and overwriting
+    # cells. Fail-loud with the specific file paths so the caller can
+    # disambiguate via a tighter --include-glob or explicit paths.
+    seen_labels: dict[str, Path] = {}
+    for path, run_props, _results in stacks:
+        label = f"{run_props['model_name']}-{run_props['dataset_name']}"
+        if label in seen_labels:
+            raise DuplicateStackLabelError(
+                f"Two SARIFs map to the same stack label {label!r}: "
+                f"{seen_labels[label].name} and {path.name}. The renderer "
+                "cannot produce a coherent table with duplicate stack "
+                "columns. Disambiguate by passing exact file paths or by "
+                "tightening --include-glob to a sha-specific pattern such "
+                f"as '*{label.replace('-', '_')}_<sarif_emission_sha>.sarif' "
+                "(round-codex-3 finding 2)."
+            )
+        seen_labels[label] = path
 
     cells: dict[tuple[str, str], str] = {}
     stack_labels: list[str] = []

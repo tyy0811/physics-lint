@@ -45,6 +45,26 @@ from external_validation._rollout_anchors._harness.inference_manifest import (
 
 
 def _write_manifest(subdir: Path, payload: dict) -> Path:
+    """Write a manifest file for tests, auto-filling rollout_subdir if absent.
+
+    Round-codex-3 made rollout_subdir a required classification field;
+    test fixtures that don't care about rollout_subdir get an auto-filled
+    value matching the target directory so they classify as expected.
+    Tests that exercise the rollout_subdir validation itself (e.g., the
+    basename-mismatch attack scenario) set rollout_subdir explicitly.
+    """
+    target = subdir / INFERENCE_MANIFEST_FILENAME
+    if "rollout_subdir" not in payload:
+        payload = {**payload, "rollout_subdir": str(subdir)}
+    target.write_text(json.dumps(payload))
+    return target
+
+
+def _write_manifest_raw(subdir: Path, payload: dict) -> Path:
+    """Write the payload verbatim (no auto-fill). For tests that need to
+    simulate manifests with genuinely-missing required fields, including
+    a missing rollout_subdir.
+    """
     target = subdir / INFERENCE_MANIFEST_FILENAME
     target.write_text(json.dumps(payload))
     return target
@@ -380,3 +400,150 @@ def test_gate_invalid_always_refuses() -> None:
                 f"Invalid manifest must refuse (required={required}, allow_aborted={allow_aborted})"
             )
             assert reason == "manifest_invalid"
+
+
+# ---------------------------------------------------------------------------
+# Round-codex-3 finding 1: classifier must bind manifest to rollout directory.
+# Pre-fix, a manifest persisted in one rollout directory could be copied/
+# moved to another and would still classify as completed/aborted based only
+# on inference_returncode + aborted_at_step. This let a stale clean manifest
+# from gns_dam2d/ unlock conversion in segnn_dam2d/ (which had actually
+# timed out), bypassing the round-codex-2 gate.
+# Fix: require persisted rollout_subdir basename to match the directory
+# being classified; otherwise MANIFEST_INVALID.
+# ---------------------------------------------------------------------------
+
+
+def test_classify_invalid_when_persisted_rollout_subdir_basename_mismatch(
+    tmp_path: Path,
+) -> None:
+    """Manifest copied from another rollout subdir → MANIFEST_INVALID (round-codex-3 finding 1)."""
+    segnn_dir = tmp_path / "segnn_dam2d_e754a4bc2e"
+    gns_dir = tmp_path / "gns_dam2d_e754a4bc2e"
+    segnn_dir.mkdir()
+    gns_dir.mkdir()
+    # Write a clean manifest in segnn_dir, but with rollout_subdir
+    # pointing at gns_dir (simulating manifest-copied-from-wrong-dir)
+    _write_manifest(
+        segnn_dir,
+        {
+            "inference_returncode": 0,
+            "aborted_at_step": None,
+            "rollout_subdir": str(gns_dir),
+        },
+    )
+
+    status, persisted = classify_inference_run_status(str(segnn_dir))
+
+    assert status == STATUS_MANIFEST_INVALID, (
+        "Manifest copied from a different rollout subdir must classify as "
+        "MANIFEST_INVALID; pre-fix this attack bypassed the round-codex-2 gate."
+    )
+    assert "rollout_subdir" in persisted["_error"]
+
+
+def test_classify_invalid_when_persisted_rollout_subdir_is_none(tmp_path: Path) -> None:
+    """Manifest missing the rollout_subdir field → MANIFEST_INVALID.
+
+    Uses ``_write_manifest_raw`` to bypass the test helper's auto-fill so
+    we genuinely write a payload without rollout_subdir; the classifier
+    must reject this because rollout_subdir is now a required field.
+    """
+    _write_manifest_raw(
+        tmp_path,
+        {"inference_returncode": 0, "aborted_at_step": None},  # no rollout_subdir
+    )
+
+    status, persisted = classify_inference_run_status(str(tmp_path))
+
+    assert status == STATUS_MANIFEST_INVALID
+    assert "rollout_subdir" in persisted["_error"]
+
+
+def test_classify_completed_when_basename_matches(tmp_path: Path) -> None:
+    """Positive case: persisted rollout_subdir basename matches classified path basename."""
+    local_subdir = tmp_path / "segnn_dam2d_e754a4bc2e"
+    local_subdir.mkdir()
+    modal_path = "/vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e"
+    _write_manifest(
+        local_subdir,
+        {
+            "inference_returncode": 0,
+            "aborted_at_step": None,
+            "rollout_subdir": modal_path,
+        },
+    )
+
+    status, _ = classify_inference_run_status(str(local_subdir))
+
+    assert status == STATUS_FROM_COMPLETED_INFERENCE
+
+
+def test_classify_aborted_when_basename_matches(tmp_path: Path) -> None:
+    """Aborted-inference classification still works when basenames match."""
+    local_subdir = tmp_path / "segnn_dam2d_e754a4bc2e"
+    local_subdir.mkdir()
+    _write_manifest(
+        local_subdir,
+        {
+            "inference_returncode": -1,
+            "aborted_at_step": "inference",
+            "rollout_subdir": "/vol/rollouts/lagrangebench/segnn_dam2d_e754a4bc2e",
+        },
+    )
+
+    status, _ = classify_inference_run_status(str(local_subdir))
+
+    assert status == STATUS_FROM_ABORTED_INFERENCE
+
+
+def test_classify_basename_normalization_handles_trailing_slashes(tmp_path: Path) -> None:
+    """Trailing slashes in either path should not break the basename comparison."""
+    local_subdir = tmp_path / "segnn_dam2d_X"
+    local_subdir.mkdir()
+    _write_manifest(
+        local_subdir,
+        {
+            "inference_returncode": 0,
+            "aborted_at_step": None,
+            "rollout_subdir": "/vol/rollouts/lagrangebench/segnn_dam2d_X/",
+        },
+    )
+
+    status, _ = classify_inference_run_status(str(local_subdir) + "/")
+
+    assert status == STATUS_FROM_COMPLETED_INFERENCE
+
+
+def test_persist_auto_fills_rollout_subdir(tmp_path: Path) -> None:
+    """persist must auto-fill rollout_subdir from the destination path if missing.
+
+    Post-round-codex-3, rollout_subdir is a required classification field;
+    auto-fill keeps minimal-manifest callers (e.g., tests) working without
+    re-introducing manual coordination between manifest dict and dest.
+    """
+    persist_inference_manifest_to_rollout_subdir(
+        {"inference_returncode": 0, "aborted_at_step": None}, str(tmp_path)
+    )
+
+    target = tmp_path / INFERENCE_MANIFEST_FILENAME
+    persisted = json.loads(target.read_text())
+    assert persisted["rollout_subdir"] is not None
+    assert Path(persisted["rollout_subdir"]).name == tmp_path.name
+
+
+def test_persist_does_not_overwrite_explicit_rollout_subdir(tmp_path: Path) -> None:
+    """If caller passes rollout_subdir, persist keeps it (no silent overwrite)."""
+    explicit_path = "/vol/rollouts/lagrangebench/foo_bar"
+    persist_inference_manifest_to_rollout_subdir(
+        {
+            "inference_returncode": 0,
+            "aborted_at_step": None,
+            "rollout_subdir": explicit_path,
+        },
+        str(tmp_path),
+    )
+
+    target = tmp_path / INFERENCE_MANIFEST_FILENAME
+    persisted = json.loads(target.read_text())
+    assert persisted["rollout_subdir"] == explicit_path

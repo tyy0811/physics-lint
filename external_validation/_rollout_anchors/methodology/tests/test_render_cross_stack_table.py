@@ -15,6 +15,7 @@ from pathlib import Path
 import pytest
 
 from external_validation._rollout_anchors.methodology.tools.render_cross_stack_table import (
+    DuplicateStackLabelError,
     MissingRunLevelFieldError,
     ResultRowInvariantError,
     SchemaVersionMismatchError,
@@ -278,6 +279,48 @@ def test_renderer_d_entry_regex_extracts_emitter_skip_reasons(
         f"Renderer's D-entry regex extracted {match.group(1)!r}, expected "
         f"{expected_d_entry!r}, from skip_reason: {skip_reason!r}"
     )
+
+
+def test_renderer_rejects_duplicate_stack_labels(tmp_path: Path) -> None:
+    """Two SARIFs with the same (model_name, dataset_name) must raise.
+
+    Codex round-codex-3 finding 2. Pre-fix, the renderer collected
+    stack labels via simple append + indexed by (rule_id, stack_label);
+    if the SARIF directory contained two files for the same stack
+    (e.g., post-re-emission with old SARIFs still present), the
+    rendered table would have duplicate columns whose cells were
+    overwritten under one key. The renderer must fail fast on this
+    rather than producing an ambiguous table silently.
+    """
+    # Two SARIFs at different shas but with the same model_name +
+    # dataset_name (simulating two SEGNN-TGV2D emissions at different
+    # sarif_emission shas left in the same directory).
+    segnn_v1 = copy.deepcopy(_load(SEGNN_FIXTURE))
+    segnn_v2 = copy.deepcopy(_load(SEGNN_FIXTURE))
+    # Vary the sarif_emission_sha so the two files aren't byte-identical,
+    # but keep model_name + dataset_name the same (the duplicate-label trigger)
+    segnn_v2["runs"][0]["properties"]["physics_lint_sha_sarif_emission"] = "FFFFFFFFFF"
+
+    v1_path = tmp_path / "segnn_tgv2d_AAAAAAAAAA.sarif"
+    v2_path = tmp_path / "segnn_tgv2d_FFFFFFFFFF.sarif"
+    _write(segnn_v1, v1_path)
+    _write(segnn_v2, v2_path)
+
+    # The fixtures use synthetic names; the duplicate-label is whatever
+    # the fixture's model_name-dataset_name resolves to.
+    with pytest.raises(DuplicateStackLabelError, match="Two SARIFs map to the same stack label"):
+        render_cross_stack_table([v1_path, v2_path])
+
+
+def test_renderer_distinct_stack_labels_still_render() -> None:
+    """Sanity: distinct (model_name, dataset_name) labels still work post-fix.
+
+    The canonical fixtures have distinct synthetic labels; post-fix,
+    they must still render without raising DuplicateStackLabelError.
+    """
+    # Should NOT raise — both fixtures have distinct synthetic labels.
+    table = render_cross_stack_table([SEGNN_FIXTURE, GNS_FIXTURE])
+    assert isinstance(table, str) and len(table) > 0
 
 
 def test_renderer_d_entry_regex_rejects_incidental_d0_mentions() -> None:

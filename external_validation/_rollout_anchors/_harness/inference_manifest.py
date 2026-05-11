@@ -47,6 +47,7 @@ INFERENCE_MANIFEST_GATED_FIELDS: tuple[str, ...] = (
 _REQUIRED_CLASSIFICATION_FIELDS: tuple[str, ...] = (
     "inference_returncode",
     "aborted_at_step",
+    "rollout_subdir",
 )
 _SCHEMA_VERSION = "1"
 
@@ -84,6 +85,14 @@ def persist_inference_manifest_to_rollout_subdir(manifest: dict, rollout_subdir:
 
     payload = {k: manifest.get(k) for k in INFERENCE_MANIFEST_GATED_FIELDS}
     payload["_schema_version"] = _SCHEMA_VERSION
+    # Round-codex-3 finding 1: rollout_subdir is now a required
+    # classification field. If the caller didn't include it in the
+    # manifest dict, auto-fill from the destination path so the
+    # persist→classify roundtrip still works. Production callers
+    # (rollout orchestrators) pre-populate this field; auto-fill
+    # is a safety net for minimal-manifest callers (e.g., tests).
+    if payload.get("rollout_subdir") is None:
+        payload["rollout_subdir"] = str(rollout_subdir)
 
     target = os.path.join(rollout_subdir, INFERENCE_MANIFEST_FILENAME)
     fd, tmp_path = tempfile.mkstemp(
@@ -149,6 +158,34 @@ def classify_inference_run_status(
         return STATUS_MANIFEST_INVALID, {
             **persisted,
             "_error": f"missing required classification fields: {sorted(missing)}",
+        }
+
+    # Round-codex-3 finding 1: bind manifest to rollout directory by
+    # basename. Pre-fix, a manifest copied from one rollout subdir to
+    # another would still classify as completed/aborted based only on
+    # inference_returncode + aborted_at_step. The basename check ensures
+    # the manifest is *for* the directory being classified.
+    persisted_subdir = persisted.get("rollout_subdir")
+    if persisted_subdir is None:
+        # Caught by the required-field check above for new manifests,
+        # but a defensive belt-and-suspenders for legacy persisted
+        # manifests where the field was present-but-null.
+        return STATUS_MANIFEST_INVALID, {
+            **persisted,
+            "_error": "rollout_subdir field is None; cannot validate against classified path",
+        }
+    persisted_basename = Path(str(persisted_subdir)).name
+    classified_basename = Path(str(rollout_subdir)).name
+    if persisted_basename != classified_basename:
+        return STATUS_MANIFEST_INVALID, {
+            **persisted,
+            "_error": (
+                f"rollout_subdir basename mismatch: persisted manifest's "
+                f"rollout_subdir basename is {persisted_basename!r}, but the "
+                f"classified path's basename is {classified_basename!r}. "
+                "This typically indicates a manifest was copied from a "
+                "different rollout subdir; refusing to classify."
+            ),
         }
 
     returncode = persisted.get("inference_returncode")
