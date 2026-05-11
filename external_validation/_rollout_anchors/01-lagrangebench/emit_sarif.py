@@ -32,7 +32,6 @@ matches the run-level physics_lint_sha_sarif_emission field.
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -46,6 +45,9 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from external_validation._rollout_anchors._harness.inference_manifest import (  # noqa: E402
+    read_inference_manifest_status,
+)
 from external_validation._rollout_anchors._harness.lint_npz_dir import lint_npz_dir  # noqa: E402
 from external_validation._rollout_anchors._harness.sarif_emitter import emit_sarif  # noqa: E402
 
@@ -117,42 +119,27 @@ def _git_short_sha() -> str:
     return result.stdout.strip()
 
 
-def _read_inference_manifest_status(mirror_subdir: Path) -> str | None:
-    """Read ``<mirror_subdir>/_inference_manifest.json`` and classify the run.
+def _read_inference_manifest_status(mirror_subdir: Path, *, required: bool = False) -> str | None:
+    """Local-side classification — delegates to the shared helper.
 
-    Returns one of:
+    See ``_harness.inference_manifest.read_inference_manifest_status``.
+    Pre-rung-4c §9 fold-in round 3 the logic was duplicated here for
+    cross-runtime reasons (modal_app runs inside Modal containers;
+    emit_sarif locally). Round 3 promoted to the shared helper after
+    Codex review surfaced that both duplicates collapsed manifest-
+    corruption into the legacy-absent status, hiding artifact-level
+    provenance gaps on stale-mirror or corrupt-backfill scenarios.
 
-    - ``"from_completed_inference"`` — manifest present, returncode 0,
-      no aborted_at_step (clean run).
-    - ``"from_aborted_inference"`` — manifest present but the upstream
-      inference did not complete cleanly (returncode != 0 or
-      aborted_at_step set; rung-4c SEGNN-DAM2D timeout-salvage is the
-      canonical instance).
-    - ``None`` — manifest absent on disk (e.g., pre-rung-4c artifacts
-      that predate the manifest convention; or local mirror not yet
-      refreshed post-backfill). Caller treats as legacy and omits the
-      optional SARIF property; the renderer surfaces the absence as
-      "n/a (pre-salvage-tag-schema)" rather than assuming clean.
-
-    Mirror of ``modal_app.py::_classify_inference_run_status`` for the
-    local-side path. Logic is intentionally duplicated rather than
-    imported because modal_app runs inside Modal containers and is not
-    importable locally without modal-CLI auth context. Promotion to a
-    shared `_harness/inference_manifest.py` helper is a v2.1 absorption
-    candidate per writeup §5.2.
+    ``required=True`` is passed for post-fold-in stacks (rung-4c dam2d
+    onward) where the manifest must exist; missing manifests then
+    raise ``FileNotFoundError`` rather than silently producing a
+    provenance-stripped SARIF. ``required=False`` (default) preserves
+    the legacy-stack behavior (rung-4a/4b tgv2d): missing manifest
+    returns None and the optional SARIF property is omitted; the
+    renderer surfaces the absence explicitly as "n/a (pre-salvage-tag-
+    schema)" rather than defaulting to a clean classification.
     """
-    target = mirror_subdir / "_inference_manifest.json"
-    if not target.is_file():
-        return None
-    try:
-        persisted = json.loads(target.read_text())
-    except (OSError, json.JSONDecodeError):
-        return None
-    returncode = persisted.get("inference_returncode")
-    aborted_at = persisted.get("aborted_at_step")
-    if returncode == 0 and aborted_at is None:
-        return "from_completed_inference"
-    return "from_aborted_inference"
+    return read_inference_manifest_status(mirror_subdir, required=required)
 
 
 def _build_run_properties(
@@ -201,16 +188,26 @@ def _emit_for_stack(
     model_name: str,
     checkpoint_id: str,
     expected_traj_count: int,
+    manifest_required: bool = False,
 ) -> Path:
     """Run lint_npz_dir + emit_sarif for one stack.
 
-    Reads ``<mirror_subdir>/_inference_manifest.json`` if present and
-    merges the classification into ``run_properties`` as the optional
-    ``inference_run_status`` field (rung-4c §9 review-gate fold-in).
-    Pre-rung-4c local mirrors lack the manifest; the field is omitted
-    and the renderer surfaces the absence explicitly as
-    "n/a (pre-salvage-tag-schema)" rather than defaulting to a clean
-    classification (parallel to the gate's refuse-by-default posture).
+    Reads ``<mirror_subdir>/_inference_manifest.json`` and merges the
+    classification into ``run_properties`` as the optional
+    ``inference_run_status`` field (rung-4c §9 review-gate fold-in
+    round 2). When ``manifest_required=True`` (rung-4c dam2d and
+    post-fold-in stacks), a missing manifest raises FileNotFoundError
+    rather than silently omitting the field — emitting a provenance-
+    stripped SARIF on a post-fold-in stack hides the salvage tag and
+    defeats round 2's artifact-level transparency. When
+    ``manifest_required=False`` (rung-4a/4b legacy tgv2d), missing is
+    expected and the field is omitted; the renderer surfaces the
+    absence as "n/a (pre-salvage-tag-schema)".
+
+    A corrupt manifest (parseable JSON but missing classification
+    fields; or unparsable bytes; or non-dict root) raises
+    ``ManifestInvalidError`` regardless of ``manifest_required``
+    (round 3 absorption — corruption is not a legacy-absence case).
     """
     if not mirror_subdir.exists() or not any(mirror_subdir.glob("particle_rollout_traj*.npz")):
         raise MissingLocalMirrorError(
@@ -224,7 +221,9 @@ def _emit_for_stack(
             f"{expected_traj_count}. The writeup's "
             f'"{expected_traj_count} identical fires" claim binds on this count.'
         )
-    inference_run_status = _read_inference_manifest_status(mirror_subdir)
+    inference_run_status = _read_inference_manifest_status(
+        mirror_subdir, required=manifest_required
+    )
     if inference_run_status is not None:
         run_properties = {**run_properties, "inference_run_status": inference_run_status}
     results = lint_npz_dir(
@@ -351,6 +350,12 @@ def _emit_rung_4c_dam2d_stacks(sarif_emission_sha: str) -> None:
         model_name="segnn",
         checkpoint_id="segnn_dam2d",
         expected_traj_count=EXPECTED_TRAJ_COUNT_DAM2D,
+        # Rung-4c §9 fold-in round 3: post-fold-in stacks require the
+        # manifest. A missing manifest at this point means the local
+        # mirror is stale or the backfill was incomplete — both should
+        # fail emission rather than produce a provenance-stripped SARIF
+        # that silently hides the salvage tag.
+        manifest_required=True,
     )
     print(f"SEGNN-DAM2D SARIF: {out_segnn_dam2d}")
 
@@ -375,6 +380,7 @@ def _emit_rung_4c_dam2d_stacks(sarif_emission_sha: str) -> None:
         model_name="gns",
         checkpoint_id="gns_dam2d",
         expected_traj_count=EXPECTED_TRAJ_COUNT_DAM2D,
+        manifest_required=True,  # Rung-4c §9 fold-in round 3 (see SEGNN-DAM2D above)
     )
     print(f"GNS-DAM2D SARIF: {out_gns_dam2d}")
 

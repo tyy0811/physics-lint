@@ -141,112 +141,68 @@ def _capture_pjrt_api_version() -> str:
 
 
 # Inference-manifest persistence + standalone-conversion gate
-# (rung-4c §9 review-gate fold-in). Codex adversarial review of rung-4c
-# artifacts surfaced that the standalone-conversion entrypoint
-# `convert_pkls_p1_segnn_dam2d` (added at D0-22 amendment 2) could be
-# fired against a timed-out rollout subdir and emit a generic PASS
-# verdict with no signal that the upstream inference was aborted —
-# the orchestrator manifest was previously only printed to stdout, not
-# persisted to the rollout subdir. The two helpers below close that
-# gap: orchestrators atomic-write the gate-relevant manifest fields to
-# `<rollout_subdir>/_inference_manifest.json` at end-of-function;
-# `lagrangebench_convert_pkls_in_volume` reads that file to classify
-# the run status and refuses by default on aborted-inference subdirs.
-# Pre-rung-4c artifacts (rung-4a/4b) predate the manifest convention
-# and read as `from_unknown_inference` (warn-allow). See writeup
-# 2026-05-07-rung-4c-substrate-class-extension-table.md §5.2 for the
-# bilateral-exercise framing alongside the renderer fixes.
-_INFERENCE_MANIFEST_FILENAME = "_inference_manifest.json"
-_INFERENCE_MANIFEST_GATED_FIELDS = (
-    "git_sha",
-    "full_git_sha",
-    "lagrangebench_sha",
-    "inference_seed",
-    "inference_returncode",
-    "inference_wall_seconds",
-    "aborted_at_step",
-    "conversion_attempted",
-    "conversion_returncode",
-    "rollout_subdir",
-)
+# (rung-4c §9 review-gate fold-in rounds 1-3). Codex adversarial review
+# of rung-4c artifacts surfaced (round 1) that the standalone-conversion
+# entrypoint `convert_pkls_p1_segnn_dam2d` (added at D0-22 amendment 2)
+# could be fired against a timed-out rollout subdir and emit a generic
+# PASS verdict with no signal that the upstream inference was aborted.
+# Round 1 added orchestrator-side persistence (atomic write of gate-
+# relevant fields to `<rollout_subdir>/_inference_manifest.json`) and
+# a default-refuse gate on aborted-inference subdirs.
+#
+# Round 3 (Codex finding: malformed/missing manifests bypass the gate)
+# split corruption (`manifest_invalid` — fail closed unconditionally)
+# from legacy absence (`from_unknown_inference` — warn-allow for
+# rung-4a/4b artifacts that predate the convention). Round 3 also
+# promotes the classification + persistence helpers to a shared
+# `_harness/inference_manifest.py` module to keep the Modal-side and
+# local-side (emit_sarif) implementations from drifting (the prior
+# duplicate implementations both carried the same fail-open bug).
+#
+# See writeup 2026-05-07-rung-4c-substrate-class-extension-table.md §5.2
+# for the bilateral-exercise framing and plan v2.1 §1.2 + §1.3 for the
+# pattern-B/pattern-C absorption record.
+def _import_inference_manifest_helper():
+    """Locate the shared helper across local + Modal-container contexts.
+
+    Local: `external_validation._rollout_anchors._harness.inference_manifest`
+    is importable from the repo root.
+    Container: the file is mounted at `/opt/physics_lint_harness/
+    inference_manifest.py` via `add_local_file` (per `_HARNESS_T7_MODULES`).
+    """
+    try:
+        from external_validation._rollout_anchors._harness import (
+            inference_manifest as _module,
+        )
+
+        return _module
+    except ImportError:
+        import sys as _sys
+
+        if _REMOTE_HARNESS_DIR not in _sys.path:
+            _sys.path.insert(0, _REMOTE_HARNESS_DIR)
+        import inference_manifest as _module
+
+        return _module
 
 
 def _persist_inference_manifest_to_rollout_subdir(manifest: dict, rollout_subdir: object) -> object:
-    """Atomic-write the gate-relevant manifest subset to the rollout subdir.
-
-    Skips silently when ``rollout_subdir`` is None or missing on disk
-    (covers the early-abort cases in the rollout functions where we
-    return before the subdir is created). The atomic write uses a
-    tempfile in the target directory plus ``os.replace`` so a
-    half-written manifest can never masquerade as complete if the
-    container is killed mid-write.
-
-    Returns the absolute path written, or None on skip.
-    """
-    import contextlib
-    import json
-    import os
-    import tempfile
-
-    if not rollout_subdir or not os.path.isdir(rollout_subdir):
-        return None
-
-    payload = {k: manifest.get(k) for k in _INFERENCE_MANIFEST_GATED_FIELDS}
-    payload["_schema_version"] = "1"
-
-    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
-    fd, tmp_path = tempfile.mkstemp(
-        prefix="._inference_manifest.",
-        suffix=".json.tmp",
-        dir=rollout_subdir,
+    """Delegate to the shared helper (rung-4c §9 fold-in round 3 helper promotion)."""
+    return _import_inference_manifest_helper().persist_inference_manifest_to_rollout_subdir(
+        manifest, rollout_subdir
     )
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(payload, f, indent=2, sort_keys=True)
-            f.flush()
-            os.fsync(f.fileno())
-        os.replace(tmp_path, target)
-    except Exception:
-        with contextlib.suppress(OSError):
-            os.unlink(tmp_path)
-        raise
-    return target
 
 
 def _classify_inference_run_status(rollout_subdir: str) -> tuple[str, object]:
-    """Read the persisted inference manifest and classify the run status.
+    """Delegate to the shared helper (rung-4c §9 fold-in round 3 helper promotion).
 
-    Returns ``(status, manifest_or_None)`` where ``status`` is one of:
-
-    - ``"from_completed_inference"`` — manifest present, returncode 0,
-      no aborted_at_step. Standalone conversion safe by default.
-    - ``"from_aborted_inference"`` — manifest present but the upstream
-      inference did not complete cleanly (returncode != 0 or
-      aborted_at_step set). Standalone conversion default-refuses;
-      caller must opt in via ``allow_from_aborted_inference=True``.
-    - ``"from_unknown_inference"`` — no manifest at the expected path
-      (e.g., rung-4a/4b artifacts predate the convention). Standalone
-      conversion warns but does not refuse.
-
-    Pure read; no side effects.
+    Status string is one of ``STATUS_FROM_COMPLETED_INFERENCE``,
+    ``STATUS_FROM_ABORTED_INFERENCE``, ``STATUS_FROM_UNKNOWN_INFERENCE``,
+    ``STATUS_MANIFEST_INVALID`` (the last is new at round 3 and
+    distinguishes manifest corruption from legacy absence; the gate
+    refuses ``STATUS_MANIFEST_INVALID`` unconditionally).
     """
-    import json
-    import os
-
-    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
-    if not os.path.isfile(target):
-        return "from_unknown_inference", None
-    try:
-        with open(target) as f:
-            persisted = json.load(f)
-    except (OSError, json.JSONDecodeError):
-        return "from_unknown_inference", None
-
-    returncode = persisted.get("inference_returncode")
-    aborted_at = persisted.get("aborted_at_step")
-    if returncode == 0 and aborted_at is None:
-        return "from_completed_inference", persisted
-    return "from_aborted_inference", persisted
+    return _import_inference_manifest_helper().classify_inference_run_status(rollout_subdir)
 
 
 @app.function(image=jax_image, gpu=MICRO_GATE_GPU_CLASS, timeout=600)
@@ -571,6 +527,12 @@ _HARNESS_T7_MODULES = (
     "synthetic_dataset_materializer.py",
     "eps_pkl_consumer.py",
     "eps_modal_orchestrator.py",
+    # rung-4c §9 fold-in round 3: shared inference-manifest helper
+    # (resolves v2.1 §2.3 promotion deferral; Codex round-3 findings 1+2
+    # required distinguishing manifest_invalid from legacy absence and
+    # the duplicate implementations made the round-3 fix harder than
+    # it should have been).
+    "inference_manifest.py",
 )
 _REMOTE_HARNESS_DIR = "/opt/physics_lint_harness"
 rollout_image = (
@@ -3188,14 +3150,42 @@ def lagrangebench_convert_pkls_in_volume(
         return manifest
 
     # Inference-run-status gate. Read the persisted inference manifest if
-    # present and classify the upstream run; refuse on aborted inference
-    # unless caller opted in. Pre-rung-4c artifacts read as unknown and
-    # are allowed with a printed warning (manifest convention added at
-    # the rung-4c §9 review-gate fold-in commit).
-    run_status, persisted = _classify_inference_run_status(rollout_subdir)
+    # present and classify the upstream run. Four outcomes:
+    #
+    #   from_completed_inference  -> allow (default safe path)
+    #   from_aborted_inference    -> refuse unless allow_from_aborted_inference=True
+    #                                 (timeout-salvage; D0-22 amendment 2 precedent)
+    #   from_unknown_inference    -> warn but allow (rung-4a/4b legacy; manifest
+    #                                 convention added at rung-4c §9 fold-in
+    #                                 round 1, post-dates pre-rung-4c artifacts)
+    #   manifest_invalid          -> REFUSE UNCONDITIONALLY (rung-4c §9 fold-in
+    #                                 round 3; corruption is not a legacy-absence
+    #                                 case and an override flag is not appropriate)
+    _helper = _import_inference_manifest_helper()
+    run_status, persisted = _helper.classify_inference_run_status(rollout_subdir)
     manifest["inference_run_status"] = run_status
     manifest["persisted_inference_manifest"] = persisted
-    if run_status == "from_aborted_inference":
+    if run_status == _helper.STATUS_MANIFEST_INVALID:
+        # Round 3: distinct from from_unknown_inference. Pre-round-3, JSON
+        # decode failures and OSError collapsed into from_unknown_inference,
+        # which fell into the warn-allow branch — fail-opening the gate on
+        # corrupt or stale manifests. No override flag for this branch:
+        # corruption is structural, not policy. To proceed, the operator
+        # must repair or delete the manifest (the latter falls back to the
+        # legacy from_unknown_inference warn-allow path).
+        error_detail = (
+            persisted.get("_error", "unknown") if isinstance(persisted, dict) else "unknown"
+        )
+        manifest["conversion_returncode"] = 2
+        manifest["conversion_error"] = (
+            f"gate: inference manifest at {rollout_subdir}/_inference_manifest.json "
+            f"is invalid ({error_detail}); refusing unconditionally. "
+            "Corruption is not a legacy-absence case; repair or delete the "
+            "manifest before retrying (deletion falls back to the warn-allow "
+            "from_unknown_inference path)."
+        )
+        return manifest
+    if run_status == _helper.STATUS_FROM_ABORTED_INFERENCE:
         if not allow_from_aborted_inference:
             manifest["conversion_returncode"] = 2
             manifest["conversion_error"] = (
@@ -3214,7 +3204,7 @@ def lagrangebench_convert_pkls_in_volume(
             f"(returncode={persisted.get('inference_returncode')!r}, "
             f"aborted_at_step={persisted.get('aborted_at_step')!r})"
         )
-    elif run_status == "from_unknown_inference":
+    elif run_status == _helper.STATUS_FROM_UNKNOWN_INFERENCE:
         print(
             f"[gate] no _inference_manifest.json at {rollout_subdir}; "
             "standalone conversion proceeding without inference run-completion "
@@ -3439,7 +3429,9 @@ def _write_inference_manifest_to_volume(
     if not os.path.isdir(rollout_subdir):
         return {"status": "subdir_missing", "target": rollout_subdir}
 
-    target = os.path.join(rollout_subdir, _INFERENCE_MANIFEST_FILENAME)
+    target = os.path.join(
+        rollout_subdir, _import_inference_manifest_helper().INFERENCE_MANIFEST_FILENAME
+    )
     already_present = os.path.isfile(target)
     if already_present and not force:
         return {"status": "already_present", "target": target}
