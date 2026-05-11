@@ -60,6 +60,7 @@ dogfood/_predictions/
 
 # rollout-anchor harness local cache (populated by `modal volume get`)
 external_validation/_rollout_anchors/01-lagrangebench/outputs/_local_mirror/
+external_validation/_rollout_anchors/02-physicsnemo-mgn/cache/
 
 # Repo-root diagnostic-log directory. Per the rung-4c convention,
 # `/outputs/` at the repo root accumulates Modal-CLI run logs and

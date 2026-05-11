@@ -2334,8 +2334,16 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
 **Verdicts (populated by Phase 1 tasks):**
 
 1. **BLOCKING-1 (Task 1 + 7):** NGC checkpoint ↔ PhysicsNeMo v2.0.0 state-dict compatibility.
-   - Verdict: [pending]
-   - Source: state-dict-key smoke test result.
+   - Verdict: **PASS (key-set match, via documented name-remap adapter)**; architecture identity remains pending Gate D (Task 7).
+   - NGC artifact: `nvidia/modulus/modulus_ns_meshgraphnet:latest` (catalog only tags `latest`; the plan's initial `:v0.1` guess does not exist).
+   - Download URL (direct HTTP, unauthenticated): `https://api.ngc.nvidia.com/v2/models/nvidia/modulus/modulus_ns_meshgraphnet/versions/latest/files/vortex_shedding_mgn.zip`.
+   - Zip sha256: `5391bb826448871608722f4e58d476a3205bcb39582a2a42e6a6ea29c5b0f710` (25,994,483 bytes; matches catalog's 24.79 MB).
+   - Checkpoint sha256 (`vortex_shedding_mgn/model.pt`): `0153803c8b2c0947948757a2298eec6ef21e8ea28131834963db08f34b4a0726` (28,203,057 bytes).
+   - Source: `verify_ngc_checkpoint_state_dict_compat` Modal entrypoint (canonical, runs in pinned image) + `tests/test_ngc_checkpoint_v2_0_0_compat.py` (local, self-skips when physicsnemo absent). Both 262 expected = 262 actual = 262 common after adapter.
+   - **Acceptance-criteria amendment** (escalated + user-approved): the plan's "as-shipped state_dict must load directly" becomes "loads via documented name-remap adapter at `_legacy_checkpoint_name_remap.py`; architecture identity confirmed by Gate D's NGC sample reproduction within Phase-1-pinned tolerance." The amendment is recorded here because Pattern A drift surfaced during Task 4 execution.
+   - **Rename detail.** The NGC checkpoint was trained against pre-rename modulus (uploaded 2023-05-26). Encoder/decoder rename: `*.mlp.*` → `*.model.*` (22 keys). Processor restructure: parallel `processor.{edge,node}_blocks[K]` ModuleLists became a single interleaved `processor.processor_layers` (240 keys); the new K-th layer is an edge_mlp when K even and node_mlp when K odd, per physicsnemo v2.0.0's `MeshGraphNetProcessor.__init__` which constructs via `chain(*zip(edge_blocks, node_blocks))`. Forward-pass computation is identical; only parameter paths differ — falsifiable by Gate D failure.
+   - **Refinement 1: `device_buffer` extra key.** Inspected before adapter authoring per design escalation. Result: `shape=[0], numel=0, dtype=float32` — a 0-element placeholder tensor from the trainer's device-tracking machinery with no learned state. Adapter drops it unconditionally (`_DROP_KEYS = {"device_buffer"}`); dropping cannot cause silent wrong outputs since there is nothing to drop. Audit-trail entrypoint: `inspect_ngc_checkpoint_extras`.
+   - **Mechanism drift, captured.** The plan's Task 4 used `ngc registry model download-version` via NGC CLI 3.41.4. That path failed silently with HTTP 403 on the storage backend (consistent with NVIDIA's documented Modulus → PhysicsNeMo deprecation of the old NGC artifact stack; CLI exits 0 even when "Download status: FAILED"). Switched to direct HTTP GET via `urllib.request`; verified unauthenticated via `probe_ngc_direct_urls` (200 OK from both Ahmed-body control and modulus_ns_meshgraphnet across unauth / bearer / apikey).
 
 2. **NGC audit findings (Task 5):** velocity-field key in `node_values`; DGL topology coercibility; primitive-vs-derived emission.
    - Verdict: [pending]
