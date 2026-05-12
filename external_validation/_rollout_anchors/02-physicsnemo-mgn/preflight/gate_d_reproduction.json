@@ -1,0 +1,60 @@
+{
+  "verdict": "FAIL",
+  "rationale": "NGC checkpoint one-step reproduction: max-abs velocity error 8.018e-01 over rollout-mask nodes (8.018e-01 over all nodes) across 49 pairs \u2014 exceeds tolerance 1e-03. D0-23 band: C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design \u00a73.1.A); upper diagnostic exit.. This entrypoint does NOT declare a final action \u2014 the band's candidate routes (re-fit / re-audit adapter / FNO-on-Darcy / tol re-derivation) are a human-loop decision per the pause-before-commit discipline.",
+  "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+  "device": "cuda",
+  "tolerance": 0.001,
+  "num_steps": 50,
+  "model_loaded": "strict=True OK (keys + shapes match after name-remap)",
+  "n_one_step_pairs": 49,
+  "max_abs_err_velocity_mask_nodes": 0.8018408417701721,
+  "max_abs_err_velocity_all_nodes": 0.8018408417701721,
+  "per_frame_first8": [
+    {
+      "tidx": 0,
+      "err_mask": 0.8018408417701721,
+      "err_all": 0.8018408417701721
+    },
+    {
+      "tidx": 1,
+      "err_mask": 0.6055277585983276,
+      "err_all": 0.6055277585983276
+    },
+    {
+      "tidx": 2,
+      "err_mask": 0.5834742784500122,
+      "err_all": 0.5834742784500122
+    },
+    {
+      "tidx": 3,
+      "err_mask": 0.5826976299285889,
+      "err_all": 0.5826976299285889
+    },
+    {
+      "tidx": 4,
+      "err_mask": 0.5918220281600952,
+      "err_all": 0.5918220281600952
+    },
+    {
+      "tidx": 5,
+      "err_mask": 0.5753438472747803,
+      "err_all": 0.5753438472747803
+    },
+    {
+      "tidx": 6,
+      "err_mask": 0.5495643019676208,
+      "err_all": 0.5495643019676208
+    },
+    {
+      "tidx": 7,
+      "err_mask": 0.548557460308075,
+      "err_all": 0.548557460308075
+    }
+  ],
+  "per_frame_worst": {
+    "tidx": 0,
+    "err_mask": 0.8018408417701721,
+    "err_all": 0.8018408417701721
+  },
+  "gate_d_band": "C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design \u00a73.1.A); upper diagnostic exit."
+}

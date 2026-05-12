@@ -2,8 +2,11 @@
 
 Parallel to 01-lagrangebench/modal_app.py. Builds the MGN inference image
 with nvidia-physicsnemo pinned at sha 1ca85d65 (tag v2.0.0, 2026-03-10)
-per preflight/mgn_loader_contract.md. NGC CLI mounted for checkpoint
-download (Task 4); DGL + scikit-fem for Gate A audit (Task 6).
+per preflight/mgn_loader_contract.md. torch-geometric + tfrecord for the
+VortexSheddingDataset loader (it returns PyG `Data`, not DGL); scikit-fem
+for the Gate A mesh-coercion audit (Task 6). torch is pinned to the 2.10
+line — physicsnemo v2.0.0 (2026-03-10) predates torch 2.11 (2026-03-23) and
+its domain_parallel code references a DTensor internal removed in 2.11.
 """
 
 from __future__ import annotations
@@ -23,9 +26,17 @@ mgn_image = (
     .apt_install("git", "wget", "unzip")
     .pip_install(
         f"nvidia-physicsnemo @ git+https://github.com/NVIDIA/physicsnemo@{PHYSICSNEMO_SHA}",
-        "dgl",
-        "scikit-fem",
-        "torch>=2.0.0,<3.0.0",
+        "scikit-fem",  # Gate A (D0-23 v3) — DGL was the plan's wrong assumption; the
+        # v2.0.0 VortexSheddingDataset returns PyG `Data`, so `dgl` is dropped
+        # (it was unused, and its torch-2.2-ABI wheel was dead weight).
+        # torch pin: physicsnemo v2.0.0 was published 2026-03-10, one month after
+        # torch 2.10.0 (2026-02-10) and 13 days before torch 2.11.0 (2026-03-23).
+        # Its `domain_parallel/custom_ops/_tensor_ops.py` does
+        # `from torch.distributed.tensor._ops.registration import ...`, which
+        # exists in torch 2.10 but was moved/removed in 2.11 — so `import
+        # physicsnemo.models` (pulled in by `from .dit import DiT` ->
+        # `domain_parallel`) breaks on torch >= 2.11. Pin to the 2.10 line.
+        "torch>=2.10.0,<2.11.0",
         # physicsnemo v2.0.0 pyproject declares warp-lang>=1.5.0 with no
         # upper bound; warp-lang >=1.13 removed wp.context.Device which
         # physicsnemo's nn.functional.radius_search._warp_impl still
@@ -35,9 +46,20 @@ mgn_image = (
         # package and builds PyG graphs — both are `OptionalImport`s in
         # physicsnemo/datapipes/gnn/vortex_shedding_dataset.py (lines 30-31 @
         # 1ca85d65), so neither is pulled by the physicsnemo install. Needed
-        # for compute_cylinder_flow_stats and the V1-V18 loader-contract audit.
+        # for compute_cylinder_flow_stats, the V1-V18 loader-contract audit,
+        # Gate A, and the Gate D inference reproduction.
         "tfrecord==1.14.6",
-        "torch-geometric==2.6.1",
+        "torch-geometric==2.7.0",
+    )
+    # MeshGraphNet's forward aggregation calls `torch_scatter.scatter`
+    # (physicsnemo/nn/module/gnn_layers/utils.py:84,276 @ 1ca85d65 — without it the
+    # forward raises "MeshGraphNet requires PyTorch Geometric and torch_scatter").
+    # torch_scatter is a compiled extension; install the prebuilt wheel matching
+    # the image's torch 2.10.0+cu128 from the PyG wheel index (a separate call so
+    # it resolves against the already-installed torch).
+    .pip_install(
+        "torch-scatter",
+        find_links="https://data.pyg.org/whl/torch-2.10.0+cu128.html",
     )
     # NGC CLI install per https://docs.ngc.nvidia.com/cli/cmd.html
     .run_commands(
@@ -1194,5 +1216,226 @@ def audit_gate_a_pyg_to_meshfield() -> dict:
     findings_path.write_text(_json.dumps(result, indent=2, default=str))
     mgn_volume.commit()
     print("=== GATE A VERDICT ===")
+    print(_json.dumps(result, indent=2, default=str))
+    return result
+
+
+def _gate_d_band(err: float) -> str:
+    """Pre-registered D0-23 threshold bands for a Gate-D failure (err = max-abs
+    velocity error over rollout-mask nodes; only meaningful when err > tolerance)."""
+    if err <= 1e-3:
+        return "PASS (err <= 1e-3)"
+    if err <= 5e-3:
+        return "A (near-miss, (1e-3, ~5e-3]): live suspects = (2) edge_stats impl drift vs modulus-DGL [primary]; (3) small (400,300) effect [secondary]. (1)+(4) excluded. Also weigh: the 1e-3 tol was inherited from the LB shipped-reference analog — here it bounds the model's *intrinsic* one-step learned-prediction accuracy (no shipped reference), so tol re-derivation is a candidate ahead of suspect (2)."
+    if err <= 0.1:
+        return "B (moderate, (~5e-3, ~0.1]): live suspects = (3) (400,300) re-fit [primary, cheap]; if no improvement -> (1)-subtle [re-audit processor interleave restructure]; fix-or-FNO. (2)+(4) excluded."
+    return "C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design §3.1.A); upper diagnostic exit."
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    gpu="A10G",
+    timeout=600,
+)
+def audit_ngc_sample_reproduction(num_steps: int = 50, tolerance: float = 1e-3) -> dict:
+    """Gate D falsification test (D0-23 verdict 4): does the NGC checkpoint —
+    loaded via the `_legacy_checkpoint_name_remap` adapter into `MeshGraphNet(6,3,3)`
+    and run through the v2.0.0 one-step inference protocol
+    (examples/cfd/vortex_shedding_mgn/inference.py @ 1ca85d65: denormalize x/y, build
+    `invar`, re-normalize velocity cols, `model(invar, edge_attr, graph)`, denormalize
+    the prediction, mask non-rollout nodes, integrate `v_pred[t+1] = v_diff_pred + v[t]`)
+    — reproduce the next frame of a real cylinder_flow `test.tfrecord` trajectory
+    within `tolerance` (max-abs on velocity, over the rollout-mask nodes)?
+
+    There is **no bundled "expected output"** in the NGC zip (it ships only `model.pt`),
+    so "reproduction" here is "the checkpoint's one-step prediction matches the test
+    record's next frame", not "matches a shipped tensor" — `tolerance` (= plan §4 / README
+    default 1e-3) therefore bounds the model's *intrinsic* one-step accuracy, not a
+    load self-consistency. This is the empirical test of verdict-1's amendment
+    ("architecture identity confirmed by Gate D") AND of the Task-5-pt2 stats fit.
+
+    Loops one-step predictions over all `num_steps - 1` consecutive frame pairs of the
+    first test trajectory (each step uses the *true* previous frame — not the previous
+    prediction — so this isolates one-step accuracy from rollout error accumulation),
+    reports `max|v_pred - v_exact|` over (frame, rollout-mask-node) pairs as the Gate-D
+    metric and over (frame, all-node) for completeness, plus the pre-registered D0-23
+    threshold band. Verdict = PASS iff the mask-node max-abs error <= tolerance; on FAIL
+    the rationale lists the band's candidate routes — it does **not** declare a final
+    action (FNO vs re-fit vs re-audit is a human-loop decision; see the pause-before-commit
+    discipline). GPU (A10G).
+    """
+    import json as _json
+    import os
+    import shutil
+    import sys
+    import tempfile
+
+    import torch
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    for p in (
+        data_dir / "meta.json",
+        data_dir / "test.tfrecord",
+        data_dir / "edge_stats.json",
+        data_dir / "node_stats.json",
+    ):
+        if not p.exists():
+            raise FileNotFoundError(
+                f"{p} missing — run download_dm_cylinder_flow_dataset + "
+                f"compute_cylinder_flow_stats first."
+            )
+    if _sha256_of_file(data_dir / "meta.json") != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(data_dir / "test.tfrecord") != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    sys.path.insert(0, "/root")  # the name-remap adapter is a sibling .py file
+    from _legacy_checkpoint_name_remap import remap_modulus_to_physicsnemo_state_dict
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+    from physicsnemo.models.meshgraphnet import MeshGraphNet
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch.set_default_dtype(torch.float32)
+    out: dict[str, object] = {
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "device": device,
+        "tolerance": tolerance,
+        "num_steps": num_steps,
+    }
+
+    # --- Load the NGC checkpoint via the name-remap adapter into MeshGraphNet(6,3,3) ---
+    ckpt_path = Path(
+        f"{VOLUME_CHECKPOINT_ROOT}/modulus_ns_meshgraphnet_{NGC_VORTEX_VERSION}/"
+        f"vortex_shedding_mgn/model.pt"
+    )
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    raw_sd = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
+    remapped = remap_modulus_to_physicsnemo_state_dict(raw_sd)
+    model = MeshGraphNet(
+        input_dim_nodes=6, input_dim_edges=3, output_dim=3
+    )  # defaults: relu, no concat trick
+    try:
+        model.load_state_dict(remapped, strict=True)
+    except RuntimeError as e:
+        result = {
+            "verdict": "FAIL",
+            "rationale": (
+                f"model.load_state_dict(strict=True) raised — the name-remap adapter renamed keys "
+                f"but the *shapes* mismatch (architecture is genuinely different, not a rename): "
+                f"{e}. Per D0-23 ladder this is suspect (1), clean FAIL -> FNO-on-Darcy fallback "
+                f"(design §3.1.A)."
+            ),
+            **out,
+        }
+        print("=== GATE D (NGC SAMPLE REPRODUCTION) VERDICT ===")
+        print(_json.dumps(result, indent=2, default=str))
+        return result
+    model = model.to(device).eval()
+    out["model_loaded"] = "strict=True OK (keys + shapes match after name-remap)"
+
+    # --- Construct the test-split dataset (stats staged in CWD) ---
+    cwd_before = os.getcwd()
+    work_dir = Path(tempfile.mkdtemp(prefix="cf_gated_"))
+    shutil.copy2(data_dir / "edge_stats.json", work_dir / "edge_stats.json")
+    shutil.copy2(data_dir / "node_stats.json", work_dir / "node_stats.json")
+    verdict: str | None = None
+    rationale = ""
+    try:
+        os.chdir(work_dir)
+        ds = VortexSheddingDataset(
+            name="cylinder_flow",
+            data_dir=str(data_dir),
+            split="test",
+            num_samples=1,
+            num_steps=num_steps,
+            noise_std=0.0,
+        )
+        stats = {k: v.to(device) for k, v in ds.node_stats.items()}
+        n_pairs = len(ds)  # = 1 * (num_steps - 1)
+        out["n_one_step_pairs"] = n_pairs
+
+        worst_mask = 0.0
+        worst_all = 0.0
+        per_frame = []
+        for tidx in range(n_pairs):
+            graph, _cells, mask = ds[tidx]
+            graph = graph.to(device)
+            # denormalize: x[:,0:2] -> raw v[t]; y[:,0:2] -> raw v_diff_true; y[:,2] -> raw p_true
+            graph.x[:, 0:2] = VortexSheddingDataset.denormalize(
+                graph.x[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+            )
+            graph.y[:, 0:2] = VortexSheddingDataset.denormalize(
+                graph.y[:, 0:2], stats["velocity_diff_mean"], stats["velocity_diff_std"]
+            )
+            graph.y[:, [2]] = VortexSheddingDataset.denormalize(
+                graph.y[:, [2]], stats["pressure_mean"], stats["pressure_std"]
+            )
+            invar = graph.x.clone()
+            # one-step (true previous frame): invar[:,0:2] = raw v[t]; re-normalize for the model
+            invar[:, 0:2] = VortexSheddingDataset.normalize_node(
+                invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+            )
+            with torch.no_grad():
+                pred_i = model(invar, graph.edge_attr, graph).detach()
+            pred_i[:, 0:2] = VortexSheddingDataset.denormalize(
+                pred_i[:, 0:2], stats["velocity_diff_mean"], stats["velocity_diff_std"]
+            )
+            pred_i[:, 2] = VortexSheddingDataset.denormalize(
+                pred_i[:, 2], stats["pressure_mean"], stats["pressure_std"]
+            )
+            invar[:, 0:2] = VortexSheddingDataset.denormalize(
+                invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+            )  # -> raw v[t] again
+            mask2 = torch.cat((mask, mask), dim=-1).to(device)  # (n, 2) bool
+            pred_diff_masked = torch.where(mask2, pred_i[:, 0:2], torch.zeros_like(pred_i[:, 0:2]))
+            v_pred = pred_diff_masked + invar[:, 0:2]  # v_pred[t+1]
+            v_exact = graph.y[:, 0:2] + graph.x[:, 0:2]  # v_diff_true + v[t] = v_exact[t+1]
+            diff = (v_pred - v_exact).abs()
+            mask1 = mask.to(device).reshape(-1).bool()
+            err_mask = float(diff[mask1].max().item()) if mask1.any() else float("nan")
+            err_all = float(diff.max().item())
+            worst_mask = max(worst_mask, err_mask)
+            worst_all = max(worst_all, err_all)
+            per_frame.append({"tidx": tidx, "err_mask": err_mask, "err_all": err_all})
+
+        out["max_abs_err_velocity_mask_nodes"] = worst_mask
+        out["max_abs_err_velocity_all_nodes"] = worst_all
+        worst_frame = max(per_frame, key=lambda d: d["err_mask"])
+        out["per_frame_first8"] = per_frame[:8]
+        out["per_frame_worst"] = worst_frame
+        out["gate_d_band"] = _gate_d_band(worst_mask)
+        if worst_mask <= tolerance:
+            verdict = "PASS"
+            rationale = (
+                f"NGC checkpoint reproduces the cylinder_flow test trajectory's next-frame velocity "
+                f"to max-abs {worst_mask:.3e} over rollout-mask nodes ({worst_all:.3e} over all nodes) "
+                f"across {n_pairs} one-step pairs — within tolerance {tolerance:.0e}. The name-remap "
+                f"adapter's architecture-identity assumption (verdict 1) AND the Task-5-pt2 stats fit "
+                f"are empirically confirmed."
+            )
+        else:
+            verdict = "FAIL"
+            rationale = (
+                f"NGC checkpoint one-step reproduction: max-abs velocity error {worst_mask:.3e} over "
+                f"rollout-mask nodes ({worst_all:.3e} over all nodes) across {n_pairs} pairs — exceeds "
+                f"tolerance {tolerance:.0e}. D0-23 band: {out['gate_d_band']}. This entrypoint does NOT "
+                f"declare a final action — the band's candidate routes (re-fit / re-audit adapter / "
+                f"FNO-on-Darcy / tol re-derivation) are a human-loop decision per the "
+                f"pause-before-commit discipline."
+            )
+    except Exception as e:
+        verdict = "FAIL"
+        rationale = f"unexpected error during the reproduction loop: {type(e).__name__}: {e}"
+    finally:
+        os.chdir(cwd_before)
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    if verdict is None:
+        verdict, rationale = "FAIL", "no verdict produced (unexpected control flow)"
+    result = {"verdict": verdict, "rationale": rationale, **out}
+    findings_path = data_dir / "gate_d_reproduction.json"
+    findings_path.write_text(_json.dumps(result, indent=2, default=str))
+    mgn_volume.commit()
+    print("=== GATE D (NGC SAMPLE REPRODUCTION) VERDICT ===")
     print(_json.dumps(result, indent=2, default=str))
     return result
