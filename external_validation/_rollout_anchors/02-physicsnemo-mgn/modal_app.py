@@ -1527,3 +1527,427 @@ def audit_ngc_sample_reproduction(num_steps: int = 50, tolerance: float = 1e-3) 
     print("=== GATE D (NGC SAMPLE REPRODUCTION) VERDICT ===")
     print(_json.dumps(result, indent=2, default=str))
     return result
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    gpu="A10G",
+    timeout=900,
+)
+def smoke_substrate_class_vortex_shedding(num_steps: int = 400) -> dict:
+    """Task 9 — 1-traj substrate-class smoke for the DeepMind cylinder_flow / NGC MGN
+    (design §3.1 activity 8; D0-23 verdicts 6 + 7).
+
+    Runs (a) the ground-truth cylinder_flow test trajectory's first ``num_steps``
+    frames and (b) a true MGN rollout over the same window (the corrected name-remap
+    adapter; ``examples/cfd/vortex_shedding_mgn/inference.py`` @ 1ca85d65's ``predict()``
+    protocol -- denorm, prev-prediction feedback, mask non-rollout (inflow/wall) nodes,
+    integrate ``v[t+1] = v_diff_pred + v[t]``), then computes the 3 discriminating
+    observables on each via scikit-fem P1 finite elements on the cylinder_flow mesh
+    (the Gate A path -- verified PASS in verdict 3):
+
+      1. **relative incompressibility residual** ``rel_div = ∫|∇·v| dV / ∫ ||∇v||_F dV``
+         -- 0 for incompressible NS in the continuum; the GT value is the data's
+         discretization floor (the COMSOL solver's), the rollout value should stay within
+         ~an order of magnitude of it (the MGN does not enforce ∇·v=0). The PH-CON-001 signal.
+      2. **KE(t) = 0.5 ∫ |v|² dV** -> dKE/dt monotone (rising OR falling) in the
+         post-warmup window? Prediction (open-driven-dissipative, boundary-driven
+         sub-class): NOT monotone -- KE oscillates around a steady mean (inflow/outflow/
+         dissipation balance, vortex shedding pumps energy in and out of the wake). The
+         PH-CON-002 / PH-CON-003 signal (their strictly-dissipative-or-conservative
+         assumption fails iff this oscillates).
+      3. **Strouhal St = f_s · D / U** -- f_s = dominant FFT peak of the lift proxy
+         ``∫ v_y dV`` (the transverse fluid momentum; detrended, post-warmup, Hann-
+         windowed); D = cylinder diameter from the WALL nodes off the channel boundary;
+         U from the INFLOW nodes (reported with both the mean and the max/centerline
+         convention). Prediction: St ∈ [0.16, 0.21] (cylinder wake, Re ∈ [100, 300]);
+         smoke band [0.14, 0.24].
+
+    Verdict 6 = ``"open-driven-dissipative"`` iff the GROUND TRUTH satisfies all three
+    (the substrate is the physics, not the surrogate); the rollout's values are an "and
+    the MGN reproduces this" cross-check, reported but not gating. A GT observable
+    diverging -> ``"UNEXPECTED (...)"`` + ``pattern_a_drift=True`` -> the routing is a
+    D-entry amendment, **not** a Gate-D FAIL (design §3.1 disambiguation: substrate-class
+    divergence is methodology-refinement, not checkpoint-usability failure). Verdict 7 =
+    ``"Y"`` -- this entrypoint writes its findings to the persistent Volume and commits,
+    and ``inference.py``'s ``os.chdir(rollout_dir)`` isolation pattern carries over for
+    Phase 2's inference entrypoint. GPU (A10G); ``dt = 0.01`` per the cylinder_flow
+    ``meta.json``.
+    """
+    import json as _json
+    import os
+    import shutil
+    import sys
+    import tempfile
+
+    import numpy as np
+    import torch
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    for p in (
+        data_dir / "meta.json",
+        data_dir / "test.tfrecord",
+        data_dir / "edge_stats.json",
+        data_dir / "node_stats.json",
+    ):
+        if not p.exists():
+            raise FileNotFoundError(
+                f"{p} missing -- run download_dm_cylinder_flow_dataset + "
+                f"compute_cylinder_flow_stats first."
+            )
+    if _sha256_of_file(data_dir / "meta.json") != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(data_dir / "test.tfrecord") != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    import skfem
+
+    sys.path.insert(0, "/root")  # the name-remap adapter is a sibling .py file
+    from _legacy_checkpoint_name_remap import remap_modulus_to_physicsnemo_state_dict
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+    from physicsnemo.models.meshgraphnet import MeshGraphNet
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    torch.set_default_dtype(torch.float32)
+    dt = 0.01  # cylinder_flow meta.json: "dt": 0.01
+    out: dict[str, object] = {
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "device": device,
+        "num_steps": num_steps,
+        "dt": dt,
+        "skfem_version": getattr(skfem, "__version__", "unknown"),
+    }
+
+    # --- Load the NGC checkpoint via the corrected name-remap adapter ---
+    ckpt_path = Path(
+        f"{VOLUME_CHECKPOINT_ROOT}/modulus_ns_meshgraphnet_{NGC_VORTEX_VERSION}/"
+        f"vortex_shedding_mgn/model.pt"
+    )
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+    raw_sd = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
+    model = MeshGraphNet(input_dim_nodes=6, input_dim_edges=3, output_dim=3)
+    model.load_state_dict(remap_modulus_to_physicsnemo_state_dict(raw_sd), strict=True)
+    model = model.to(device).eval()
+    out["model_loaded"] = "strict=True OK (corrected name-remap adapter)"
+
+    cwd_before = os.getcwd()
+    work_dir = Path(tempfile.mkdtemp(prefix="cf_substrate_"))
+    shutil.copy2(data_dir / "edge_stats.json", work_dir / "edge_stats.json")
+    shutil.copy2(data_dir / "node_stats.json", work_dir / "node_stats.json")
+    verdict: str | None = None
+    rationale = ""
+    try:
+        os.chdir(work_dir)  # loader reads {edge,node}_stats.json from CWD
+        ds = VortexSheddingDataset(
+            name="cylinder_flow",
+            data_dir=str(data_dir),
+            split="test",
+            num_samples=1,
+            num_steps=num_steps,
+            noise_std=0.0,
+        )
+        stats = {k: v.to(device) for k, v in ds.node_stats.items()}
+        n_pairs = len(ds)  # = num_steps - 1
+        out["n_frames"] = n_pairs
+
+        # --- mesh + node classes (one-hot encodes node_type: class 0=NORMAL(0),
+        #     1=INFLOW(4), 2=OUTFLOW(5), 3=WALL(6) per _one_hot_encode's where(==0,0,nt-3)) ---
+        graph0, cells0, _mask0 = ds[0]
+        mesh_pos = np.asarray(graph0["mesh_pos"]).astype(np.float64)  # (N, 2)
+        cells_np = np.asarray(cells0).astype(np.int64)  # (M, 3)
+        node_class = np.asarray(graph0.x[:, 2:6].argmax(dim=1)).astype(int)  # (N,)
+        n_nodes = mesh_pos.shape[0]
+        assert mesh_pos.shape == (n_nodes, 2) and cells_np.shape[1] == 3, (
+            f"unexpected mesh shapes: mesh_pos {mesh_pos.shape}, cells {cells_np.shape}"
+        )
+        out["n_nodes"] = n_nodes
+        out["n_elements"] = int(cells_np.shape[0])
+        x_min, y_min = mesh_pos.min(axis=0)
+        x_max, y_max = mesh_pos.max(axis=0)
+        out["mesh_bbox"] = {
+            "min": [float(x_min), float(y_min)],
+            "max": [float(x_max), float(y_max)],
+        }
+        out["node_class_counts"] = {
+            "NORMAL": int((node_class == 0).sum()),
+            "INFLOW": int((node_class == 1).sum()),
+            "OUTFLOW": int((node_class == 2).sum()),
+            "WALL": int((node_class == 3).sum()),
+        }
+
+        # cylinder = WALL nodes off the channel boundary (not near y_min/y_max/x_min/x_max)
+        ytol = 0.02 * (y_max - y_min)
+        xtol = 0.02 * (x_max - x_min)
+        is_wall = node_class == 3
+        on_channel = (
+            (np.abs(mesh_pos[:, 1] - y_min) < ytol)
+            | (np.abs(mesh_pos[:, 1] - y_max) < ytol)
+            | (np.abs(mesh_pos[:, 0] - x_min) < xtol)
+            | (np.abs(mesh_pos[:, 0] - x_max) < xtol)
+        )
+        cyl_mask = is_wall & (~on_channel)
+        if cyl_mask.sum() < 4:
+            raise RuntimeError(
+                f"only {int(cyl_mask.sum())} candidate cylinder-surface nodes found "
+                f"(WALL nodes off the channel boundary) -- cannot estimate the cylinder "
+                f"diameter; mesh geometry differs from the expected channel-with-cylinder."
+            )
+        cyl_xy = mesh_pos[cyl_mask]
+        diam_x = float(cyl_xy[:, 0].max() - cyl_xy[:, 0].min())
+        diam_y = float(cyl_xy[:, 1].max() - cyl_xy[:, 1].min())
+        cyl_d = max(diam_x, diam_y)
+        cyl_center = [float(cyl_xy[:, 0].mean()), float(cyl_xy[:, 1].mean())]
+        out["cylinder"] = {
+            "n_surface_nodes": int(cyl_mask.sum()),
+            "diameter_x": diam_x,
+            "diameter_y": diam_y,
+            "diameter": cyl_d,
+            "center": cyl_center,
+        }
+        assert 0.0 < cyl_d < 0.5 * (y_max - y_min), (
+            f"cylinder diameter estimate {cyl_d:.4f} implausible vs channel height "
+            f"{y_max - y_min:.4f} -- WALL-node clustering picked up the wrong nodes"
+        )
+
+        # --- scikit-fem P1 basis on the mesh; verify DOF order == node order ---
+        mesh = skfem.MeshTri(np.ascontiguousarray(mesh_pos.T), np.ascontiguousarray(cells_np.T))
+        basis = skfem.Basis(mesh, skfem.ElementTriP1())
+        assert n_nodes == basis.N, f"skfem basis has {basis.N} DOFs != {n_nodes} nodes"
+        assert np.allclose(mesh.p.T, mesh_pos), "skfem reordered the nodes -- DOF<->node map broken"
+
+        def _field_observables(v):
+            """v: (n_nodes, 2) physical velocity -> dict of FE-integrated observables."""
+            vx_f = basis.interpolate(v[:, 0].astype(np.float64))
+            vy_f = basis.interpolate(v[:, 1].astype(np.float64))
+            gvx = vx_f.grad  # (2, n_elem, n_qp): [dvx/dx, dvx/dy]
+            gvy = vy_f.grad  # [dvy/dx, dvy/dy]
+            div = gvx[0] + gvy[1]
+            frob = np.sqrt(gvx[0] ** 2 + gvx[1] ** 2 + gvy[0] ** 2 + gvy[1] ** 2)
+            int_abs_div = float(np.sum(np.abs(div) * basis.dx))
+            int_frob = float(np.sum(frob * basis.dx))
+            ke = 0.5 * float(np.sum((vx_f.value**2 + vy_f.value**2) * basis.dx))
+            lift = float(np.sum(vy_f.value * basis.dx))  # ∫ v_y dV (transverse momentum)
+            return {
+                "int_abs_div": int_abs_div,
+                "int_frob": int_frob,
+                "rel_div": int_abs_div / int_frob if int_frob > 0 else float("nan"),
+                "ke": ke,
+                "lift": lift,
+            }
+
+        # --- baked-in metric sanity (per CLAUDE.md pre-flight check 3): the FE
+        #     divergence must give 0 for a div-free linear field and total area for v=(x,0).
+        total_area = float(np.sum(basis.dx))
+        sanity_divfree = _field_observables(
+            np.stack([mesh_pos[:, 1], -mesh_pos[:, 0]], axis=1)
+        )  # v=(y,-x): div=0 exactly (P1)
+        sanity_div1 = _field_observables(
+            np.stack([mesh_pos[:, 0], np.zeros(n_nodes)], axis=1)
+        )  # v=(x,0): div=1 exactly -> ∫|div|dV = total_area
+        out["fe_divergence_self_test"] = {
+            "total_area": total_area,
+            "int_abs_div_for_v_eq_(y,-x)": sanity_divfree["int_abs_div"],
+            "int_abs_div_for_v_eq_(x,0)": sanity_div1["int_abs_div"],
+        }
+        if not (
+            sanity_divfree["int_abs_div"] < 1e-8 * max(1.0, total_area)
+            and abs(sanity_div1["int_abs_div"] - total_area) < 1e-6 * total_area
+        ):
+            raise RuntimeError(
+                "FE divergence self-test FAILED: "
+                f"∫|∇·v|dV for v=(y,-x) is {sanity_divfree['int_abs_div']:.3e} (expect ~0), "
+                f"for v=(x,0) is {sanity_div1['int_abs_div']:.3e} (expect total_area "
+                f"{total_area:.3e}). The scikit-fem P1 divergence wiring is wrong -- do not "
+                f"trust the substrate-class observables until this passes."
+            )
+
+        # --- GT velocity series (frames 0..n_pairs-1; graph.x[:,0:2] is normalized) ---
+        v_gt = np.empty((n_pairs, n_nodes, 2), dtype=np.float64)
+        for t in range(n_pairs):
+            g_t, _c, _m = ds[t]
+            v_gt[t] = (
+                VortexSheddingDataset.denormalize(
+                    g_t.x[:, 0:2].clone(), stats["velocity_mean"].cpu(), stats["velocity_std"].cpu()
+                )
+                .numpy()
+                .astype(np.float64)
+            )
+
+        # --- MGN true rollout (inference.py predict() protocol; prev-prediction feedback) ---
+        v_pred = np.empty((n_pairs, n_nodes, 2), dtype=np.float64)
+        prev_v = None  # raw (denormalized) velocity carried from the previous prediction
+        with torch.no_grad():
+            for t in range(n_pairs):
+                g_t, _c, mask_t = ds[t]
+                g_t = g_t.to(device)
+                g_t.x[:, 0:2] = VortexSheddingDataset.denormalize(
+                    g_t.x[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )  # -> raw v[t]
+                invar = g_t.x.clone()
+                if t != 0:  # rollout: feed the previous prediction's velocity
+                    invar[:, 0:2] = prev_v
+                invar[:, 0:2] = VortexSheddingDataset.normalize_node(
+                    invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )
+                pred_i = model(invar, g_t.edge_attr, g_t).detach()
+                pred_i[:, 0:2] = VortexSheddingDataset.denormalize(
+                    pred_i[:, 0:2], stats["velocity_diff_mean"], stats["velocity_diff_std"]
+                )
+                invar[:, 0:2] = VortexSheddingDataset.denormalize(
+                    invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )  # -> raw v[t] (or raw prev-pred) again
+                mask2 = torch.cat((mask_t, mask_t), dim=-1).to(device)  # (N, 2) bool
+                v_diff_masked = torch.where(mask2, pred_i[:, 0:2], torch.zeros_like(pred_i[:, 0:2]))
+                v_next = v_diff_masked + invar[:, 0:2]  # v[t+1]
+                v_pred[t] = v_next.cpu().numpy().astype(np.float64)
+                prev_v = v_next.clone()
+
+        # --- observables per frame, both series ---
+        warmup = min(40, n_pairs // 5)
+        out["warmup_frames_skipped"] = warmup
+
+        def _series_observables(v_series, tag):
+            obs = [_field_observables(v_series[t]) for t in range(n_pairs)]
+            rel_div = np.array([o["rel_div"] for o in obs])
+            ke = np.array([o["ke"] for o in obs])
+            lift = np.array([o["lift"] for o in obs])
+            dke = np.diff(ke)
+            dke_post = dke[warmup:]
+            ke_post = ke[warmup:]
+            monotone = bool(np.all(dke_post > 0) or np.all(dke_post < 0))
+            n_sign_changes = int(np.sum(np.diff(np.sign(dke_post)) != 0))
+            ke_mean = float(ke_post.mean())
+            ke_cv = float(ke_post.std() / ke_mean) if ke_mean != 0 else float("nan")
+            # Strouhal: dominant FFT peak of the lift proxy (∫ v_y dV), post-warmup, Hann-windowed
+            lift_post = lift[warmup:]
+            lp = (lift_post - lift_post.mean()) * np.hanning(len(lift_post))
+            spec = np.abs(np.fft.rfft(lp))
+            freqs = np.fft.rfftfreq(len(lift_post), d=dt)  # Hz
+            peak_idx = int(np.argmax(spec[1:]) + 1)  # skip DC
+            f_s = float(freqs[peak_idx])
+            peak_prominence = float(spec[peak_idx] / (np.median(spec[1:]) + 1e-30))
+            # KE oscillation frequency (should be ~2 f_s for a von Karman street)
+            kp = (ke_post - ke_post.mean()) * np.hanning(len(ke_post))
+            ke_spec = np.abs(np.fft.rfft(kp))
+            ke_peak_idx = int(np.argmax(ke_spec[1:]) + 1)
+            f_ke = float(freqs[ke_peak_idx]) if ke_peak_idx < len(freqs) else float("nan")
+            return {
+                "rel_div_mean": float(rel_div[warmup:].mean()),
+                "rel_div_max": float(rel_div[warmup:].max()),
+                "ke_mean": ke_mean,
+                "ke_cv": ke_cv,
+                "ke_dKEdt_monotone": monotone,
+                "ke_dKEdt_sign_changes": n_sign_changes,
+                "shedding_freq_hz": f_s,
+                "shedding_peak_prominence": peak_prominence,
+                "ke_osc_freq_hz": f_ke,
+                "strouhal_U_mean": f_s * cyl_d / u_mean if u_mean > 0 else float("nan"),
+                "strouhal_U_max": f_s * cyl_d / u_max if u_max > 0 else float("nan"),
+                "_tag": tag,
+            }
+
+        # inflow velocity U (mean=bulk, max=centerline) from the GT INFLOW nodes,
+        # averaged over the post-warmup window (robust to a startup transient)
+        inflow = node_class == 1
+        if inflow.sum() == 0:
+            raise RuntimeError("no INFLOW nodes (one-hot class 1) found -- cannot estimate U")
+        speed_gt = np.linalg.norm(v_gt[:, inflow, :], axis=2)  # (n_pairs, n_inflow)
+        u_mean = float(speed_gt[warmup:].mean())
+        u_max = float(speed_gt[warmup:].max())
+        out["inflow_velocity"] = {
+            "U_mean": u_mean,
+            "U_max": u_max,
+            "n_inflow_nodes": int(inflow.sum()),
+        }
+
+        gt_obs = _series_observables(v_gt, "ground_truth")
+        rollout_obs = _series_observables(v_pred, "mgn_rollout")
+        out["ground_truth_observables"] = gt_obs
+        out["mgn_rollout_observables"] = rollout_obs
+        out["reynolds_band_design_target_strouhal"] = [0.16, 0.21]
+
+        # --- substrate-class verdict, anchored on the GROUND TRUTH ---
+        st_gt_in_smoke = (0.14 <= gt_obs["strouhal_U_mean"] <= 0.24) or (
+            0.14 <= gt_obs["strouhal_U_max"] <= 0.24
+        )
+        st_gt_in_tight = (0.16 <= gt_obs["strouhal_U_mean"] <= 0.21) or (
+            0.16 <= gt_obs["strouhal_U_max"] <= 0.21
+        )
+        gt_incompressible = gt_obs["rel_div_mean"] < 0.10
+        gt_ke_oscillates = (
+            (not gt_obs["ke_dKEdt_monotone"])
+            and (gt_obs["ke_cv"] > 1e-3)
+            and (gt_obs["shedding_peak_prominence"] > 3.0)
+        )
+        fits_odd = bool(gt_incompressible and gt_ke_oscillates and st_gt_in_smoke)
+        # MGN-reproduces cross-check (reported, not gating)
+        rollout_reproduces = bool(
+            (rollout_obs["rel_div_mean"] < 5.0 * gt_obs["rel_div_mean"] + 0.05)
+            and (not rollout_obs["ke_dKEdt_monotone"])
+            and (
+                (0.12 <= rollout_obs["strouhal_U_mean"] <= 0.26)
+                or (0.12 <= rollout_obs["strouhal_U_max"] <= 0.26)
+            )
+        )
+        out["gt_strouhal_in_design_tight_band"] = st_gt_in_tight
+        out["mgn_reproduces_substrate_signature"] = rollout_reproduces
+        if fits_odd:
+            verdict = "open-driven-dissipative"
+            out["pattern_a_drift"] = False
+            rationale = (
+                f"cylinder_flow test trajectory (GT) fits substrate-class "
+                f"'open-driven-dissipative' (boundary-driven sub-class): incompressible "
+                f"(∫|∇·v|/∫||∇v||_F = {gt_obs['rel_div_mean']:.3e} << 1), KE oscillates "
+                f"around a steady mean (dKE/dt sign-changes={gt_obs['ke_dKEdt_sign_changes']}, "
+                f"KE CV={gt_obs['ke_cv']:.2e}, not monotone), Strouhal St~"
+                f"[{gt_obs['strouhal_U_mean']:.3f} (U_mean), {gt_obs['strouhal_U_max']:.3f} "
+                f"(U_max)] (cylinder-wake signature; design tight band [0.16,0.21] "
+                f"{'HIT' if st_gt_in_tight else 'near'}, f_s={gt_obs['shedding_freq_hz']:.3f} Hz, "
+                f"D={cyl_d:.4f}, peak prominence {gt_obs['shedding_peak_prominence']:.1f}x). The "
+                f"MGN rollout {'reproduces' if rollout_reproduces else 'PARTIALLY reproduces'} "
+                f"this signature (rel_div={rollout_obs['rel_div_mean']:.3e}, KE monotone="
+                f"{rollout_obs['ke_dKEdt_monotone']}, St~[{rollout_obs['strouhal_U_mean']:.3f},"
+                f"{rollout_obs['strouhal_U_max']:.3f}]). D0-23 verdict 6 = "
+                f"'open-driven-dissipative' -> MGN_DATASET_SYSTEM_CLASS dispatch lands "
+                f"per design §2.2; PH-CON-002/003 SKIP-with-reason on this substrate."
+            )
+        else:
+            verdict = (
+                f"UNEXPECTED (rel_div_gt={gt_obs['rel_div_mean']:.3e} [need <0.10], "
+                f"ke_monotone_gt={gt_obs['ke_dKEdt_monotone']} ke_cv_gt={gt_obs['ke_cv']:.2e} "
+                f"prominence={gt_obs['shedding_peak_prominence']:.1f}, "
+                f"St_gt~[{gt_obs['strouhal_U_mean']:.3f},{gt_obs['strouhal_U_max']:.3f}] "
+                f"[need a value in [0.14,0.24]])"
+            )
+            out["pattern_a_drift"] = True
+            rationale = (
+                f"the cylinder_flow GT trajectory does NOT cleanly fit "
+                f"'open-driven-dissipative' on all three observables -- {verdict}. Per design "
+                f"§3.1 disambiguation this is a Pattern-A drift on the substrate-class smoke "
+                f"-> a D0-23 amendment captures the surprise (NOT a Gate-D FAIL: substrate-"
+                f"class divergence is methodology-refinement, not checkpoint-usability). "
+                f"Inspect the per-observable values; the most likely explanations are the "
+                f"Strouhal U-convention (mean vs centerline) or the rel_div discretization "
+                f"floor being looser than 0.10 on this mesh -- both would refine the band "
+                f"rather than overturn the class."
+            )
+    except AssertionError:
+        raise  # pre-flight assertions abort loudly
+    except Exception as e:
+        verdict = "FAIL"
+        out["pattern_a_drift"] = None
+        rationale = f"unexpected error during the substrate-class smoke: {type(e).__name__}: {e}"
+    finally:
+        os.chdir(cwd_before)
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    if verdict is None:
+        verdict, rationale = "FAIL", "no verdict produced (unexpected control flow)"
+    out["persistent_volume_decision"] = "Y"  # this entrypoint writes to + commits the Volume
+    result = {"verdict": verdict, "rationale": rationale, **out}
+    findings_path = data_dir / "substrate_class_smoke.json"
+    findings_path.write_text(_json.dumps(result, indent=2, default=str))
+    mgn_volume.commit()
+    print("=== SUBSTRATE-CLASS SMOKE (vortex_shedding) VERDICT ===")
+    print(_json.dumps(result, indent=2, default=str))
+    return result
