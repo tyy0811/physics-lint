@@ -11,15 +11,38 @@
         "model_name": "gns",
         "physics_lint_sha_npz_conversion": "e754a4bc2e",
         "physics_lint_sha_pkl_inference": "e754a4bc2e",
-        "physics_lint_sha_sarif_emission": "bc3bae929d",
+        "physics_lint_sha_sarif_emission": "96ce8ed0eb",
         "rollout_subdir": "/vol/rollouts/lagrangebench/gns_dam2d_e754a4bc2e/",
         "source": "rollout-anchor-harness"
       },
       "results": [
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a9a17c3cf90d532c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -37,8 +60,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "aa7209b34f43410d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -58,8 +104,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7702d5e67d592774"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -77,8 +146,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "cef648b0c52f318d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -96,8 +188,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7e6a648e0eef86e2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -117,8 +232,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "abf5eb934c8ba87c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -136,8 +274,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4c62f5c0e01e86ae"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -155,8 +316,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "be47ff91de9f25e0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -176,8 +360,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4ed376a95b16f1aa"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -195,8 +402,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9768c79cd759e72c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -214,8 +444,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "0dd48bea24a06099"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -235,8 +488,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "58940b3e7545a022"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -254,8 +530,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "39602be56d744729"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -273,8 +572,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e374b28073be51dd"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -294,8 +616,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2de6392e906e69f7"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -313,8 +658,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9bf25d2c52ba5f7d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -332,8 +700,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1468fdc71f3bc52a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -353,8 +744,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "53a00bff13f2d040"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -372,8 +786,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1e9f5ac2470a2337"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -391,8 +828,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b75d8a35f702dbc6"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -412,8 +872,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "27b32021877cfd62"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -431,8 +914,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "de7d2db877edbcdc"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -450,8 +956,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f0e5a6a86bf81938"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -471,8 +1000,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "bc11a081d0f7a79c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -490,8 +1042,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f623559aea24c9f4"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -509,8 +1084,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2a83d0978b1b0308"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -530,8 +1128,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a6f740f86e7a6728"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -549,8 +1170,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "82a80cf99baf283d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -568,8 +1212,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a19a8c0fbf5274ea"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -589,8 +1256,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "927675a98bacd0a5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -608,8 +1298,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "efb529a4d524d6dc"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -627,8 +1340,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7ea288cf38ef3149"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -648,8 +1384,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4bd2e21b0f581cb1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -667,8 +1426,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:mass_conservation_defect/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "be8195c31b00e39f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -686,8 +1468,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:energy_drift/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); KE grows by orders of magnitude due to physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1)."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c9a4807fbde42b9b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -707,8 +1512,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/gns/dam2d/harness:dissipation_sign_violation/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='open-driven-dissipative' (dataset='dam2d'); dE/dt > 0 over a stretch by physics (gravitational PE \u2192 KE conversion); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "db112b026c3d1c47"
           },
           "properties": {
             "case_study": "01-lagrangebench",

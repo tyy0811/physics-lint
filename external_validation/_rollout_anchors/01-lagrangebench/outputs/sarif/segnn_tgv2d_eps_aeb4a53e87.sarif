@@ -11,15 +11,38 @@
         "physics_lint_sha_eps_computation": "255af5de8d",
         "physics_lint_sha_npz_conversion": "5857144",
         "physics_lint_sha_pkl_inference": "8c3d080397",
-        "physics_lint_sha_sarif_emission": "255af5de8d",
+        "physics_lint_sha_sarif_emission": "aeb4a53e87",
         "rollout_subdir": "/vol/trajectories/segnn_tgv2d_255af5de8d/",
         "source": "rollout-anchor-harness"
       },
       "results": [
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.498e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e58624204db1800c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -40,8 +63,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=8.029e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d8a782d620bf2e87"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -62,8 +108,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.978e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d8a64a9d039e799d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -84,8 +153,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.881e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2e7bb6fac06d6591"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -106,8 +198,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.168e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "abfb0357c7225eac"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -128,8 +243,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.018e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ae9a4c7fbdf6adae"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -150,8 +288,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.898e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "775c14a6771288a5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -172,8 +333,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.371e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e0068fc7f2b685a8"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -194,8 +378,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=8.154e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4dd20e79e5a6060c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -216,8 +423,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.800e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "cf9e1fe4db9c2562"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -238,8 +468,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.330e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7f2d73a9660f3505"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -260,8 +513,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.446e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9a456e2427c3761f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -282,8 +558,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=8.179e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d1b759498eda7afe"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -304,8 +603,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=8.451e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "45d5061260714828"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -326,8 +648,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.355e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d8b54ef8909abd3f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -348,8 +693,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.878e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "30cfbead47aca351"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -370,8 +738,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.421e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "df5dde3cd295220f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -392,8 +783,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.512e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e62e91ec6b7d90f0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -414,8 +828,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=6.951e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "99a8ffeb4ab3f2ad"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -436,8 +873,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/identity_0/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=7.111e-09 (transform=identity 0)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "53c3dbc1c8372b3a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -458,8 +918,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.361e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1d5f42f94c95c826"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -480,8 +963,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.410e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fec029f8ffce0e9c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -502,8 +1008,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.346e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5c568ae01c66c0af"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -524,8 +1053,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.373e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2f10a0061f8b781c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -546,8 +1098,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.377e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9b8d6276119b5bf9"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -568,8 +1143,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.356e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "17efe1a5deb79c5a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -590,8 +1188,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.384e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b93c93cd4af32446"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -612,8 +1233,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.369e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f9775177e4342d53"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -634,8 +1278,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.384e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e6bf408787fa887e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -656,8 +1323,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.378e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e3bab0fba0ff4a8d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -678,8 +1368,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.349e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6458e4a1298e8c50"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -700,8 +1413,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.359e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "26afae0e8e1ba000"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -722,8 +1458,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.341e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b05fc1b7fe2d10a6"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -744,8 +1503,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.388e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "36ef92365ec6dbba"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -766,8 +1548,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.361e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "722931f3b587ac1f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -788,8 +1593,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.409e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7ca72fdce37e4343"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -810,8 +1638,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.355e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1bfdc9e993600175"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -832,8 +1683,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.377e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "269fc7fd69ad59ec"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -854,8 +1728,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.343e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1dc07d5d6dba78bc"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -876,8 +1773,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_3pi_2/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.312e-07 (transform=rotation 3pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9df8021eef27e9f0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -898,8 +1818,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.390e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f63dc86b9bb5396f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -920,8 +1863,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.382e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a480e1cd9ea960b0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -942,8 +1908,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.368e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7f12f73746650eab"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -964,8 +1953,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.375e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a2d260c6a56c79e6"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -986,8 +1998,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.390e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a832d6204b453e9c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1008,8 +2043,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.350e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "883c88412eadc107"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1030,8 +2088,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.378e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fd59c70e3c4c3a20"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1052,8 +2133,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.381e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "3c972c54abe319b4"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1074,8 +2178,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.379e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "99abe13c5f5a2720"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1096,8 +2223,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.385e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7fba038eafab9dca"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1118,8 +2268,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.355e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "183fcb97ab90eaa5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1140,8 +2313,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.354e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b5da690599f7accc"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1162,8 +2358,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.319e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b17495ed4362a1f3"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1184,8 +2403,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.386e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e145a6a52eca3fc8"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1206,8 +2448,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.354e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "259b2461781ec889"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1228,8 +2493,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.375e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b05c0f61a549a8fe"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1250,8 +2538,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.372e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b2cf0b8fb75d0e73"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1272,8 +2583,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.389e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "31d7bb01fd6597da"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1294,8 +2628,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.353e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "39a0e22ec61e30ad"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1316,8 +2673,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi_2/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.333e-07 (transform=rotation pi_2)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "64aedbcda97d4834"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1338,8 +2718,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.359e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "196f388d1393a099"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1360,8 +2763,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.391e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "73faab638cc7b347"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1382,8 +2808,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.332e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a4e9cb45649e6397"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1404,8 +2853,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.357e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e4d05f043ee8b58d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1426,8 +2898,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.338e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "0167a771ec7e4afd"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1448,8 +2943,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.307e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "8e6f0151de2450cf"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1470,8 +2988,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.352e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "adfb74262e5ea4da"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1492,8 +3033,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.354e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ac28461f35f6cd00"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1514,8 +3078,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.330e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1af5f1811cbef672"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1536,8 +3123,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.361e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d5be6fe35c8ec598"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1558,8 +3168,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.315e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "50a1d149c850c5c1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1580,8 +3213,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.302e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "78747cf540c61e9f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1602,8 +3258,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.264e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "aa6c12fff9a6bb67"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1624,8 +3303,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.364e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "3305a79892a5eeb5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1646,8 +3348,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.303e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4b7a250833dbd1dd"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1668,8 +3393,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.378e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "eb7790c780dd3155"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1690,8 +3438,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.340e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "451347eab7335c91"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1712,8 +3483,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.353e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "25296370a6088163"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1734,8 +3528,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.303e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d93230deb7955776"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1756,8 +3573,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-001/rotation_pi/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=3.275e-07 (transform=rotation pi)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6540cdefd9fc0a12"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1778,8 +3618,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.358e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "62846fc216f930b5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1800,8 +3663,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.409e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f337004e3b82bfa2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1822,8 +3708,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.345e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "05b7f367f6413d3f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1844,8 +3753,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.371e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4403fa523046bde0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1866,8 +3798,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.374e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b69705414d16ddc1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1888,8 +3843,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.356e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "cd0ca167ea06f447"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1910,8 +3888,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.387e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "62eb1305650ecaa6"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1932,8 +3933,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.363e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "274de2919f8b11e1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1954,8 +3978,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.380e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2331d09402b283c2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1976,8 +4023,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.375e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a83d5af3cac5337f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1998,8 +4068,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.349e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "0812919025543c62"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2020,8 +4113,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.354e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "efa0d3aaccc03a6c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2042,8 +4158,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.338e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "689715e3c5714c33"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2064,8 +4203,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.379e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "eb85af3e1cbae498"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2086,8 +4248,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.360e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "bd9d7d7bd4e746d0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2108,8 +4293,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.401e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "97b3a662f3cb4530"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2130,8 +4338,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.355e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9dcadf0cccacfb7e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2152,8 +4383,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.371e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "63bf202a7baede34"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2174,8 +4428,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.343e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "54dec3393003aed1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2196,8 +4473,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-002/reflection_y_axis/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=2.312e-07 (transform=reflection y_axis)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5cac01644e3d4533"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2218,8 +4518,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "66530b27e265ce8c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2240,8 +4563,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ca5e06d02c3b6016"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2262,8 +4608,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "89a5c0ec972c452a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2284,8 +4653,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "1e21a69831a7e5d1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2306,8 +4698,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "97c8481ff8fea827"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2328,8 +4743,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "eaa7bf5b4dd6e852"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2350,8 +4788,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5ce6245d568ed22e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2372,8 +4833,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "0990c4019789ad46"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2394,8 +4878,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "03a07081b6cd925b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2416,8 +4923,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e2623529d4bd21b2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2438,8 +4968,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "aba2f1c5f6512502"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2460,8 +5013,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "eeedddd8d20d520e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2482,8 +5058,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9dc47578d94af6a0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2504,8 +5103,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "e3ddd33c0f70a264"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2526,8 +5148,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5b855c413f802a7b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2548,8 +5193,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5eef15e337e35d2e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2570,8 +5238,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c9977cad20c83233"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2592,8 +5283,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7f31bb52ed7ef3ec"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2614,8 +5328,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "896f74aafb85221c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2636,8 +5373,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-003/skip_so2_continuous/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: PBC-square breaks SO(2) symmetry \u2014 rotated cell doesn't tile with original"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "74ae6d1a6a37b2cf"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2658,8 +5418,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.170e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "bbc825ade3983f69"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2680,8 +5463,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.203e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6e830b38163a8b83"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2702,8 +5508,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.301e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f07e6c92995f6dd9"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2724,8 +5553,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=4.867e-06 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6bc1cb8a2f72a3fa"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2746,8 +5598,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.324e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2e9173deb80d7dd3"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2768,8 +5643,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.164e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "145c04237db675eb"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2790,8 +5688,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.295e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b93b49318f6b1302"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2812,8 +5733,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.253e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "8bf88a581ab5ce50"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2834,8 +5778,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.229e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4ec3c41b25de2774"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2856,8 +5823,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.200e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9332ae14bd9b36a9"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2878,8 +5868,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.284e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "107265bd482e1d90"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2900,8 +5913,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.204e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fb1854f5c719d22e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2922,8 +5958,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.301e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "9ff8e9e4f6a83d4a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2944,8 +6003,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.237e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d31bd061cb7599a1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2966,8 +6048,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.115e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a586dbb20e405e56"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -2988,8 +6093,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.335e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "64c2b694e1102769"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -3010,8 +6138,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.072e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b3b5d376bf213d90"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -3032,8 +6183,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.261e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "55d54b305ff65601"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -3054,8 +6228,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.304e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a32300f459786f42"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -3076,8 +6273,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/PH-SYM-004/translation_L_3_L_7/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/symmetry_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "eps_pos_rms=5.253e-08 (transform=translation L_3_L_7)"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c5770d9c2036f3fa"
           },
           "properties": {
             "case_study": "01-lagrangebench",

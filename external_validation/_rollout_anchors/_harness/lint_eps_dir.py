@@ -21,6 +21,32 @@ from external_validation._rollout_anchors._harness.symmetry_rollout_adapter impo
     read_eps_t_npz,
 )
 
+# Rung-4b design §3.3 + writeup §6 item 3 thresholds. Band → SARIF level:
+#   PASS         (ε ≤ EPS_PASS_THRESHOLD)                                 → note
+#   APPROXIMATE  (EPS_PASS_THRESHOLD < ε ≤ EPS_APPROXIMATE_THRESHOLD)     → warning
+#   FAIL         (ε > EPS_APPROXIMATE_THRESHOLD)                          → error
+#
+# Pinned against design §3.3 by test_lint_eps_dir_band_thresholds_match_design;
+# any future amendment to these values must update the design doc in lockstep.
+# Landed at round-code-1 (2026-05-12); pre-round-code-1, level was hardcoded
+# to "note" for every row regardless of eps band — the rung-4b writeup §6
+# item 3 forward-flag had a writeup-vs-code drift that round-code-1 absorbs.
+EPS_PASS_THRESHOLD = 1e-5
+EPS_APPROXIMATE_THRESHOLD = 1e-2
+
+
+def _band_to_level(eps: float) -> str:
+    """Map active-row eps to SARIF level per rung-4b design §3.3 bands.
+
+    SKIP rows have no eps to classify and keep level="note" at the call site
+    (lint_eps_dir), where the skip_reason carries the methodology signal.
+    """
+    if eps <= EPS_PASS_THRESHOLD:
+        return "note"
+    if eps <= EPS_APPROXIMATE_THRESHOLD:
+        return "warning"
+    return "error"
+
 
 class EmptyEpsDirectoryError(Exception):
     """Raised when lint_eps_dir is invoked on a directory with no eps_*.npz files.
@@ -83,6 +109,7 @@ def lint_eps_dir(
                 f"(transform={transform_kind} {record['transform_param']})"
             )
             raw_value = eps_first
+            level = _band_to_level(eps_first)
 
         results.append(
             HarnessResult(
