@@ -7,10 +7,11 @@
 **Branch:** `worktree-rung-5-rpf2d-and-rung-4b-security` (isolated worktree, branched from master `7e1bd9d` to avoid colliding with the in-flight CS02 Phase 1 work on `feature/case-study-02-physicsnemo-mgn`).
 
 **Commits:**
-- **Commit A** (`483e9831ad`) — `_harness/lint_eps_dir.py` band-to-level mapping + 11 TDD tests.
-- **Commit B** (this writeup's commit) — re-emitted rung-4b eps SARIFs at commit A's sha + Security-tab upload workflow + this writeup + v2.1 §3 changelog entry.
+- **Commit A** (`483e9831ad`) — `_harness/lint_eps_dir.py` band-to-level mapping + 11 TDD tests (level-rendering half).
+- **Commit B** (`69f0fc0`) — re-emitted rung-4b eps SARIFs at commit A's sha + Security-tab upload workflow + this writeup + v2.1 §3 changelog entry.
+- **Second-wall commits** (`aeb4a53e87`, `96ce8ed0eb`, `387f617`, + this writeup-update commit) — GitHub Code Scanning rejected the location-less harness SARIFs; `_harness/sarif_emitter.py` extended with physical + logical `locations` + `partialFingerprints`, all six SARIFs re-emitted, workflow goes all-green. See §13.
 
-**Methodology pre-registrations touched:** none (no new D-entry; the amendment *is* the audit trail). Cross-references: rung-4b design §3.3 (the band thresholds), rung-4b writeup §6 item 3 (the claim being made-true), plan v2.1 §1.4 (the prose-vs-code drift mode forward-flag, now instantiated).
+**Methodology pre-registrations touched:** none (no new D-entry; the amendment *is* the audit trail). Cross-references: rung-4b design §3.3 (the band thresholds), rung-4b writeup §6 item 3 (the claim being made-true), plan v2.1 §1.4 (the prose-vs-code drift mode forward-flag, now instantiated), plan v2.1 §2.4 (the hybrid-Pattern refinement in §13).
 
 ---
 
@@ -178,7 +179,12 @@ This strengthens v2.1 §1.4 from "smoke + source + cross" (where "cross" was imp
 
 The rung-4b writeup (`2026-05-07-rung-4b-equivariance-table.md`) is sha-bound to its committed snapshot per the v2.1 amendment convention (matching how the rung-4c writeup's §6 item 8 framing was walked back in v2.1 §2.5 without touching the sha-bound writeup itself). So the rung-4b writeup's §6 item 3 prose stays as-authored — the closure is recorded *here* and in the v2.1 §3 changelog, not by editing the frozen writeup.
 
-**Status of §6 item 3 ("Not a GitHub Security-tab integration demo at saturation… deferred to a separate deliverable"):** CLOSED at round-code-1 (2026-05-12). The "separate deliverable" is this absorption: (a) `_harness/lint_eps_dir.py` band-to-level mapping (commit A `483e9831ad`) makes the warning/error rendering paths actual; (b) re-emitted GNS-TGV2D eps SARIF carries 37 warning + 43 error rows; (c) `.github/workflows/rung-4-sarif-upload.yml` uploads all six LB SARIFs to the Security tab. The "screenshots" half of §6 item 3 ("Full Security-tab integration screenshots and PR-comment integration") lands as a follow-up once the workflow has run on this PR — the Code Scanning alerts and PR-comment integration are GitHub-side artifacts of the workflow run, not committed artifacts; the workflow being in place is the substantive close.
+**Status of §6 item 3 ("Not a GitHub Security-tab integration demo at saturation… deferred to a separate deliverable"):** FULLY CLOSED at round-code-1 (2026-05-12). Both halves:
+
+- **Level-rendering half** — `_harness/lint_eps_dir.py` band-to-level mapping (commit A `483e9831ad`) makes the warning/error rendering paths actual; the re-emitted GNS-TGV2D eps SARIF carries 37 warning + 43 error rows.
+- **Security-tab-integration half** — `.github/workflows/rung-4-sarif-upload.yml` runs all six LB SARIF uploads green on PR #10 (run `25744425002` at commit `387f617`); GitHub Code Scanning ingested all 472 results (60+60 conservation tgv2d, 140+140 eps, 36+36 conservation dam2d), and the GNS eps category (`rung-4b-equivariance-gns-tgv2d`) produces exactly **37 `warning`-level + 43 `error`-level code-scanning alerts** — verified via `GET /repos/.../code-scanning/alerts?ref=refs/pull/10/merge` — matching the rung-4b writeup §3.3 obs (2) split across the four active PH-SYM-* equivariance rules (PH-SYM-001: 27 warn / 33 err; PH-SYM-002: 10 warn / 10 err). The all-PASS-equivalent SARIFs (SEGNN eps; both conservation pairs) upload as informational notes with no alerts, which is the honest rendering for those rows.
+
+Getting the SARIFs *accepted* by GitHub Code Scanning required a second fix beyond the level mapping — GitHub rejected the location-less harness SARIFs (`locationFromSarifResult: expected at least one location`) and additionally only *displays* results that carry a file-path location, so the emitter had to be extended with physical + logical `locations` + per-row `partialFingerprints`. That is the "second wall" of round-code-1; see §13. (The "PR-comment integration" the §6 item 3 prose also mentioned — inline code-scanning annotations on PR diffs — is a GitHub-side rendering of the uploaded alerts when the changed files overlap the alert locations; it is not a separate deliverable.)
 
 **One honest caveat carried forward:** the rung-4b writeup §6 item 3 was, at the writeup's sha (`255af5de8d`-era), describing behavior the code did not have. Round-code-1 makes it true going forward but does not retroactively make the `…_255af5de8d.sarif` files carry warning/error levels (they're superseded, not edited). A reader of the rung-4b writeup at its frozen sha should read §6 item 3 as the design-capability-stated-as-descriptive that it was; the v2.1 §3 round-code-1 changelog entry is the methodology-current pointer.
 
@@ -187,33 +193,50 @@ The rung-4b writeup (`2026-05-07-rung-4b-equivariance-table.md`) is sha-bound to
 ## 11. Rederivability + provenance
 
 ```bash
-# 1. Pull the eps-npz mirrors (re-derivation; unchanged at eps_computation sha 255af5de8d):
+# 1a. eps SARIFs (rung-4b) — pull the eps-npz mirrors (unchanged at eps_computation sha 255af5de8d):
 modal volume get rollout-anchors-artifacts /trajectories/segnn_tgv2d_255af5de8d/ \
     external_validation/_rollout_anchors/01-lagrangebench/outputs/trajectories/
 modal volume get rollout-anchors-artifacts /trajectories/gns_tgv2d_255af5de8d/ \
     external_validation/_rollout_anchors/01-lagrangebench/outputs/trajectories/
+# 1b. conservation SARIFs (rung-4a/4c) — pull the rollout-npz mirrors. NOTE: `modal volume get`
+#     (CLI ≥ 1.4.0) bundles a *directory* download into one opaque file; pull the per-traj npz files
+#     individually (and `_inference_manifest.json` for the dam2d stacks):
+for sub in segnn_tgv2d_8c3d080397 gns_tgv2d_f48dd3f376 segnn_dam2d_e754a4bc2e gns_dam2d_e754a4bc2e; do
+  modal volume ls rollout-anchors-artifacts "/rollouts/lagrangebench/$sub" \
+    | grep -E 'particle_rollout_traj|_inference_manifest' \
+    | sed "s#rollouts/lagrangebench/$sub/##" \
+    | while read f; do
+        modal volume get rollout-anchors-artifacts "/rollouts/lagrangebench/$sub/$f" \
+          "external_validation/_rollout_anchors/01-lagrangebench/outputs/_local_mirror/$sub/$f"
+      done
+done
 
-# 2. (At commit A 483e9831ad or later) re-emit the eps SARIFs:
+# 2a. (At the locations-fix commit aeb4a53e87 or later) re-emit the eps SARIFs:
 python external_validation/_rollout_anchors/01-lagrangebench/emit_sarif_eps.py
 # → segnn_tgv2d_eps_<HEAD-sha>.sarif (140 note)
 # → gns_tgv2d_eps_<HEAD-sha>.sarif   (60 note + 37 warning + 43 error)
+# 2b. re-emit the conservation SARIFs:
+python external_validation/_rollout_anchors/01-lagrangebench/emit_sarif.py
+# → segnn/gns_tgv2d_<HEAD-sha>.sarif (60 note each), segnn/gns_dam2d_<HEAD-sha>.sarif (36 note each)
 
-# 3. Verify level distributions:
-for f in .../outputs/sarif/*_eps_*.sarif; do
+# 3. Verify level distributions + that every result carries locations + a partialFingerprint:
+for f in .../outputs/sarif/*.sarif; do
     jq -r '[.runs[0].results[].level] | group_by(.) | map({(.[0]): length}) | add' $f
+    jq -e 'all(.runs[0].results[]; (.locations|length>=1) and (.partialFingerprints|length>=1))' $f >/dev/null \
+      && echo "  locations+fingerprints OK" || echo "  MISSING locations/fingerprints"
 done
 ```
 
-Run at the same code sha with the committed NPZs at `255af5de8d` → identical SARIF output (deterministic). Any divergence reflects a code change, an NPZ change, or both.
+Run at the same code sha with the committed NPZs → identical SARIF output (deterministic). Any divergence reflects a code change, an NPZ change, or both.
 
 **Provenance:**
-- physics-lint commit (round-code-1 commit A): `483e9831ad`
-- eps_computation sha (unchanged): `255af5de8d` (rung-4b T9 PASS state)
-- sarif_emission sha (advanced): `255af5de8d` → `483e9831ad`
+- physics-lint commits: band-to-level mapping `483e9831ad` (commit A); locations fix `aeb4a53e87`; eps re-emit `96ce8ed0eb`; conservation re-emit `387f617…`.
+- eps_computation sha (unchanged): `255af5de8d` (rung-4b T9 PASS state); conservation pkl_inference shas (unchanged): tgv2d `8c3d080397` / `f48dd3f376`, dam2d `e754a4bc2e`.
+- sarif_emission shas: eps `255af5de8d` → `483e9831ad` → `aeb4a53e87`; conservation `8e49339469` / `bc3bae929d` → `96ce8ed0eb`.
 - LagrangeBench sha (image-build pin, unchanged): `b880a6c84a93792d2499d2a9b8ba3a077ddf44e2`
 - SEGNN-TGV2D checkpoint: `sha256:c0be98f9fb59eb4545f05db3d8aa5d31b7c8170b5d4d9634b01749e26598441b`
 - GNS-TGV2D checkpoint: `sha256:c1df5675d6b29aa7e4b130afc8b88b31f7109ce41dacc9f4e168e5c485a8765e`
-- Modal compute spent: $0 (data transfer only — `modal volume get` of pre-computed eps_t.npzs)
+- Modal compute spent: $0 (data transfer only — `modal volume get` of pre-computed npzs)
 
 ---
 
@@ -221,6 +244,48 @@ Run at the same code sha with the committed NPZs at `255af5de8d` → identical S
 
 The integrating README (`methodology/README.md`) and plan v2.1 are the methodology-current view; the per-rung writeups are sha-bound snapshots. Round-code-1's effects on the integrating trail:
 
-- **v2.1 §3 changelog** gains a `round-code-1 absorption — 2026-05-12` entry naming the prose-vs-code drift mode, the §6 item 3 closure, and the prose-discipline sub-finding (with the v2.1.2 §1.4 sub-mode-taxonomy forward-flag).
+- **v2.1 §3 changelog** gains a `round-code-1 absorption — 2026-05-12` entry naming the prose-vs-code drift mode, the §6 item 3 closure, the prose-discipline sub-finding (with the v2.1.2 §1.4 sub-mode-taxonomy forward-flag), and (in the second-wall sub-block) the locations fix + the v2.1 §2.4 hybrid-pattern refinement.
 - **Methodology README §2.3** (review-discipline triple) could note in a future touch that "cross-review" has at least three sub-modes (artifact / prose / prose-vs-code); deferred to the v2.1.2 §1.4 amendment after round-code-2 provides a second instance — same defer-until-bilateral discipline the rest of the series uses.
-- **rung-4b §6 item 3** is CLOSED (this writeup §10); no edit to the sha-bound rung-4b writeup.
+- **rung-4b §6 item 3** is FULLY CLOSED (this writeup §10 + §13); no edit to the sha-bound rung-4b writeup.
+- **v2.1 §1.4** picks up a small refinement from §13: when a finding has no natural source-line location, pointing the SARIF physical location at the *rule's implementation file* (committed, causally-honest, sensible click-target) is the defensible third option — neither a fabricated path nor a gitignored artifact. Folds into the v2.1.2 §1.4 amendment alongside the prose-vs-code sub-mode taxonomy.
+- **v2.1 §2.4** (Pattern A/B/C operational classification) picks up the hybrid-case refinement from §13: a finding can be Pattern-A in *surfacing* (an empirical workflow run surfaced it) yet Pattern-B in *response shape* (modify a shared multi-consumer artifact). §2.4's "classify by what's directly surfaced" test still resolves it to Pattern A; the surfacing→response asymmetry is real and the classification handles it cleanly.
+
+---
+
+## 13. The second wall — GitHub Code Scanning needs a file-path location
+
+### 13.1 What surfaced
+
+§10's level-rendering half closed, the eps SARIFs carried 37 warning + 43 error rows, the upload workflow was in place — but the workflow's *first* run failed all six jobs:
+
+```
+##[error]Code Scanning could not process the submitted SARIF file:
+  locationFromSarifResult: expected at least one location  (× every result)
+```
+
+The harness emitter (`_harness/sarif_emitter.py:HarnessResult.to_sarif_result`) wrote `ruleId` + `level` + `message` + `properties` but **no `locations`** — valid SARIF v2.1.0 (`result.locations` is optional in the spec) but GitHub-incompatible: GitHub Code Scanning requires every `result` to carry ≥ 1 `location`, and (per its SARIF-support docs) only *displays* results whose location is a file-path `physicalLocation.artifactLocation.uri`. A logical-only location (`logicalLocations` with a `fullyQualifiedName`) satisfies neither the "must display" requirement nor — empirically — clears the ingest. So this is a *second* harness-SARIF-emitter gap of the same shape as the band-to-level one: the emitter was built for the methodology-renderer consumer (which reads `raw_value` and ignores both `level` and `locations`) and never exercised against the GitHub-Code-Scanning consumer (which needs `level` + a file-path `locations` + per-row fingerprints).
+
+### 13.2 The fix — physical + logical locations + partialFingerprints
+
+physics-lint harness findings have no natural source-line location: they describe model *behavior* under a physics rule on a particular rollout trajectory, not a defect at a `file:line`. The handoff's first instinct was a logical-only location (the FQN), reasoning that any physical location would be either a fabricated source path or a pointer at the gitignored rollout NPZs. But there is a defensible third physical target: **the committed harness adapter module that *implements* the rule** — a real, in-repo source file, the file the finding causally originates from, and a sensible click-target in the Security tab ("here is how this check works"). The emitter now maps each `ruleId` to its adapter (`PH-SYM-*` → `_harness/symmetry_rollout_adapter.py`; `harness:mass_conservation_defect` / `harness:energy_drift` / `harness:dissipation_sign_violation` and `PH-CON-*` → `_harness/particle_rollout_adapter.py`; `PH-MESH-*` / `mesh:*` → `_harness/mesh_rollout_adapter.py`; anything unmapped → `_harness/sarif_emitter.py` itself) and writes, for every result, one `location` with **both**:
+
+- `physicalLocation` → `{ artifactLocation: { uri: "<adapter module, repo-root-relative>" }, region: { startLine: 1, startColumn: 1, endColumn: 2 } }`. The `region` is a **placeholder**: the finding is about the whole adapter, not line 1 — line 1 is just where the SARIF spec requires *some* region anchor. (Honest disclosure, in the prose-discipline spirit of §6: this `region` does NOT claim the finding is localized to that line; it is the minimal valid anchor for a finding whose true "location" is "the behavior of this rule on this trajectory", which SARIF has no first-class slot for.)
+- `logicalLocations` → `[{ name: "<leaf segment>", fullyQualifiedName: "<case_study>/<model>/<dataset>/<rule_id>[/<transform_kind>_<transform_param>]/traj<NN>" }]`. This carries the per-row detail that the physical location (the same `adapter:1` for every result of a rule) cannot.
+
+Because every result of a given rule shares the same `adapter:1` physical location, GitHub would collapse them into one alert per `(ruleId, location)` — losing the 140-row resolution that makes the GNS eps demo a demo. So each result also gets a stable **`partialFingerprints`** entry — `{ "physicsLintResultFqnHash/v1": <16-hex of sha256(fully_qualified_name)> }` — derived from the per-row FQN (which is unique within a SARIF). The `github/codeql-action/upload-sarif` action adds its own `primaryLocationLineHash` etc. on top but does not remove this key, so GitHub's dedup keys on the full fingerprint map and keeps the rows distinct. (If a future GitHub change made `partialFingerprints` insufficient and the rows still collapsed, that would be a new wall to surface, not absorb — see §13.4.)
+
+TDD: `_harness/tests/test_sarif_emitter_locations.py` asserts the physical-URI rule-family mapping, the placeholder region, the logical-location FQN detail, and that two results sharing a physical location have distinct fingerprints; the new assertions were watched failing (`KeyError: 'physicalLocation'` / `'partialFingerprints'`) before the emitter change. (An earlier commit on this branch shipped a *logical-only* version of the emitter + tests; it was superseded — the GitHub-display requirement is a file-path location, which the logical-only design missed.) Full `_rollout_anchors` suite green.
+
+### 13.3 What the second run showed
+
+Re-emitting all six SARIFs at the locations-fix sha (eps at `aeb4a53e87` via `emit_sarif_eps.py`; conservation at `96ce8ed0eb` via `emit_sarif.py`, after `modal volume get` of the four rollout-npz mirrors — see §11 note on the per-file pull) and re-running the workflow: **all six jobs green** (run `25744425002` on commit `387f617`). GitHub ingested all 472 results; the `rung-4b-equivariance-gns-tgv2d` category produced exactly 37 `warning` + 43 `error` code-scanning alerts (PH-SYM-001: 27/33; PH-SYM-002: 10/10) — the rung-4b §3.3 obs (2) split, now live on the Security tab. The first run's three *other* job failures were a transient `codeload` 429 (Too Many Requests) downloading the `github/codeql-action` archive when all six jobs hit the CDN at once — unrelated to the SARIF format; the workflow now caps `max-parallel: 2` to stagger that download.
+
+### 13.4 Methodology — three refinements + the stop-condition check
+
+**(1) Third physical-location target — refinement to v2.1 §1.4.** When a SARIF-emitting tool produces findings that have no source-line location, the choices are not just "fabricate a path" or "point at a non-committed artifact": pointing the `physicalLocation` at the *committed code that implements the check* is defensible because (a) the file exists and is committed, (b) the finding causally originates from that code, (c) the click-through UX is sensible ("how this rule works"). This generalises the "what counts as an honest location" question; folds into the v2.1.2 §1.4 amendment.
+
+**(2) Hybrid Pattern-A/Pattern-B case — refinement to v2.1 §2.4.** The locations finding is a *hybrid*: Pattern-A in surfacing (an empirical workflow run — not a prose review, not an artifact-cross-review — surfaced the divergence between the §6 item 3 demo's intent and the artifact's GitHub-compatibility) but Pattern-B in response shape (the response modifies a shared, multi-consumer artifact — the emitter that both the methodology renderer and GitHub consume — rather than amending a pre-registration). v2.1 §2.4's operational test ("classify by what is *directly* surfaced") still resolves it cleanly to Pattern A; the point is that the surfacing→response shape can be asymmetric, and the classification scheme accommodates that. (This pairs with the §6 prose-discipline finding's "generalises Pattern A to writeup-claim-vs-code-reality" point: round-code-1's two walls together stretched Pattern A on two axes — *what* the smoke checks, and the surfacing-vs-response asymmetry.)
+
+**(3) Placeholder-region honesty.** The `region` on every physical location is `startLine: 1` — a placeholder, not a claim. Recorded here and in `sarif_emitter.py`'s docstring so a reader who clicks through to `symmetry_rollout_adapter.py:1` and finds an unrelated docstring line knows the line number is structural, not semantic.
+
+**Stop-condition check.** The round-code-1 stop-condition was: a *third wall* (a new GitHub-Code-Scanning requirement category — rule-definition completeness, severity mapping, runId conventions) → escalate, don't silently absorb. What happened: the locations fix surfaced no new requirement category — GitHub accepted the re-emitted SARIFs as-is (no `tool.driver.rules` entries, no explicit `securitySeverity`, no custom runId). The `partialFingerprints` addition was a *known consequence* of the physical-location design (shared `adapter:1` location → collapse risk), reasoned about and documented above, not a separate empirical wall — it is in the same spirit as the placeholder-region disclosure, not a fourth wall. So round-code-1 closes at two walls (level rendering + locations), which fits the §6 item 3 narrative exactly ("the deferred deliverable had two unbacked sub-claims: warning/error level *rendering* AND Security-tab *integration*"). If a genuine third requirement category surfaces in future (a `rules`-completeness rejection, a severity-mapping requirement, a runId convention), *that* crosses the line — escalate, scope-reset (round-code-2 absorbs it as its own instance), don't silently absorb.
