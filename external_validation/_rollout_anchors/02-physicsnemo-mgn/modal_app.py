@@ -986,3 +986,213 @@ def audit_cylinder_flow_loader_contract() -> dict:
     print("=== CYLINDER_FLOW LOADER-CONTRACT AUDIT ===")
     print(_json.dumps(findings, indent=2, default=str))
     return findings
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=600,
+)
+def audit_gate_a_pyg_to_meshfield() -> dict:
+    """Gate A (verdict 3 / amends D0-02): can the cylinder_flow PyG mesh be coerced
+    to a scikit-fem `Basis` (the precondition for the mesh-side physics-lint harness)?
+
+    Returns `{"verdict": "PASS" | "PARTIAL" | "FAIL", "rationale": str, ...}`:
+      PASS    — `skfem.MeshTri(p=mesh_pos.T, t=cells.T)` + `Basis(ElementTriP1())`
+                construct cleanly from the loader's `mesh_pos` + `cells`.
+      PARTIAL — the data is mesh-shaped (valid triangle connectivity over node
+                positions) but the scikit-fem coercion itself fails — recovery is
+                GridField resampling (`GridField(values=resampled, h=spacing, periodic=False)`).
+      FAIL    — the data is fundamentally graph-shaped / scikit-fem absent — the
+                mesh harness SKIPs (cover-letter Appendix A.4 variant fires).
+
+    Per design §3.1 activity 5. The plan's `audit_gate_a_dgl_to_meshfield` skeleton
+    assumed DGL `ndata`/`edata`; the part-3 loader-contract audit
+    (`preflight/loader_contract_audit.json`) showed v2.0.0's `VortexSheddingDataset`
+    returns PyG `Data` with `mesh_pos` set and a separate `cells` tensor in the
+    test-split `__getitem__` tuple — so this constructs the dataset directly and
+    reads the mesh off `ds[0]`. A loud pre-flight assertion on the PyG-extracted
+    array shapes/dtypes fires *before* scikit-fem touches them, so a fresh
+    PyG→scikit-fem contract surface (axis order, dtype) is caught as such rather
+    than absorbed silently. CPU-only.
+    """
+    import json as _json
+    import os
+    import shutil
+    import tempfile
+
+    import numpy as np
+    import torch
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    needed = [
+        data_dir / "meta.json",
+        data_dir / "test.tfrecord",
+        data_dir / "edge_stats.json",
+        data_dir / "node_stats.json",
+    ]
+    for p in needed:
+        if not p.exists():
+            raise FileNotFoundError(
+                f"{p} missing — run download_dm_cylinder_flow_dataset + "
+                f"compute_cylinder_flow_stats first."
+            )
+    if _sha256_of_file(data_dir / "meta.json") != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(data_dir / "test.tfrecord") != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    torch.set_default_dtype(torch.float32)
+    out: dict[str, object] = {"physicsnemo_sha": PHYSICSNEMO_SHA}
+
+    try:
+        import skfem
+
+        out["skfem_version"] = getattr(skfem, "__version__", "unknown")
+    except ImportError as e:
+        result = {
+            "verdict": "FAIL",
+            "rationale": f"scikit-fem ImportError: {e}",
+            "recovery_path": "mesh harness SKIPs; cover-letter Appendix A.4 variant fires",
+            **out,
+        }
+        print("=== GATE A VERDICT ===")
+        print(_json.dumps(result, indent=2, default=str))
+        return result
+
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+
+    cwd_before = os.getcwd()
+    work_dir = Path(tempfile.mkdtemp(prefix="cf_gatea_"))
+    shutil.copy2(data_dir / "edge_stats.json", work_dir / "edge_stats.json")
+    shutil.copy2(data_dir / "node_stats.json", work_dir / "node_stats.json")
+    verdict: str | None = None
+    rationale = ""
+    try:
+        os.chdir(work_dir)  # loader reads {edge,node}_stats.json from CWD
+        ds = VortexSheddingDataset(
+            name="cylinder_flow",
+            data_dir=str(data_dir),
+            split="test",
+            num_samples=1,
+            num_steps=5,
+            noise_std=0.0,
+        )
+        item = ds[0]
+        if not (isinstance(item, tuple) and len(item) >= 2):
+            verdict, rationale = (
+                "FAIL",
+                f"test-split __getitem__ returned {type(item).__name__}, not the "
+                f"(graph, cells, rollout_mask) tuple — cannot recover mesh connectivity",
+            )
+        else:
+            graph, cells_t = item[0], item[1]
+            mesh_pos_t = (
+                graph["mesh_pos"] if "mesh_pos" in graph else getattr(graph, "mesh_pos", None)
+            )
+            if mesh_pos_t is None:
+                verdict, rationale = (
+                    "FAIL",
+                    "graph has no `mesh_pos` attribute — no node coordinates to build a Mesh",
+                )
+            else:
+                mesh_pos_np = (
+                    mesh_pos_t.numpy() if hasattr(mesh_pos_t, "numpy") else np.asarray(mesh_pos_t)
+                )
+                cells_np = cells_t.numpy() if hasattr(cells_t, "numpy") else np.asarray(cells_t)
+
+                # --- Pre-flight on the PyG-extracted arrays, BEFORE scikit-fem touches
+                # them. Hard asserts (catch a fresh PyG->scikit-fem contract surface
+                # loudly). The exact (1923, 3612) come from the part-3 audit on this
+                # sha-pinned test.tfrecord.
+                out["mesh_pos_shape"] = list(mesh_pos_np.shape)
+                out["mesh_pos_dtype"] = str(mesh_pos_np.dtype)
+                out["cells_shape"] = list(cells_np.shape)
+                out["cells_dtype"] = str(cells_np.dtype)
+                assert tuple(mesh_pos_np.shape) == (1923, 2), (
+                    f"mesh_pos shape {mesh_pos_np.shape} != (1923, 2) — test trajectory 0 "
+                    f"changed? (test.tfrecord is sha-pinned in D0-23)"
+                )
+                assert tuple(cells_np.shape) == (3612, 3), (
+                    f"cells shape {cells_np.shape} != (3612, 3) — test trajectory 0 changed? "
+                    f"(test.tfrecord is sha-pinned in D0-23)"
+                )
+                assert np.issubdtype(mesh_pos_np.dtype, np.floating), (
+                    f"mesh_pos dtype {mesh_pos_np.dtype} not floating — unexpected for node coords"
+                )
+                assert np.issubdtype(cells_np.dtype, np.integer), (
+                    f"cells dtype {cells_np.dtype} not integer — unexpected for triangle connectivity"
+                )
+                cmin, cmax = int(cells_np.min()), int(cells_np.max())
+                out["cells_index_range"] = [cmin, cmax]
+                out["cells_index_in_node_range"] = (cmin >= 0) and (cmax < mesh_pos_np.shape[0])
+                out["mesh_pos_bbox"] = {
+                    "min": [float(x) for x in mesh_pos_np.min(axis=0)],
+                    "max": [float(x) for x in mesh_pos_np.max(axis=0)],
+                }
+                if not out["cells_index_in_node_range"]:
+                    verdict, rationale = (
+                        "FAIL",
+                        f"cell vertex indices {[cmin, cmax]} fall outside "
+                        f"[0, {mesh_pos_np.shape[0]}) — connectivity does not reference the node "
+                        f"array; not a coercible mesh",
+                    )
+                else:
+                    # scikit-fem: MeshTri(p, t) wants p=(ndim, npoints), t=(nverts, ncells).
+                    try:
+                        p = np.ascontiguousarray(mesh_pos_np.astype(np.float64).T)  # (2, 1923)
+                        t = np.ascontiguousarray(cells_np.astype(np.int64).T)  # (3, 3612)
+                        mesh = skfem.MeshTri(p, t)
+                        out["skfem_mesh_repr"] = repr(mesh)[:200]
+                        out["skfem_n_nodes"] = int(mesh.p.shape[1])
+                        out["skfem_n_elements"] = int(mesh.t.shape[1])
+                        try:
+                            basis = skfem.Basis(mesh, skfem.ElementTriP1())
+                            out["skfem_basis_repr"] = repr(basis)[:200]
+                            out["skfem_basis_ndofs"] = int(basis.N)
+                            verdict = "PASS"
+                            rationale = (
+                                f"scikit-fem MeshTri + Basis(ElementTriP1) reconstructed cleanly "
+                                f"from the loader's mesh_pos ({mesh_pos_np.shape[0]} nodes) + cells "
+                                f"({cells_np.shape[0]} triangles); {basis.N} P1 DOFs. The mesh "
+                                f"harness's PyG->MeshField path is unblocked (the MeshField wrapper "
+                                f"itself is verified separately in Task 12's mesh_rollout_adapter.py)."
+                            )
+                        except Exception as be:
+                            verdict = "PARTIAL"
+                            rationale = (
+                                f"scikit-fem MeshTri constructed but Basis(ElementTriP1) failed: "
+                                f"{type(be).__name__}: {be}. Data is mesh-shaped — recover via "
+                                f"GridField resampling."
+                            )
+                            out["recovery_path"] = (
+                                "GridField(values=resampled, h=spacing, periodic=False)"
+                            )
+                    except Exception as me:
+                        verdict = "PARTIAL"
+                        rationale = (
+                            f"data is mesh-shaped (valid triangle connectivity over "
+                            f"{mesh_pos_np.shape[0]} node positions, indices in range) but "
+                            f"scikit-fem MeshTri coercion failed: {type(me).__name__}: {me}. "
+                            f"Recover via GridField resampling."
+                        )
+                        out["recovery_path"] = (
+                            "GridField(values=resampled, h=spacing, periodic=False)"
+                        )
+    except AssertionError:
+        raise  # pre-flight assertions abort loudly — a fresh PyG->scikit-fem surface
+    except Exception as e:
+        verdict = "FAIL"
+        rationale = f"unexpected error before/around scikit-fem coercion: {type(e).__name__}: {e}"
+    finally:
+        os.chdir(cwd_before)
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    if verdict is None:  # defensive — no branch set it
+        verdict, rationale = "FAIL", "audit produced no verdict (unexpected control flow)"
+    result = {"verdict": verdict, "rationale": rationale, **out}
+    findings_path = data_dir / "gate_a_audit.json"
+    findings_path.write_text(_json.dumps(result, indent=2, default=str))
+    mgn_volume.commit()
+    print("=== GATE A VERDICT ===")
+    print(_json.dumps(result, indent=2, default=str))
+    return result

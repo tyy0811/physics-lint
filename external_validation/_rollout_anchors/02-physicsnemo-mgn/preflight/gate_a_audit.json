@@ -1,0 +1,36 @@
+{
+  "verdict": "PASS",
+  "rationale": "scikit-fem MeshTri + Basis(ElementTriP1) reconstructed cleanly from the loader's mesh_pos (1923 nodes) + cells (3612 triangles); 1923 P1 DOFs. The mesh harness's PyG->MeshField path is unblocked (the MeshField wrapper itself is verified separately in Task 12's mesh_rollout_adapter.py).",
+  "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+  "skfem_version": "12.0.1",
+  "mesh_pos_shape": [
+    1923,
+    2
+  ],
+  "mesh_pos_dtype": "float32",
+  "cells_shape": [
+    3612,
+    3
+  ],
+  "cells_dtype": "int32",
+  "cells_index_range": [
+    0,
+    1922
+  ],
+  "cells_index_in_node_range": true,
+  "mesh_pos_bbox": {
+    "min": [
+      0.0,
+      0.0
+    ],
+    "max": [
+      1.600000023841858,
+      0.4099999964237213
+    ]
+  },
+  "skfem_mesh_repr": "<skfem MeshTri1 object>\n  Number of elements: 3612\n  Number of vertices: 1923\n  Number of nodes: 1923",
+  "skfem_n_nodes": 1923,
+  "skfem_n_elements": 3612,
+  "skfem_basis_repr": "<skfem CellBasis(MeshTri1, ElementTriP1) object>\n  Number of elements: 3612\n  Number of DOFs: 1923\n  Size: 780192 B",
+  "skfem_basis_ndofs": 1923
+}
