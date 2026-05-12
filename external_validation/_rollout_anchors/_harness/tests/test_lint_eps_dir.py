@@ -158,3 +158,135 @@ def test_lint_eps_dir_skip_reason_identical_across_rows_same_rule(tmp_path):
     assert len(skip_reasons) == 1, (
         "skip_reason must be guaranteed-identical across rows (D0-19 §3.4)"
     )
+
+
+# =============================================================================
+# Round-code-1 absorption (2026-05-12): band-to-level mapping
+# =============================================================================
+#
+# Per rung-4b design §3.3 + writeup §6 item 3, eps-band classification maps
+# to SARIF level:
+#   PASS         (eps ≤ 1e-5)        → level: "note"
+#   APPROXIMATE  (1e-5 < eps ≤ 1e-2) → level: "warning"
+#   FAIL         (eps > 1e-2)        → level: "error"
+#   SKIP rows                         → level: "note"
+#
+# Pre-round-code-1, lint_eps_dir hardcoded level="note" for every row,
+# leaving the rung-4b writeup §6 item 3 forward-flag unsupported by the
+# artifact. These tests pin the band-to-level contract.
+
+
+def _write_active_row_with_eps(eps_dir: Path, eps_value: float, traj_index: int = 0) -> None:
+    """Helper: write one active PH-SYM-001 eps_t.npz with a chosen eps value."""
+    from external_validation._rollout_anchors._harness.symmetry_rollout_adapter import (
+        write_eps_t_npz,
+    )
+
+    write_eps_t_npz(
+        out_dir=eps_dir,
+        eps_t=np.array([eps_value], dtype=np.float32),
+        rule_id="PH-SYM-001",
+        transform_kind="rotation",
+        transform_param="pi_2",
+        traj_index=traj_index,
+        model_name="segnn",
+        dataset_name="tgv2d",
+        ckpt_hash="abc123",
+        physics_lint_sha_pkl_inference="aaaaaaaaaa",
+        physics_lint_sha_npz_conversion="bbbbbbbbbb",
+        physics_lint_sha_eps_computation="cccccccccc",
+        skip_reason=None,
+    )
+
+
+@pytest.mark.parametrize(
+    "eps_value,expected_level,band_name",
+    [
+        # PASS band: ε ≤ 1e-5
+        (1e-9, "note", "PASS (well below floor)"),
+        (4.3e-7, "note", "PASS (typical SEGNN floor)"),
+        (1.0e-5, "note", "PASS (boundary; inclusive upper)"),
+        # APPROXIMATE band: 1e-5 < ε ≤ 1e-2
+        (1.00001e-5, "warning", "APPROXIMATE (just above lower boundary)"),
+        (3.9e-4, "warning", "APPROXIMATE (typical GNS lower mode)"),
+        (1.0e-2, "warning", "APPROXIMATE (boundary; inclusive upper)"),
+        # FAIL band: ε > 1e-2
+        (1.00001e-2, "error", "FAIL (just above lower boundary)"),
+        (2.0e-2, "error", "FAIL (typical GNS upper mode at 0.02)"),
+        (3.464e-2, "error", "FAIL (typical GNS upper mode at √3·0.02)"),
+    ],
+)
+def test_lint_eps_dir_band_to_level_mapping(tmp_path, eps_value, expected_level, band_name):
+    """Round-code-1: band-to-level mapping per design §3.3 thresholds."""
+    from external_validation._rollout_anchors._harness.lint_eps_dir import lint_eps_dir
+
+    eps_dir = tmp_path / f"band_fixture_{expected_level}"
+    eps_dir.mkdir()
+    _write_active_row_with_eps(eps_dir, eps_value)
+
+    results = lint_eps_dir(
+        eps_dir=eps_dir,
+        case_study="01-lagrangebench",
+        dataset="tgv2d",
+        model="segnn",
+        ckpt_hash="abc123",
+    )
+    assert len(results) == 1
+    assert results[0].level == expected_level, (
+        f"{band_name}: eps={eps_value:.3e} should map to level={expected_level!r}, "
+        f"got {results[0].level!r}"
+    )
+
+
+def test_lint_eps_dir_band_thresholds_match_design(tmp_path):
+    """Round-code-1: pin canonical thresholds against rung-4b design §3.3.
+
+    If a future amendment changes EPS_PASS_THRESHOLD or EPS_APPROXIMATE_THRESHOLD,
+    this test fails loudly — the design-doc contract must be updated in
+    lockstep with the code constants.
+    """
+    from external_validation._rollout_anchors._harness import lint_eps_dir as mod
+
+    assert mod.EPS_PASS_THRESHOLD == 1e-5, "rung-4b design §3.3: PASS band is ε ≤ 1e-5"
+    assert mod.EPS_APPROXIMATE_THRESHOLD == 1e-2, (
+        "rung-4b design §3.3: APPROXIMATE band is 1e-5 < ε ≤ 1e-2"
+    )
+
+
+def test_lint_eps_dir_skip_row_stays_note_after_band_mapping(tmp_path):
+    """Round-code-1: SKIP rows keep level=note (no eps to classify)."""
+    from external_validation._rollout_anchors._harness.lint_eps_dir import lint_eps_dir
+    from external_validation._rollout_anchors._harness.symmetry_rollout_adapter import (
+        write_eps_t_npz,
+    )
+
+    eps_dir = tmp_path / "skip_post_band_mapping"
+    eps_dir.mkdir()
+    write_eps_t_npz(
+        out_dir=eps_dir,
+        eps_t=np.array([np.nan], dtype=np.float32),
+        rule_id="PH-SYM-003",
+        transform_kind="skip",
+        transform_param="so2_continuous",
+        traj_index=0,
+        model_name="segnn",
+        dataset_name="tgv2d",
+        ckpt_hash="abc123",
+        physics_lint_sha_pkl_inference="aaaaaaaaaa",
+        physics_lint_sha_npz_conversion="bbbbbbbbbb",
+        physics_lint_sha_eps_computation="cccccccccc",
+        skip_reason="PBC-square breaks SO(2) symmetry — rotated cell doesn't tile with original",
+    )
+
+    results = lint_eps_dir(
+        eps_dir=eps_dir,
+        case_study="01-lagrangebench",
+        dataset="tgv2d",
+        model="segnn",
+        ckpt_hash="abc123",
+    )
+    assert len(results) == 1
+    assert results[0].level == "note", (
+        "SKIP rows must keep level=note (no eps to band-classify); "
+        "the skip_reason carries the methodology signal."
+    )
