@@ -31,6 +31,13 @@ mgn_image = (
         # physicsnemo's nn.functional.radius_search._warp_impl still
         # references (import-time AttributeError). Pin to the floor.
         "warp-lang==1.5.0",
+        # VortexSheddingDataset reads DeepMind .tfrecord via the `tfrecord`
+        # package and builds PyG graphs — both are `OptionalImport`s in
+        # physicsnemo/datapipes/gnn/vortex_shedding_dataset.py (lines 30-31 @
+        # 1ca85d65), so neither is pulled by the physicsnemo install. Needed
+        # for compute_cylinder_flow_stats and the V1-V18 loader-contract audit.
+        "tfrecord==1.14.6",
+        "torch-geometric==2.6.1",
     )
     # NGC CLI install per https://docs.ngc.nvidia.com/cli/cmd.html
     .run_commands(
@@ -472,6 +479,12 @@ def download_ngc_vortex_shedding_checkpoint() -> dict:
 # format (the physicsnemo MGN datapipe was ported from DeepMind's reference).
 DM_MESHGRAPHNETS_BASE = "https://storage.googleapis.com/dm-meshgraphnets"
 DM_CYLINDER_FLOW_DIR = "/vol/datasets/cylinder_flow"
+# Provenance pins (mirror DECISIONS.md D0-23 "Phase 1 data provenance"); any
+# Phase 1 entrypoint consuming these files asserts on-disk sha == pin before
+# proceeding (catches upstream-bucket drift). `train.tfrecord` has no pin —
+# it is fetched transiently inside compute_cylinder_flow_stats and deleted.
+DM_CYLINDER_FLOW_META_SHA256 = "2a3e39429a55a0cf47355717cc07f4b292629daeb48a89abd518ea0402033e96"
+DM_CYLINDER_FLOW_TEST_SHA256 = "8522932a23da6ccdee996c56158e4b908f7091f0ade11e8acea700be321af8c3"
 
 
 def _stream_download_and_hash(url: str, dest: Path, chunk_size: int = 1024 * 1024) -> dict:
@@ -507,8 +520,8 @@ def download_dm_cylinder_flow_dataset() -> dict:
     Pulls `meta.json` (883 B) + `test.tfrecord` (~1.3 GB) — enough for the
     V1-V18 loader-contract audit (Task 5), the NGC sample reproduction
     (Task 7), and the 1-traj substrate-class smoke (Task 9). `train.tfrecord`
-    (12.7 GB) is intentionally NOT pulled here — see `compute_cylinder_flow_stats`
-    which pulls + fits + deletes it atomically.
+    (~13.6 GB / 13,645,805,387 B) is intentionally NOT pulled here — see
+    `compute_cylinder_flow_stats` which pulls + fits + deletes it atomically.
     """
     import json as _json
 
@@ -536,3 +549,174 @@ def download_dm_cylinder_flow_dataset() -> dict:
     print("=== DM CYLINDER_FLOW DOWNLOAD RESULT ===")
     print(_json.dumps(results, indent=2, default=str))
     return results
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    # VortexSheddingDataset materializes every trajectory in memory: at the
+    # full-train defaults (num_samples=1000, num_steps=600) the node-feature /
+    # node-target tensors are ~30 GB total (vortex_shedding_dataset.py:81-159 @
+    # 1ca85d65 — two in-memory lists of (num_steps-1, n_nodes, {2,2,1}) float32
+    # tensors, no streaming accumulation). 96 GB gives ~3x headroom.
+    memory=98304,
+    timeout=3600,
+)
+def compute_cylinder_flow_stats(
+    num_samples: int = 1000,
+    num_steps: int = 600,
+    noise_std: float = 0.02,
+) -> dict:
+    """Tier-1: fit edge_stats.json / node_stats.json from train.tfrecord, atomically.
+
+    Why this exists: the NGC checkpoint zip ships only `vortex_shedding_mgn/model.pt`
+    — no stats — yet `VortexSheddingDataset(split="test")` loads `edge_stats.json`
+    and `node_stats.json` from CWD (vortex_shedding_dataset.py:103,141 @ 1ca85d65),
+    so the test-split loader (Task 7's NGC sample reproduction, Task 9's substrate
+    smoke) cannot run without them. The example workflow produces them as a side
+    effect of `train.py` on the train split; we reproduce that fit directly.
+
+    Atomicity (handoff Refinement 2): this single entrypoint
+      1. asserts meta.json sha == D0-23 pin (catches upstream-bucket drift),
+      2. downloads DeepMind's `train.tfrecord` (~13.6 GB) to *local container
+         disk* — never to the Modal Volume,
+      3. constructs `VortexSheddingDataset(split="train", ...)` which fits and
+         `save_json`s both stats files via `_get_edge_stats` / `_get_node_stats`
+         (vortex_shedding_dataset.py:188-265),
+      4. copies the two JSONs onto the Volume next to meta.json/test.tfrecord,
+      5. deletes the local ~13.6 GB in a `finally` block.
+    No persistent ~13.6 GB anywhere; a hard crash before the finally still leaves
+    the Volume clean (the big file only ever lived on ephemeral local disk).
+
+    Stat-fit parameters. Defaults `(num_samples=1000, num_steps=600, noise_std=0.02)`
+    = `VortexSheddingDataset.__init__` defaults = full DeepMind cylinder_flow
+    train split with DeepMind/modulus-standard input-noise injection (noise is
+    added to the train-split velocities *before* the stats are computed —
+    vortex_shedding_dataset.py:127-133, so `velocity_std` carries a ~noise_std**2
+    term, which is what the checkpoint was normalized against). The example
+    `conf/config.yaml` uses `(400, 300)` for faster training; the modulus-era
+    config the 2023 NGC checkpoint was trained against is not documented, so we
+    fit on the full train distribution (the most reproducible choice — no
+    arbitrary subsample) and let Task 7's NGC sample reproduction be the
+    empirical test of whether these stats match the checkpoint's expectations
+    (Gate D; FNO-on-Darcy fallback pre-registered per design §3.1.A if not).
+    `torch.manual_seed(0)` is set so the noise-injected fit is reproducible.
+    """
+    import hashlib
+    import json as _json
+    import os
+    import shutil
+
+    import torch
+
+    fit_dir = Path("/tmp/cf_stats_fit")
+    if fit_dir.exists():
+        shutil.rmtree(fit_dir)
+    fit_dir.mkdir(parents=True)
+    stats_work_dir = fit_dir / "stats_out"
+    stats_work_dir.mkdir()
+
+    # --- Pre-flight: meta.json provenance assertion ---
+    meta_dl = _stream_download_and_hash(
+        f"{DM_MESHGRAPHNETS_BASE}/cylinder_flow/meta.json", fit_dir / "meta.json"
+    )
+    if meta_dl["sha256"] != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError(
+            f"cylinder_flow meta.json sha256 mismatch: got {meta_dl['sha256']}, "
+            f"pinned {DM_CYLINDER_FLOW_META_SHA256} (DECISIONS D0-23). "
+            f"Upstream bucket drift — investigate before recomputing stats."
+        )
+    print(f"meta.json: {meta_dl['size_bytes']} bytes, sha256 OK ({meta_dl['sha256']})")
+
+    # --- Download train.tfrecord to LOCAL disk only (never persisted) ---
+    print(f"Downloading train.tfrecord (~13.6 GB) to {fit_dir}/train.tfrecord ...")
+    train_dl = _stream_download_and_hash(
+        f"{DM_MESHGRAPHNETS_BASE}/cylinder_flow/train.tfrecord",
+        fit_dir / "train.tfrecord",
+    )
+    print(f"train.tfrecord: {train_dl['size_bytes']} bytes, sha256={train_dl['sha256']}")
+
+    out_dir = Path(DM_CYLINDER_FLOW_DIR)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    cwd_before = os.getcwd()
+
+    result: dict[str, object] = {
+        "meta_json": meta_dl,
+        "train_tfrecord": {k: train_dl[k] for k in ("url", "sha256", "size_bytes")},
+        "num_samples": num_samples,
+        "num_steps": num_steps,
+        "noise_std": noise_std,
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "seed": 0,
+    }
+    try:
+        torch.set_default_dtype(torch.float32)  # preflight known-unknown 5.6
+        torch.manual_seed(0)  # noise_std injection -> seed for a reproducible fit
+
+        # _get_edge_stats / _get_node_stats save_json to CWD.
+        os.chdir(stats_work_dir)
+
+        from physicsnemo.datapipes.gnn.vortex_shedding_dataset import (
+            VortexSheddingDataset,
+        )
+
+        print(
+            f"Constructing VortexSheddingDataset(split='train', "
+            f"num_samples={num_samples}, num_steps={num_steps}, noise_std={noise_std}) ..."
+        )
+        ds = VortexSheddingDataset(
+            name="cylinder_flow",
+            data_dir=str(fit_dir),
+            split="train",
+            num_samples=num_samples,
+            num_steps=num_steps,
+            noise_std=noise_std,
+        )
+        print(f"Dataset constructed: len={len(ds)} ({num_samples} traj x {num_steps - 1} steps)")
+
+        edge_stats_src = stats_work_dir / "edge_stats.json"
+        node_stats_src = stats_work_dir / "node_stats.json"
+        if not (edge_stats_src.exists() and node_stats_src.exists()):
+            raise RuntimeError(
+                f"expected edge_stats.json + node_stats.json written by "
+                f"_get_edge_stats / _get_node_stats into {stats_work_dir}; "
+                f"found {sorted(p.name for p in stats_work_dir.iterdir())}"
+            )
+
+        edge_stats = _json.loads(edge_stats_src.read_text())
+        node_stats = _json.loads(node_stats_src.read_text())
+        # Surface the shapes so a downstream V15 dim-mismatch is visible here.
+        print("edge_stats keys/lens: " + ", ".join(f"{k}={len(v)}" for k, v in edge_stats.items()))
+        print("node_stats keys/lens: " + ", ".join(f"{k}={len(v)}" for k, v in node_stats.items()))
+
+        def _sha256(p: Path) -> str:
+            h = hashlib.sha256()
+            h.update(p.read_bytes())
+            return h.hexdigest()
+
+        edge_stats_dst = out_dir / "edge_stats.json"
+        node_stats_dst = out_dir / "node_stats.json"
+        shutil.copy2(edge_stats_src, edge_stats_dst)
+        shutil.copy2(node_stats_src, node_stats_dst)
+        mgn_volume.commit()
+
+        result["edge_stats"] = {
+            "path": str(edge_stats_dst),
+            "sha256": _sha256(edge_stats_dst),
+            "size_bytes": edge_stats_dst.stat().st_size,
+            "value": edge_stats,
+        }
+        result["node_stats"] = {
+            "path": str(node_stats_dst),
+            "sha256": _sha256(node_stats_dst),
+            "size_bytes": node_stats_dst.stat().st_size,
+            "value": node_stats,
+        }
+        result["status"] = "ok"
+    finally:
+        os.chdir(cwd_before)  # leave the temp dir before removing it
+        shutil.rmtree(fit_dir, ignore_errors=True)
+        # The Modal Volume never held train.tfrecord; nothing to delete there.
+
+    print("=== CYLINDER_FLOW STATS FIT RESULT ===")
+    print(_json.dumps(result, indent=2, default=str))
+    return result
