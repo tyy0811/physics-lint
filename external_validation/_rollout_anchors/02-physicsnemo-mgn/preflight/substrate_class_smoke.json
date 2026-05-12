@@ -1,0 +1,86 @@
+{
+  "verdict": "open-driven-dissipative",
+  "rationale": "cylinder_flow test trajectory (GT) fits substrate-class 'open-driven-dissipative' (boundary-driven sub-class): incompressible (\u222b|\u2207\u00b7v|/\u222b||\u2207v||_F = 4.894e-02 << 1), KE oscillates around a steady mean (dKE/dt sign-changes=42, KE CV=7.67e-03, not monotone), Strouhal St~[0.347 (U_mean), 0.160 (U_max)] (cylinder-wake signature; design tight band [0.16,0.21] near, f_s=3.900 Hz, D=0.0912, peak prominence 11601.6x). The MGN rollout reproduces this signature (rel_div=4.964e-02, KE monotone=False, St~[0.347,0.160]). D0-23 verdict 6 = 'open-driven-dissipative' -> MGN_DATASET_SYSTEM_CLASS dispatch lands per design \u00a72.2; PH-CON-002/003 SKIP-with-reason on this substrate.",
+  "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+  "device": "cuda",
+  "num_steps": 400,
+  "dt": 0.01,
+  "skfem_version": "12.0.1",
+  "model_loaded": "strict=True OK (corrected name-remap adapter)",
+  "n_frames": 399,
+  "n_nodes": 1923,
+  "n_elements": 3612,
+  "mesh_bbox": {
+    "min": [
+      0.0,
+      0.0
+    ],
+    "max": [
+      1.600000023841858,
+      0.4099999964237213
+    ]
+  },
+  "node_class_counts": {
+    "NORMAL": 1689,
+    "INFLOW": 17,
+    "OUTFLOW": 17,
+    "WALL": 200
+  },
+  "cylinder": {
+    "n_surface_nodes": 24,
+    "diameter_x": 0.09118771553039551,
+    "diameter_y": 0.0911877304315567,
+    "diameter": 0.0911877304315567,
+    "center": [
+      0.4105819749335448,
+      0.19775427070756754
+    ]
+  },
+  "fe_divergence_self_test": {
+    "total_area": 0.6495438011167305,
+    "int_abs_div_for_v_eq_(y,-x)": 1.355739499603152e-15,
+    "int_abs_div_for_v_eq_(x,0)": 0.6495438011167305
+  },
+  "warmup_frames_skipped": 40,
+  "inflow_velocity": {
+    "U_mean": 1.0233746767044067,
+    "U_max": 2.2239134311676025,
+    "n_inflow_nodes": 17
+  },
+  "ground_truth_observables": {
+    "rel_div_mean": 0.048939676166812635,
+    "rel_div_max": 0.05178578296489702,
+    "ke_mean": 0.8613943271053761,
+    "ke_cv": 0.007670771846719485,
+    "ke_dKEdt_monotone": false,
+    "ke_dKEdt_sign_changes": 42,
+    "shedding_freq_hz": 3.8997214484679668,
+    "shedding_peak_prominence": 11601.575334574985,
+    "ke_osc_freq_hz": 0.2785515320334262,
+    "strouhal_U_mean": 0.3474844124013544,
+    "strouhal_U_max": 0.15990134472741396,
+    "_tag": "ground_truth"
+  },
+  "mgn_rollout_observables": {
+    "rel_div_mean": 0.04964486004496541,
+    "rel_div_max": 0.052090683726821664,
+    "ke_mean": 0.8685703133149336,
+    "ke_cv": 0.013069701513043604,
+    "ke_dKEdt_monotone": false,
+    "ke_dKEdt_sign_changes": 54,
+    "shedding_freq_hz": 3.8997214484679668,
+    "shedding_peak_prominence": 1334.357553360026,
+    "ke_osc_freq_hz": 0.2785515320334262,
+    "strouhal_U_mean": 0.3474844124013544,
+    "strouhal_U_max": 0.15990134472741396,
+    "_tag": "mgn_rollout"
+  },
+  "reynolds_band_design_target_strouhal": [
+    0.16,
+    0.21
+  ],
+  "gt_strouhal_in_design_tight_band": false,
+  "mgn_reproduces_substrate_signature": true,
+  "pattern_a_drift": false,
+  "persistent_volume_decision": "Y"
+}
