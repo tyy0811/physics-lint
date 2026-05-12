@@ -1,60 +1,60 @@
 {
   "verdict": "FAIL",
-  "rationale": "NGC checkpoint one-step reproduction: max-abs velocity error 8.018e-01 over rollout-mask nodes (8.018e-01 over all nodes) across 49 pairs \u2014 exceeds tolerance 1e-03. D0-23 band: C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design \u00a73.1.A); upper diagnostic exit.. This entrypoint does NOT declare a final action \u2014 the band's candidate routes (re-fit / re-audit adapter / FNO-on-Darcy / tol re-derivation) are a human-loop decision per the pause-before-commit discipline.",
+  "rationale": "NGC checkpoint one-step reproduction: max-abs velocity error 3.522e-02 over rollout-mask nodes (3.522e-02 over all nodes) across 49 pairs \u2014 exceeds tolerance 1e-03. D0-23 band: B (moderate, (~5e-3, ~0.1]): live suspects = (3) (400,300) re-fit [primary, cheap]; if no improvement -> (1)-subtle [re-audit processor interleave restructure]; fix-or-FNO. (2)+(4) excluded.. This entrypoint does NOT declare a final action \u2014 the band's candidate routes (re-fit / re-audit adapter / FNO-on-Darcy / tol re-derivation) are a human-loop decision per the pause-before-commit discipline.",
   "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
   "device": "cuda",
   "tolerance": 0.001,
   "num_steps": 50,
   "model_loaded": "strict=True OK (keys + shapes match after name-remap)",
   "n_one_step_pairs": 49,
-  "max_abs_err_velocity_mask_nodes": 0.8018408417701721,
-  "max_abs_err_velocity_all_nodes": 0.8018408417701721,
+  "max_abs_err_velocity_mask_nodes": 0.03521689772605896,
+  "max_abs_err_velocity_all_nodes": 0.03521689772605896,
   "per_frame_first8": [
     {
       "tidx": 0,
-      "err_mask": 0.8018408417701721,
-      "err_all": 0.8018408417701721
+      "err_mask": 0.024155855178833008,
+      "err_all": 0.024155855178833008
     },
     {
       "tidx": 1,
-      "err_mask": 0.6055277585983276,
-      "err_all": 0.6055277585983276
+      "err_mask": 0.025250613689422607,
+      "err_all": 0.025250613689422607
     },
     {
       "tidx": 2,
-      "err_mask": 0.5834742784500122,
-      "err_all": 0.5834742784500122
+      "err_mask": 0.016654789447784424,
+      "err_all": 0.016654789447784424
     },
     {
       "tidx": 3,
-      "err_mask": 0.5826976299285889,
-      "err_all": 0.5826976299285889
+      "err_mask": 0.01688586175441742,
+      "err_all": 0.01688586175441742
     },
     {
       "tidx": 4,
-      "err_mask": 0.5918220281600952,
-      "err_all": 0.5918220281600952
+      "err_mask": 0.023301467299461365,
+      "err_all": 0.023301467299461365
     },
     {
       "tidx": 5,
-      "err_mask": 0.5753438472747803,
-      "err_all": 0.5753438472747803
+      "err_mask": 0.025025606155395508,
+      "err_all": 0.025025606155395508
     },
     {
       "tidx": 6,
-      "err_mask": 0.5495643019676208,
-      "err_all": 0.5495643019676208
+      "err_mask": 0.027233928442001343,
+      "err_all": 0.027233928442001343
     },
     {
       "tidx": 7,
-      "err_mask": 0.548557460308075,
-      "err_all": 0.548557460308075
+      "err_mask": 0.023545891046524048,
+      "err_all": 0.023545891046524048
     }
   ],
   "per_frame_worst": {
-    "tidx": 0,
-    "err_mask": 0.8018408417701721,
-    "err_all": 0.8018408417701721
+    "tidx": 22,
+    "err_mask": 0.03521689772605896,
+    "err_all": 0.03521689772605896
   },
-  "gate_d_band": "C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design \u00a73.1.A); upper diagnostic exit."
+  "gate_d_band": "B (moderate, (~5e-3, ~0.1]): live suspects = (3) (400,300) re-fit [primary, cheap]; if no improvement -> (1)-subtle [re-audit processor interleave restructure]; fix-or-FNO. (2)+(4) excluded."
 }
