@@ -163,7 +163,7 @@ This strengthens v2.1 §1.4 from "smoke + source + cross" (where "cross" was imp
 
 ## 9. What round-code-1 is NOT
 
-1. **Not a broader rung-4b prose-vs-code audit.** §6 item 3 had this drift; other claims in rung-4b's (or rung-4a's, or rung-4c's) writeups might too. A systematic sweep of all "the artifact does X" claims against code reality would take ~30–60 min + 0–N more amendments. Deferred deliberately: round-code-1 establishes the discipline; future cross-reviews catch similar drift naturally; pre-emptive retrospective auditing risks consuming discovery cycles for nothing this late in the visa timeline. If a second prose-vs-code drift surfaces organically (round-code-2), *then* consider a broader audit.
+1. **Not a broader rung-4b prose-vs-code audit.** §6 item 3 had this drift; other claims in rung-4b's (or rung-4a's, or rung-4c's) writeups might too. A systematic sweep of all "the artifact does X" claims against code reality would take ~30–60 min + 0–N more amendments. Deferred deliberately: round-code-1 establishes the discipline; future cross-reviews catch similar drift naturally; preemptive retrospective auditing risks consuming discovery cycles for nothing this late in the visa timeline. If a second prose-vs-code drift surfaces organically (round-code-2), *then* consider a broader audit.
 
 2. **Not a new rung.** "Rung-5" would imply a new workstream alongside the rung-4 series. Round-code-1 is a retrospective amendment *inside* rung-4 closure work, sibling to round-prose-2's amendment of the rung-4c writeup framing — named `round-code-1` to fit the `round-{prose,codex,code}-N` taxonomy, not `rung-5`.
 
