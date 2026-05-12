@@ -16,7 +16,7 @@ name: rung-4-sarif-upload
 #     (mass_conservation_defect=0.0 PASS; energy_drift SKIP D0-18;
 #      dissipation_sign_violation=0.0 PASS) — no findings to populate the
 #      Security tab meaningfully, per the rung-4a writeup §3.2 self-assessment.
-#   - rung-4b equivariance SARIFs (segnn/gns_tgv2d_eps_483e9831ad):
+#   - rung-4b equivariance SARIFs (segnn/gns_tgv2d_eps_aeb4a53e87):
 #       segnn: 140 note  (exact E(2)-equivariance; all PASS at the float32 floor)
 #       gns:   60 note + 37 warning + 43 error  (bimodal — APPROXIMATE lower
 #              mode + FAIL upper mode; this is the warning + error rendering
@@ -24,6 +24,14 @@ name: rung-4-sarif-upload
 #   - rung-4c conservation SARIFs (segnn/gns_dam2d_bc3bae929d): 36 note each
 #     (mass=0.0 PASS; energy_drift SKIP D0-22a1; dissipation_sign_violation
 #      SKIP D0-22) — all-PASS-equivalent, same Security-tab status as 4a.
+#
+# Each result carries a physical location (the committed harness adapter
+# module that implements the rule, placeholder region) so GitHub Code
+# Scanning resolves and displays it — logical-only locations are rejected /
+# not displayed — plus a logical location with the per-row detail and a
+# stable partialFingerprint so results sharing an adapter:1 physical location
+# are not collapsed into one alert. See sarif_emitter.py and the round-code-1
+# absorption writeup.
 #
 # Per the physics-lint.yml dogfood-workflow convention, each SARIF uploads
 # with a distinct `category` so code-scanning analyses do not collapse
@@ -51,9 +59,9 @@ jobs:
           - category: rung-4a-conservation-gns-tgv2d
             sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_8e49339469.sarif
           - category: rung-4b-equivariance-segnn-tgv2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_tgv2d_eps_483e9831ad.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_tgv2d_eps_aeb4a53e87.sarif
           - category: rung-4b-equivariance-gns-tgv2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_eps_483e9831ad.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_eps_aeb4a53e87.sarif
           - category: rung-4c-conservation-segnn-dam2d
             sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_dam2d_bc3bae929d.sarif
           - category: rung-4c-conservation-gns-dam2d
