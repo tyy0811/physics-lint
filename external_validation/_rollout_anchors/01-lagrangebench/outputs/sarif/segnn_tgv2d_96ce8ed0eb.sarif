@@ -10,15 +10,38 @@
         "model_name": "segnn",
         "physics_lint_sha_npz_conversion": "5857144",
         "physics_lint_sha_pkl_inference": "8c3d080397",
-        "physics_lint_sha_sarif_emission": "8e49339469",
+        "physics_lint_sha_sarif_emission": "96ce8ed0eb",
         "rollout_subdir": "/vol/rollouts/lagrangebench/segnn_tgv2d_8c3d080397/",
         "source": "rollout-anchor-harness"
       },
       "results": [
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "29b5a30027d5c128"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -36,8 +59,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "42b1df764fe50fe3"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -57,8 +103,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj00",
+                  "name": "traj00"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "481b5c98f216a7f5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -76,8 +145,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7bea4decf69c4e2c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -95,8 +187,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "06683784d6dfbe78"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -116,8 +231,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj01",
+                  "name": "traj01"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "177c05cbc6cf8fe8"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -135,8 +273,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6b939d12260d53f2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -154,8 +315,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f3d4c25b9e7af673"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -175,8 +359,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj02",
+                  "name": "traj02"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "038c327695df9b4b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -194,8 +401,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "6fbc5dfd968fd674"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -213,8 +443,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "08697e9282feec9c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -234,8 +487,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj03",
+                  "name": "traj03"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "78a9dfeee37b9829"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -253,8 +529,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "527ca23fad30629d"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -272,8 +571,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "efe1cac562b98a4b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -293,8 +615,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj04",
+                  "name": "traj04"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "7a982227ca56a367"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -312,8 +657,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fac22bac0fd106eb"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -331,8 +699,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "0b2e1bea9f04902a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -352,8 +743,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj05",
+                  "name": "traj05"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "914c727bc7f4c8e5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -371,8 +785,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "71635d878888c1c5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -390,8 +827,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c0b41645bb3cbd16"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -411,8 +871,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj06",
+                  "name": "traj06"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "46982428aaa8711a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -430,8 +913,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fad153fd698c1c48"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -449,8 +955,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f3e6882229ffafa9"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -470,8 +999,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj07",
+                  "name": "traj07"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c647b83a86552297"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -489,8 +1041,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "bb2e43fcd66020a5"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -508,8 +1083,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "616878cd481563d7"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -529,8 +1127,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj08",
+                  "name": "traj08"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a563e24f55cdafa3"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -548,8 +1169,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fcef91242a92e01b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -567,8 +1211,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "323c35f44049750e"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -588,8 +1255,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj09",
+                  "name": "traj09"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "13c16294af7c7332"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -607,8 +1297,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "64a48ba0c93ac8d3"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -626,8 +1339,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "073827aec1114d9a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -647,8 +1383,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj10",
+                  "name": "traj10"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "26ef2cf142b1e65a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -666,8 +1425,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b8754144ed8c6729"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -685,8 +1467,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a6298bcda717527c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -706,8 +1511,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj11",
+                  "name": "traj11"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "4ef1d710e516bc97"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -725,8 +1553,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a37edb888c07ef5a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -744,8 +1595,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ffe3167bfebe9cd1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -765,8 +1639,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj12",
+                  "name": "traj12"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "76951c5c68b507eb"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -784,8 +1681,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "01e32a4badfc635b"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -803,8 +1723,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fee42af9f1d2c283"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -824,8 +1767,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj13",
+                  "name": "traj13"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "993be1eb6199cd0c"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -843,8 +1809,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "5b51f6179d86f7a2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -862,8 +1851,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ee422de780d4b2d0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -883,8 +1895,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj14",
+                  "name": "traj14"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "efef4db75db4379f"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -902,8 +1937,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "353a91efb8769ecc"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -921,8 +1979,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "2709636f966a4bfe"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -942,8 +2023,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj15",
+                  "name": "traj15"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f2e13b81552e7ab9"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -961,8 +2065,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "ffa67ec4a393ea61"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -980,8 +2107,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "d039ecbc01b56a63"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1001,8 +2151,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj16",
+                  "name": "traj16"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "500eb2fe251787eb"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1020,8 +2193,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "a40a4c8e5ece6de1"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1039,8 +2235,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "032c6e7350c8bda8"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1060,8 +2279,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj17",
+                  "name": "traj17"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "b5d31462cbfb5774"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1079,8 +2321,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "f0bb8c4c2a9baeb0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1098,8 +2363,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c6a5489e1ba2e443"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1119,8 +2407,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj18",
+                  "name": "traj18"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "fbf1a55fa051fc4a"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1138,8 +2449,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:mass_conservation_defect/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "c8f6c6ee4f98afe2"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1157,8 +2491,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:energy_drift/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "SKIP: system_class='dissipative' (dataset='tgv2d'); KE(t) monotone-non-increasing across the rollout; see properties.ke_initial / ke_final for values; relative drift is a misfire for dissipative-by-design systems where the dissipation magnitude IS the physics. See DECISIONS.md D0-18; consult dissipation_sign_violation for the load-bearing test on this system class."
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "463d93ed92121ce0"
           },
           "properties": {
             "case_study": "01-lagrangebench",
@@ -1178,8 +2535,31 @@
         },
         {
           "level": "note",
+          "locations": [
+            {
+              "logicalLocations": [
+                {
+                  "fullyQualifiedName": "01-lagrangebench/segnn/tgv2d/harness:dissipation_sign_violation/traj19",
+                  "name": "traj19"
+                }
+              ],
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "external_validation/_rollout_anchors/_harness/particle_rollout_adapter.py"
+                },
+                "region": {
+                  "endColumn": 2,
+                  "startColumn": 1,
+                  "startLine": 1
+                }
+              }
+            }
+          ],
           "message": {
             "text": "raw_value=0.000e+00"
+          },
+          "partialFingerprints": {
+            "physicsLintResultFqnHash/v1": "911e703ca120f58a"
           },
           "properties": {
             "case_study": "01-lagrangebench",

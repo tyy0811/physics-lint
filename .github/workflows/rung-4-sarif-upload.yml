@@ -12,7 +12,7 @@ name: rung-4-sarif-upload
 #
 # Level distribution (post-round-code-1 band-to-level mapping in
 # _harness/lint_eps_dir.py):
-#   - rung-4a conservation SARIFs (segnn/gns_tgv2d_8e49339469): 60 note each
+#   - rung-4a conservation SARIFs (segnn/gns_tgv2d_96ce8ed0eb): 60 note each
 #     (mass_conservation_defect=0.0 PASS; energy_drift SKIP D0-18;
 #      dissipation_sign_violation=0.0 PASS) — no findings to populate the
 #      Security tab meaningfully, per the rung-4a writeup §3.2 self-assessment.
@@ -21,7 +21,7 @@ name: rung-4-sarif-upload
 #       gns:   60 note + 37 warning + 43 error  (bimodal — APPROXIMATE lower
 #              mode + FAIL upper mode; this is the warning + error rendering
 #              path the rung-4b writeup §6 item 3 named, now actually emitted)
-#   - rung-4c conservation SARIFs (segnn/gns_dam2d_bc3bae929d): 36 note each
+#   - rung-4c conservation SARIFs (segnn/gns_dam2d_96ce8ed0eb): 36 note each
 #     (mass=0.0 PASS; energy_drift SKIP D0-22a1; dissipation_sign_violation
 #      SKIP D0-22) — all-PASS-equivalent, same Security-tab status as 4a.
 #
@@ -52,20 +52,26 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      # 6 jobs all `uses: github/codeql-action/upload-sarif` → 6 simultaneous
+      # downloads of the same action archive → codeload CDN 429s some of them
+      # (observed on the first round-code-1 Path A run). Cap parallelism so the
+      # archive download is staggered; this is upload-only (~20s/job) so 3 waves
+      # of 2 is fine.
+      max-parallel: 2
       matrix:
         include:
           - category: rung-4a-conservation-segnn-tgv2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_tgv2d_8e49339469.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_tgv2d_96ce8ed0eb.sarif
           - category: rung-4a-conservation-gns-tgv2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_8e49339469.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_96ce8ed0eb.sarif
           - category: rung-4b-equivariance-segnn-tgv2d
             sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_tgv2d_eps_aeb4a53e87.sarif
           - category: rung-4b-equivariance-gns-tgv2d
             sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_tgv2d_eps_aeb4a53e87.sarif
           - category: rung-4c-conservation-segnn-dam2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_dam2d_bc3bae929d.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/segnn_dam2d_96ce8ed0eb.sarif
           - category: rung-4c-conservation-gns-dam2d
-            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_dam2d_bc3bae929d.sarif
+            sarif: external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/gns_dam2d_96ce8ed0eb.sarif
     steps:
       - uses: actions/checkout@v4
       - name: Upload ${{ matrix.category }} SARIF to Security tab
