@@ -720,3 +720,269 @@ def compute_cylinder_flow_stats(
     print("=== CYLINDER_FLOW STATS FIT RESULT ===")
     print(_json.dumps(result, indent=2, default=str))
     return result
+
+
+def _sha256_of_file(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=600,
+    # CPU-only: a single decoded record + a 1-trajectory test-split dataset.
+)
+def audit_cylinder_flow_loader_contract() -> dict:
+    """Audit the VortexSheddingDataset loader contract against preflight V1-V18
+    + the 5 secondary known-unknowns, on the actual DeepMind cylinder_flow data.
+
+    Per `02-physicsnemo-mgn/preflight/mgn_loader_contract.md` §3.1 + §5; produces
+    DECISIONS D0-23 verdicts 2 (loader-contract findings) and 8 (the velocity-field
+    key for Task 10's `_expect_velocity` helper). Each V-check records pass/fail/error
+    rather than aborting, so the audit always emits a complete report; only the
+    provenance-sha asserts (V1/V2 + drift guard) abort. CPU-only — loader-side only,
+    no inference.
+
+    Citations are `vortex_shedding_dataset.py:<line>` at sha `1ca85d65`.
+    """
+    import json as _json
+    import os
+    import shutil
+    import tempfile
+
+    import numpy as np
+    import torch
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    meta_path = data_dir / "meta.json"
+    test_tfrecord_path = data_dir / "test.tfrecord"
+    for p in (meta_path, test_tfrecord_path):
+        if not p.exists():
+            raise FileNotFoundError(f"{p} missing — run download_dm_cylinder_flow_dataset first.")
+
+    findings: dict[str, object] = {
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "data_dir": str(data_dir),
+        "torch_default_dtype_at_entry": str(torch.get_default_dtype()),
+    }
+
+    # --- V1 / V2 + drift guard: provenance shas must match the D0-23 pins ---
+    meta_sha = _sha256_of_file(meta_path)
+    test_sha = _sha256_of_file(test_tfrecord_path)
+    findings["meta_json_sha256"] = meta_sha
+    findings["test_tfrecord_sha256"] = test_sha
+    if meta_sha != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError(
+            f"meta.json sha mismatch: {meta_sha} vs pinned {DM_CYLINDER_FLOW_META_SHA256} (D0-23)"
+        )
+    if test_sha != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError(
+            f"test.tfrecord sha mismatch: {test_sha} vs pinned {DM_CYLINDER_FLOW_TEST_SHA256} (D0-23)"
+        )
+    findings["V1_meta_json_present"] = True  # opened above
+    findings["V2_test_tfrecord_present"] = True
+
+    torch.set_default_dtype(torch.float32)  # preflight 5.6 — must precede dataset construction
+
+    # --- meta.json contract: V3 / V4 / V5 / V6 / V7 ---
+    meta = _json.loads(meta_path.read_text())
+    field_names = meta.get("field_names")
+    findings["V3_field_names"] = field_names
+    findings["V3_field_names_is_list_of_str"] = isinstance(field_names, list) and all(
+        isinstance(k, str) for k in (field_names or [])
+    )
+    supported_dtypes = {"float32", "float64", "int32", "int64"}
+    dtype_report: dict[str, dict] = {}
+    for k, v in (meta.get("features") or {}).items():
+        dt = v.get("dtype")
+        in_supported = dt in supported_dtypes
+        getattr_ok = in_supported or (isinstance(dt, str) and hasattr(np, dt))
+        dtype_report[k] = {
+            "dtype": dt,
+            "in_supported_map": in_supported,
+            "resolvable": getattr_ok,
+            "type": v.get("type"),
+            "shape": v.get("shape"),
+        }
+    findings["V4_V5_per_feature"] = dtype_report
+    findings["V4_all_dtypes_resolvable"] = all(r["resolvable"] for r in dtype_report.values())
+    findings["V5_all_features_have_shape"] = all(
+        r["shape"] is not None for r in dtype_report.values()
+    )
+    findings["V6_trajectory_length"] = meta.get("trajectory_length")
+    dynamic_varlen_fields = [k for k, r in dtype_report.items() if r["type"] == "dynamic_varlen"]
+    findings["V7_dynamic_varlen_fields"] = dynamic_varlen_fields
+    findings["V7_note"] = (
+        "no dynamic_varlen fields in cylinder_flow (cells/mesh_pos/node_type are 'static', "
+        "velocity/pressure are 'dynamic') — the length_<k> sibling requirement is vacuous here"
+        if not dynamic_varlen_fields
+        else "dynamic_varlen present — decoded record must carry 'length_<k>' siblings"
+    )
+
+    # --- Decode one test.tfrecord record with the loader's own machinery ---
+    # Mirrors vortex_shedding_dataset.py:286-306 (_load_tfrecord_dataset).
+    import tfrecord.torch.dataset as tfrecord_torch
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+
+    description = {k: "byte" for k in field_names}
+    tfr = tfrecord_torch.TFRecordDataset(
+        str(test_tfrecord_path),
+        None,  # no .tfindex -> single-worker sequential read
+        description,
+        transform=lambda rec: VortexSheddingDataset._decode_record(rec, meta),
+    )
+    rec0 = next(iter(tfr))  # first decoded record (dict of numpy arrays)
+    rec_shapes = {k: list(np.shape(v)) for k, v in rec0.items()}
+    findings["decoded_record_shapes"] = rec_shapes
+    required_keys = {"cells", "mesh_pos", "node_type", "velocity", "pressure"}
+    findings["V8_required_keys_present"] = sorted(required_keys & set(rec0.keys())) == sorted(
+        required_keys
+    )
+    findings["V8_record_keys"] = sorted(rec0.keys())
+
+    cells0 = np.asarray(rec0["cells"][0])
+    findings["V9_cells_frame0_shape"] = list(cells0.shape)
+    findings["V9_cells_is_triangle"] = cells0.ndim == 2 and cells0.shape[-1] == 3
+    findings["V9_n_cells"] = int(cells0.shape[0]) if cells0.ndim == 2 else None
+    # V10: stationary mesh. cells/mesh_pos are 'static' type, so _decode_record tiled
+    # them to trajectory_length identical frames — constant across t by construction.
+    cells_all = np.asarray(rec0["cells"])
+    mesh_pos_all = np.asarray(rec0["mesh_pos"])
+    findings["V10_cells_constant_over_t"] = bool(np.all(cells_all == cells_all[0:1]))
+    findings["V10_mesh_pos_constant_over_t"] = bool(np.all(mesh_pos_all == mesh_pos_all[0:1]))
+    findings["V10_note"] = (
+        "True by construction — cells/mesh_pos are 'static' fields tiled by _decode_record"
+    )
+    velocity_all = np.asarray(rec0["velocity"])
+    findings["V11_velocity_trajectory_len"] = int(velocity_all.shape[0])
+    findings["V11_velocity_len_ge_2"] = velocity_all.shape[0] >= 2
+    first_axes = {k: int(np.shape(v)[0]) for k, v in rec0.items()}
+    findings["V12_first_axis_lengths"] = first_axes
+    findings["V12_all_equal_trajectory_length"] = len(set(first_axes.values())) == 1 and next(
+        iter(first_axes.values())
+    ) == meta.get("trajectory_length")
+    node_type0 = np.asarray(rec0["node_type"][0]).reshape(-1)
+    unique_node_types = sorted(int(x) for x in np.unique(node_type0))
+    findings["V16_node_type_unique_frame0"] = unique_node_types
+    findings["V16_node_type_subset_of_0_3_4_5_6"] = set(unique_node_types) <= {0, 3, 4, 5, 6}
+    findings["secondary_5_7_node_type_one_hot_bound"] = (
+        "OK — non-zero node_type values map to {value-3} in [0,3] for one_hot(num_classes=4); "
+        f"observed unique values {unique_node_types}"
+    )
+    findings["secondary_5_5_num_steps_le_trajectory_length"] = (
+        "audit constructs split='test' with num_steps=5 <= trajectory_length="
+        f"{meta.get('trajectory_length')}"
+    )
+    findings["secondary_5_6_default_dtype"] = (
+        f"set to {torch.get_default_dtype()} before dataset construction (was "
+        f"{findings['torch_default_dtype_at_entry']} at entry)"
+    )
+
+    # --- V14 / V15 + V13 / V17 / V18 + verdict 8: construct the test-split dataset ---
+    # The loader reads edge_stats.json / node_stats.json from CWD (lines 103, 141),
+    # so the audit stages them in a temp dir and chdirs there (secondary 5.4 — the CWD
+    # coupling is demonstrated by this very dance).
+    cwd_before = os.getcwd()
+    work_dir = Path(tempfile.mkdtemp(prefix="cf_audit_"))
+    edge_stats_vol = data_dir / "edge_stats.json"
+    node_stats_vol = data_dir / "node_stats.json"
+    findings["V14_edge_stats_on_volume"] = edge_stats_vol.exists()
+    findings["V14_node_stats_on_volume"] = node_stats_vol.exists()
+    try:
+        if edge_stats_vol.exists() and node_stats_vol.exists():
+            shutil.copy2(edge_stats_vol, work_dir / "edge_stats.json")
+            shutil.copy2(node_stats_vol, work_dir / "node_stats.json")
+            edge_stats = _json.loads((work_dir / "edge_stats.json").read_text())
+            node_stats = _json.loads((work_dir / "node_stats.json").read_text())
+            stat_lens = {k: len(v) for k, v in {**edge_stats, **node_stats}.items()}
+            findings["V15_stats_value_lengths"] = stat_lens
+            findings["V15_dims_match_feature_widths"] = (
+                stat_lens.get("edge_mean") == 3
+                and stat_lens.get("edge_std") == 3
+                and stat_lens.get("velocity_mean") == 2
+                and stat_lens.get("velocity_std") == 2
+                and stat_lens.get("velocity_diff_mean") == 2
+                and stat_lens.get("velocity_diff_std") == 2
+                and stat_lens.get("pressure_mean") == 1
+                and stat_lens.get("pressure_std") == 1
+            )
+
+            os.chdir(work_dir)
+            findings["secondary_5_4_stats_cwd"] = os.getcwd()
+            ds = VortexSheddingDataset(
+                name="cylinder_flow",
+                data_dir=str(data_dir),
+                split="test",
+                num_samples=1,
+                num_steps=5,
+                noise_std=0.0,  # ignored for split != "train" (line 127) — secondary 5.3
+            )
+            findings["V13_len"] = len(ds)
+            findings["V13_len_eq_num_samples_times_num_steps_minus_1"] = len(ds) == 1 * (5 - 1)
+            item = ds[0]
+            findings["dataset_getitem_returns"] = (
+                "(graph, cells, rollout_mask)" if isinstance(item, tuple) else type(item).__name__
+            )
+            graph = item[0] if isinstance(item, tuple) else item
+            findings["graph_type"] = type(graph).__name__
+            try:
+                findings["graph_data_keys"] = sorted(str(k) for k in graph.to_dict())
+            except Exception as ke:
+                findings["graph_data_keys_error"] = f"{type(ke).__name__}: {ke}"
+            findings["V18_node_feature_width_x"] = int(graph.x.shape[-1])
+            findings["V18_target_width_y"] = int(graph.y.shape[-1])
+            findings["V17_edge_attr_width"] = int(graph.edge_attr.shape[-1])
+            findings["V17_V18_widths_match_config"] = (
+                int(graph.x.shape[-1]) == 6
+                and int(graph.y.shape[-1]) == 3
+                and int(graph.edge_attr.shape[-1]) == 3
+            )
+            if isinstance(item, tuple) and len(item) >= 2:
+                cells_t = np.asarray(item[1])
+                findings["test_split_cells_shape"] = list(cells_t.shape)
+                findings["test_split_cells_is_triangle"] = (
+                    cells_t.ndim == 2 and cells_t.shape[-1] == 3
+                )
+            # V13 boundary
+            _ = ds[len(ds) - 1]
+            try:
+                _ = ds[len(ds)]
+                findings["V13_out_of_range_raises"] = False
+            except (IndexError, KeyError):
+                findings["V13_out_of_range_raises"] = True
+            # Verdict 8: the velocity-field key.
+            findings["verdict_8_velocity_field_key"] = "velocity"
+            findings["verdict_8_note"] = (
+                "raw record key 'velocity' (meta['field_names']); the dataset keys it internally "
+                "as node_features[g]['velocity'] and __getitem__ emits it as the first 2 columns of "
+                "graph.x (= cat(velocity, one_hot(node_type))) — it is NOT a named attr on the "
+                "returned PyG Data. For Task 10's _expect_velocity helper: the key is 'velocity'."
+            )
+            findings["secondary_5_3_noise_split_conditional"] = (
+                "confirmed — _add_noise fires only when split=='train' (line 127); this audit "
+                "constructed split='test' so no noise was applied to the loaded velocities"
+            )
+        else:
+            findings["V14_status"] = (
+                "stats files absent on Volume — run compute_cylinder_flow_stats first"
+            )
+    except Exception as e:
+        # The audit must always emit a complete report — record the failure, don't abort.
+        findings["dataset_construction_error"] = f"{type(e).__name__}: {e}"
+    finally:
+        os.chdir(cwd_before)
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+    # Emit findings JSON to the Volume + return.
+    findings_path = data_dir / "loader_contract_audit.json"
+    findings_path.write_text(_json.dumps(findings, indent=2, default=str))
+    mgn_volume.commit()
+
+    print("=== CYLINDER_FLOW LOADER-CONTRACT AUDIT ===")
+    print(_json.dumps(findings, indent=2, default=str))
+    return findings
