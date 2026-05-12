@@ -465,3 +465,74 @@ def download_ngc_vortex_shedding_checkpoint() -> dict:
     print("=== DOWNLOAD RESULT ===")
     print(_json.dumps(result, indent=2, default=str))
     return result
+
+
+# DeepMind MeshGraphNets public dataset (Pfaff et al. 2020). NVIDIA's
+# VortexSheddingDataset reads exactly this `meta.json` + `<split>.tfrecord`
+# format (the physicsnemo MGN datapipe was ported from DeepMind's reference).
+DM_MESHGRAPHNETS_BASE = "https://storage.googleapis.com/dm-meshgraphnets"
+DM_CYLINDER_FLOW_DIR = "/vol/datasets/cylinder_flow"
+
+
+def _stream_download_and_hash(url: str, dest: Path, chunk_size: int = 1024 * 1024) -> dict:
+    """Stream a URL to `dest`, computing sha256 on the way. Returns
+    {"url", "path", "sha256", "size_bytes"}.
+    """
+    import hashlib
+    import urllib.request
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    h = hashlib.sha256()
+    size = 0
+    with urllib.request.urlopen(url, timeout=600) as resp, open(dest, "wb") as out:
+        if resp.status != 200:
+            raise RuntimeError(f"GET {url} → status {resp.status}")
+        while True:
+            chunk = resp.read(chunk_size)
+            if not chunk:
+                break
+            h.update(chunk)
+            out.write(chunk)
+            size += len(chunk)
+    return {"url": url, "path": str(dest), "sha256": h.hexdigest(), "size_bytes": size}
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=1800,
+)
+def download_dm_cylinder_flow_dataset() -> dict:
+    """Tier-1: download DeepMind's public cylinder_flow dataset to the Volume.
+
+    Pulls `meta.json` (883 B) + `test.tfrecord` (~1.3 GB) — enough for the
+    V1-V18 loader-contract audit (Task 5), the NGC sample reproduction
+    (Task 7), and the 1-traj substrate-class smoke (Task 9). `train.tfrecord`
+    (12.7 GB) is intentionally NOT pulled here — see `compute_cylinder_flow_stats`
+    which pulls + fits + deletes it atomically.
+    """
+    import json as _json
+
+    dest_dir = Path(DM_CYLINDER_FLOW_DIR)
+    results: dict[str, dict] = {}
+
+    results["meta.json"] = _stream_download_and_hash(
+        f"{DM_MESHGRAPHNETS_BASE}/cylinder_flow/meta.json",
+        dest_dir / "meta.json",
+    )
+    print(
+        f"meta.json: {results['meta.json']['size_bytes']} bytes, sha256={results['meta.json']['sha256']}"
+    )
+
+    results["test.tfrecord"] = _stream_download_and_hash(
+        f"{DM_MESHGRAPHNETS_BASE}/cylinder_flow/test.tfrecord",
+        dest_dir / "test.tfrecord",
+    )
+    print(
+        f"test.tfrecord: {results['test.tfrecord']['size_bytes']} bytes, sha256={results['test.tfrecord']['sha256']}"
+    )
+
+    mgn_volume.commit()
+
+    print("=== DM CYLINDER_FLOW DOWNLOAD RESULT ===")
+    print(_json.dumps(results, indent=2, default=str))
+    return results

@@ -2378,6 +2378,16 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
 10. **Pre-flight assertions (Task 12):** loader-contract assertions written in `_harness/mesh_rollout_adapter.py`.
     - Verdict: [pending]
 
+**Phase 1 data provenance pins (Task 5 prerequisite):**
+
+The V1-V18 loader-contract audit needs real `VortexSheddingDataset` records, which the NGC checkpoint package does **not** ship (the zip contains only `vortex_shedding_mgn/model.pt` — verified via `unzip -l`; no `meta.json`, no `<split>.tfrecord`, no `*_stats.json`). The data is sourced from DeepMind's public MeshGraphNets bucket (Pfaff et al. 2020) — `https://storage.googleapis.com/dm-meshgraphnets/cylinder_flow/` — which `VortexSheddingDataset` reads natively (the physicsnemo MGN datapipe was ported from DeepMind's reference impl). Pulled to Modal Volume `case-study-02-physicsnemo-artifacts` at `/vol/datasets/cylinder_flow/`:
+
+- `meta.json` — 883 bytes — sha256 `2a3e39429a55a0cf47355717cc07f4b292629daeb48a89abd518ea0402033e96`
+- `test.tfrecord` — 1,355,376,404 bytes — sha256 `8522932a23da6ccdee996c56158e4b908f7091f0ade11e8acea700be321af8c3`
+- `train.tfrecord` (12.7 GB) — NOT persisted: pulled transiently inside `compute_cylinder_flow_stats`, used to fit `edge_stats.json` / `node_stats.json`, then deleted in the same entrypoint's `finally` block. Stats-file shas: [pending — populated when Task 5 stats fit lands].
+
+Pre-flight contract: any Phase 1 entrypoint consuming these files asserts the on-disk sha matches the pin above before proceeding (catches upstream-bucket drift, which is unlikely for this stable dataset but possible).
+
 **Phase 1 boundary cross-review (Task 14):** Codex pass against verdicts 1-10 + code-absorption (Tasks 10-12). Findings triaged per pattern-C four-cell framework. Cell distributions populated post-cross-review.
 
 **Why pre-registered as skeleton:** mirrors D0-22's pre-registration-before-implementation pattern. Audit-trail discipline: by the time Phase 1 completes, every verdict has a recorded place; no audit finding lands without an entry.
