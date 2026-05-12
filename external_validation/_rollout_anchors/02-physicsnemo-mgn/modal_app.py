@@ -1232,6 +1232,36 @@ def _gate_d_band(err: float) -> str:
     return "C (cliff, > ~0.1): clean (1) architecture FAIL -> FNO-on-Darcy fallback (design §3.1.A); upper diagnostic exit."
 
 
+# Pre-registered D0-23 verdict-confirmation bands (2026-05-12, user-directed Option 3),
+# on the 1-step velocity RMSE over rollout-mask nodes in physical units. Paper baseline:
+# Pfaff et al. 2020 (MeshGraphNets, ICLR 2021) Table 1, CylinderFlow RMSE-1-step =
+# 2.34 +/- 0.12 e-3. See DECISIONS D0-23 "Verdict-confirmation re-fire".
+_GATE_D_RMSE_PASS = 5e-3  # ~2x paper baseline
+_GATE_D_RMSE_MARGINAL_HI = 1.5e-2  # ~6x paper baseline
+
+
+def _gate_d_rmse_band(rmse: float) -> str:
+    """Pre-registered D0-23 verdict bands on the 1-step velocity RMSE (physical, rollout-mask nodes)."""
+    if rmse <= _GATE_D_RMSE_PASS:
+        return (
+            f"PASS (RMSE-1 <= {_GATE_D_RMSE_PASS:.0e}, ~2x paper baseline 2.34e-3): the recalibrated "
+            f"Gate-D criterion IS 'RMSE-1 <= 5e-3'; the 1e-3-max-abs criterion is retired as a category "
+            f"error. Finalize D0-23 v1=CONFIRMED, v4=PASS, v5=PASS; proceed to Tasks 8-9."
+        )
+    if rmse <= _GATE_D_RMSE_MARGINAL_HI:
+        return (
+            f"MARGINAL (RMSE-1 in ({_GATE_D_RMSE_PASS:.0e}, {_GATE_D_RMSE_MARGINAL_HI:.1e}], ~2-6x paper "
+            f"2.34e-3): architecture identity confirmed; reproduction below paper baseline but consistent "
+            f"with checkpoint usability -> CS02 proceeds with the limitation named in the v2.1 methodology "
+            f"trail (resolution floor of Phase 2's verdict bands). v4=PASS-with-limitation, v5=PASS-with-limitation."
+        )
+    return (
+        f"FAIL (RMSE-1 > {_GATE_D_RMSE_MARGINAL_HI:.1e}, >~6x paper 2.34e-3): adapter structurally correct "
+        f"(edge-MLP concat fix verified) but reproduction quality meaningfully below paper baseline "
+        f"-> FNO-on-Darcy fallback (design §3.1.A). v4=FAIL, v5=FAIL."
+    )
+
+
 @app.function(
     volumes={"/vol": mgn_volume},
     gpu="A10G",
@@ -1244,25 +1274,30 @@ def audit_ngc_sample_reproduction(num_steps: int = 50, tolerance: float = 1e-3) 
     (examples/cfd/vortex_shedding_mgn/inference.py @ 1ca85d65: denormalize x/y, build
     `invar`, re-normalize velocity cols, `model(invar, edge_attr, graph)`, denormalize
     the prediction, mask non-rollout nodes, integrate `v_pred[t+1] = v_diff_pred + v[t]`)
-    — reproduce the next frame of a real cylinder_flow `test.tfrecord` trajectory
-    within `tolerance` (max-abs on velocity, over the rollout-mask nodes)?
+    — reproduce the next frame of a real cylinder_flow `test.tfrecord` trajectory?
 
     There is **no bundled "expected output"** in the NGC zip (it ships only `model.pt`),
     so "reproduction" here is "the checkpoint's one-step prediction matches the test
-    record's next frame", not "matches a shipped tensor" — `tolerance` (= plan §4 / README
-    default 1e-3) therefore bounds the model's *intrinsic* one-step accuracy, not a
-    load self-consistency. This is the empirical test of verdict-1's amendment
-    ("architecture identity confirmed by Gate D") AND of the Task-5-pt2 stats fit.
+    record's next frame", not "matches a shipped tensor" — the metric therefore bounds
+    the model's *intrinsic* one-step accuracy, not a load self-consistency. This is the
+    empirical test of verdict-1's amendment ("architecture identity confirmed by Gate D")
+    AND of the Task-5-pt2 stats fit.
 
     Loops one-step predictions over all `num_steps - 1` consecutive frame pairs of the
     first test trajectory (each step uses the *true* previous frame — not the previous
-    prediction — so this isolates one-step accuracy from rollout error accumulation),
-    reports `max|v_pred - v_exact|` over (frame, rollout-mask-node) pairs as the Gate-D
-    metric and over (frame, all-node) for completeness, plus the pre-registered D0-23
-    threshold band. Verdict = PASS iff the mask-node max-abs error <= tolerance; on FAIL
-    the rationale lists the band's candidate routes — it does **not** declare a final
-    action (FNO vs re-fit vs re-audit is a human-loop decision; see the pause-before-commit
-    discipline). GPU (A10G).
+    prediction — so this isolates one-step accuracy from rollout error accumulation).
+    **Verdict basis (D0-23 "Verdict-confirmation re-fire", pre-registered 2026-05-12):**
+    the 1-step **velocity RMSE** over rollout-mask nodes in physical (denormalized) units
+    — directly comparable to Pfaff et al. 2020's CylinderFlow RMSE-1-step = 2.34e-3 (the
+    paper's metric; no max-abs-vs-RMSE conversion). Bands: `<= 5e-3` (~2x paper) → PASS;
+    `(5e-3, 1.5e-2]` (~2-6x) → MARGINAL (CS02 proceeds, limitation named); `> 1.5e-2` →
+    FAIL → FNO-on-Darcy. Also reports, for completeness/diagnosis: the same RMSE over all
+    nodes (deflated — masked-out preds are zeroed) and in velocity-std units (convention
+    hedge), per-component (vx/vy) RMSE, the |error| p50/p90/p99 quantiles, the per-frame
+    max-abs + RMSE, and the legacy max-abs metric/band (now informational — the 1e-3-max-abs
+    pass bar is retired as a category error: it was a bit-exact-tensor-repro tolerance from
+    the LagrangeBench analog, inapplicable absent a shipped reference tensor). The `tolerance`
+    arg is kept for signature compat (recorded as `legacy_max_abs_tolerance_retired`). GPU (A10G).
     """
     import json as _json
     import os
@@ -1357,6 +1392,18 @@ def audit_ngc_sample_reproduction(num_steps: int = 50, tolerance: float = 1e-3) 
         worst_mask = 0.0
         worst_all = 0.0
         per_frame = []
+        # Accumulators for the RMSE / per-component / quantile metrics (D0-23
+        # verdict-confirmation re-fire; physical units = denormalized velocity).
+        sq_sum_mask = 0.0  # sum of squared physical errors over (frame, mask-node, {vx,vy})
+        n_elem_mask = 0  # element count for the above
+        sq_sum_all = 0.0  # ditto over ALL nodes (note: masked-out preds are zeroed, so this
+        n_elem_all = 0  #   conflates "model correctly predicts ~0 at boundary" with the zeroing)
+        sq_sum_mask_norm = 0.0  # sum of squared *normalized* errors ((v - v_exact)/velocity_std)
+        sq_sum_vx = 0.0  # per-component (mask nodes), physical
+        sq_sum_vy = 0.0
+        n_nodes_mask = 0  # mask-node count (per-component denominator)
+        abs_mask_chunks = []  # for the |error| p50/p90/p99 quantiles (mask nodes, physical)
+        vstd = stats["velocity_std"]  # (2,) on device
         for tidx in range(n_pairs):
             graph, _cells, mask = ds[tidx]
             graph = graph.to(device)
@@ -1390,39 +1437,80 @@ def audit_ngc_sample_reproduction(num_steps: int = 50, tolerance: float = 1e-3) 
             pred_diff_masked = torch.where(mask2, pred_i[:, 0:2], torch.zeros_like(pred_i[:, 0:2]))
             v_pred = pred_diff_masked + invar[:, 0:2]  # v_pred[t+1]
             v_exact = graph.y[:, 0:2] + graph.x[:, 0:2]  # v_diff_true + v[t] = v_exact[t+1]
-            diff = (v_pred - v_exact).abs()
+            signed = v_pred - v_exact  # (n, 2)
+            diff = signed.abs()
             mask1 = mask.to(device).reshape(-1).bool()
             err_mask = float(diff[mask1].max().item()) if mask1.any() else float("nan")
             err_all = float(diff.max().item())
             worst_mask = max(worst_mask, err_mask)
             worst_all = max(worst_all, err_all)
-            per_frame.append({"tidx": tidx, "err_mask": err_mask, "err_all": err_all})
+            # RMSE / per-component / quantile accumulators
+            sm = signed[mask1]  # (n_mask, 2)
+            sq_sum_mask += float((sm * sm).sum().item())
+            n_elem_mask += int(sm.numel())
+            sq_sum_all += float((signed * signed).sum().item())
+            n_elem_all += int(signed.numel())
+            sm_norm = sm / vstd
+            sq_sum_mask_norm += float((sm_norm * sm_norm).sum().item())
+            sq_sum_vx += float((sm[:, 0] * sm[:, 0]).sum().item())
+            sq_sum_vy += float((sm[:, 1] * sm[:, 1]).sum().item())
+            n_nodes_mask += int(sm.shape[0])
+            abs_mask_chunks.append(diff[mask1].reshape(-1).detach().cpu())
+            rmse_frame_mask = (
+                float(((sm * sm).mean()).sqrt().item()) if sm.numel() else float("nan")
+            )
+            per_frame.append(
+                {
+                    "tidx": tidx,
+                    "err_mask": err_mask,
+                    "err_all": err_all,
+                    "rmse_mask": rmse_frame_mask,
+                }
+            )
+
+        rmse_mask = (sq_sum_mask / n_elem_mask) ** 0.5 if n_elem_mask else float("nan")
+        rmse_all = (sq_sum_all / n_elem_all) ** 0.5 if n_elem_all else float("nan")
+        rmse_mask_norm = (sq_sum_mask_norm / n_elem_mask) ** 0.5 if n_elem_mask else float("nan")
+        rmse_vx_mask = (sq_sum_vx / n_nodes_mask) ** 0.5 if n_nodes_mask else float("nan")
+        rmse_vy_mask = (sq_sum_vy / n_nodes_mask) ** 0.5 if n_nodes_mask else float("nan")
+        abs_all_mask = torch.cat(abs_mask_chunks) if abs_mask_chunks else torch.zeros(1)
+        q = torch.quantile(abs_all_mask, torch.tensor([0.50, 0.90, 0.99])).tolist()
 
         out["max_abs_err_velocity_mask_nodes"] = worst_mask
         out["max_abs_err_velocity_all_nodes"] = worst_all
+        out["rmse_1step_velocity_mask_nodes"] = rmse_mask  # <-- D0-23 verdict basis
+        out["rmse_1step_velocity_all_nodes"] = rmse_all
+        out["rmse_1step_velocity_mask_nodes_normalized"] = rmse_mask_norm  # convention hedge
+        out["rmse_1step_velocity_vx_mask"] = rmse_vx_mask
+        out["rmse_1step_velocity_vy_mask"] = rmse_vy_mask
+        out["abs_err_velocity_mask_quantiles"] = {"p50": q[0], "p90": q[1], "p99": q[2]}
+        out["n_mask_nodes_per_frame"] = n_nodes_mask // n_pairs if n_pairs else 0
+        out["paper_baseline_rmse_1step_cylinderflow"] = 2.34e-3  # Pfaff et al. 2020 Table 1
+        out["legacy_max_abs_tolerance_retired"] = tolerance  # was the (category-error) pass bar
+        out["rmse_pass_threshold"] = _GATE_D_RMSE_PASS
+        out["rmse_marginal_upper"] = _GATE_D_RMSE_MARGINAL_HI
         worst_frame = max(per_frame, key=lambda d: d["err_mask"])
         out["per_frame_first8"] = per_frame[:8]
         out["per_frame_worst"] = worst_frame
-        out["gate_d_band"] = _gate_d_band(worst_mask)
-        if worst_mask <= tolerance:
+        out["gate_d_band"] = _gate_d_band(worst_mask)  # legacy max-abs band, informational
+        out["gate_d_rmse_band"] = _gate_d_rmse_band(rmse_mask)  # the verdict basis
+        if rmse_mask <= _GATE_D_RMSE_PASS:
             verdict = "PASS"
-            rationale = (
-                f"NGC checkpoint reproduces the cylinder_flow test trajectory's next-frame velocity "
-                f"to max-abs {worst_mask:.3e} over rollout-mask nodes ({worst_all:.3e} over all nodes) "
-                f"across {n_pairs} one-step pairs — within tolerance {tolerance:.0e}. The name-remap "
-                f"adapter's architecture-identity assumption (verdict 1) AND the Task-5-pt2 stats fit "
-                f"are empirically confirmed."
-            )
+        elif rmse_mask <= _GATE_D_RMSE_MARGINAL_HI:
+            verdict = "MARGINAL"
         else:
             verdict = "FAIL"
-            rationale = (
-                f"NGC checkpoint one-step reproduction: max-abs velocity error {worst_mask:.3e} over "
-                f"rollout-mask nodes ({worst_all:.3e} over all nodes) across {n_pairs} pairs — exceeds "
-                f"tolerance {tolerance:.0e}. D0-23 band: {out['gate_d_band']}. This entrypoint does NOT "
-                f"declare a final action — the band's candidate routes (re-fit / re-audit adapter / "
-                f"FNO-on-Darcy / tol re-derivation) are a human-loop decision per the "
-                f"pause-before-commit discipline."
-            )
+        rationale = (
+            f"NGC checkpoint one-step reproduction (post edge-MLP-column-reorder adapter; verdict-"
+            f"confirmation re-fire, NO adapter change). 1-step velocity RMSE = {rmse_mask:.3e} over "
+            f"rollout-mask nodes (physical units; {rmse_all:.3e} over all nodes [masked-out preds zeroed → "
+            f"deflated]; {rmse_mask_norm:.3e} in velocity-std units), per-component vx={rmse_vx_mask:.3e} / "
+            f"vy={rmse_vy_mask:.3e}, |err| p50/p90/p99 = {q[0]:.3e}/{q[1]:.3e}/{q[2]:.3e}, max-abs "
+            f"{worst_mask:.3e}, across {n_pairs} pairs (true previous frame each). Pfaff et al. 2020 "
+            f"CylinderFlow RMSE-1-step baseline = 2.34e-3. D0-23 verdict band: {out['gate_d_rmse_band']} "
+            f"The legacy 1e-3-max-abs criterion is retired (a bit-exact-tensor-repro tolerance from the "
+            f"LagrangeBench analog, inapplicable here — no shipped reference tensor)."
+        )
     except Exception as e:
         verdict = "FAIL"
         rationale = f"unexpected error during the reproduction loop: {type(e).__name__}: {e}"
