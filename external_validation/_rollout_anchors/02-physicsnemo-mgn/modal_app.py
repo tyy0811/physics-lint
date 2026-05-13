@@ -2719,3 +2719,118 @@ def mgn_rollout_p0_vortex_shedding(
         # at function exit anyway, so the tempfile.mkdtemp guarantees
         # provide the actual isolation; the persistence here documents the
         # path used in case a post-mortem inspection is needed.
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 -- Task 7: MGN-rollout lint entrypoint + mgn.sarif (CPU).
+# ---------------------------------------------------------------------------
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=60 * 30,
+)
+def lint_mgn_rollout(git_sha: str) -> dict:
+    """Phase 2 Task 7 -- MGN-arm lint of the rollout NPZ produced by Task 6.
+
+    Reads ``/vol/rollouts/physicsnemo/vortex_shedding_<git_sha>/mgn_rollout.npz``
+    via ``load_mesh_rollout_npz`` (Task 3 F3 contract auto-fires on the
+    MGN-scoped metadata), applies the three *_on_mesh rule mirrors via the
+    shared lint_mesh_rollout helper, emits mgn.sarif. CPU-only -- the
+    rollout was produced upstream by Task 6's A10G fire.
+
+    Expected outputs (D0-24 v2 + v3 + v4 bands):
+      - harness:mass_conservation_defect: raw_value; the verdict
+        depends on the GT-vs-MGN gap on the canonical trajectory.
+        D0-24 v2 bands (relative to gt.sarif's PH-CON-001 = 5.857e-02):
+          - within +/-20% of GT: PASS (MGN reproduces GT-level mass).
+          - 20-50% above GT: MARGINAL.
+          - > 50% above GT: FAIL (meaningful surrogate-vs-GT signal).
+      - harness:energy_drift: SKIP via the v9 substrate-class dispatch
+        (vortex_shedding_2d -> open-driven-dissipative); D0-24 v3 PASS.
+      - harness:dissipation_sign_violation: SKIP via the same dispatch;
+        D0-24 v4 PASS.
+
+    ``inference_run_status`` = ``"from_completed_inference"`` (design §2.5)
+    -- the rollout came from Task 6's clean A10G fire (no salvage).
+    """
+    import json as _json
+    import sys
+
+    sys.path.insert(0, "/root")  # for harness imports
+    from external_validation._rollout_anchors._harness.lint_mesh_rollout import (
+        lint_mesh_rollout,
+    )
+    from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+        load_mesh_rollout_npz,
+    )
+    from external_validation._rollout_anchors._harness.sarif_emitter import emit_sarif
+
+    npz_path = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/mgn_rollout.npz")
+    if not npz_path.exists():
+        raise FileNotFoundError(f"{npz_path} missing -- run mgn_rollout_p0_vortex_shedding first.")
+    # F3 contract fires inside load_mesh_rollout_npz on metadata["model"]
+    # starting with "modulus_" -- belt-and-braces verification that the
+    # NPZ on disk satisfies the MGN loader contract.
+    rollout = load_mesh_rollout_npz(npz_path)
+
+    rule_results = lint_mesh_rollout(
+        rollout,
+        case_study="02-physicsnemo-mgn",
+        dataset=str(rollout.metadata.get("dataset", "vortex_shedding_2d")),
+        model=str(rollout.metadata.get("model", "modulus_ns_meshgraphnet")),
+        ckpt_hash=str(rollout.metadata.get("ckpt_hash", "")),
+        extra_properties={
+            "arm": "mgn-rollout",
+            "trajectory_index": int(rollout.metadata.get("trajectory_index", -1)),
+            "n_timesteps": int(rollout.n_timesteps),
+            "n_nodes": int(rollout.n_nodes),
+            "n_cells": len(rollout.metadata.get("cells_2d", [])),
+        },
+    )
+
+    run_properties: dict[str, object] = {
+        "source": "rollout-anchor-harness",
+        "harness_sarif_schema_version": "1.0",
+        "case_study": "02-physicsnemo-mgn",
+        "arm": "mgn-rollout",
+        "inference_run_status": "from_completed_inference",  # design §2.5
+        "trajectory_index": int(rollout.metadata.get("trajectory_index", -1)),
+        "dataset_name": str(rollout.metadata.get("dataset", "vortex_shedding_2d")),
+        "model_name": str(rollout.metadata.get("model", "modulus_ns_meshgraphnet")),
+        "checkpoint_id": str(rollout.metadata.get("ckpt_hash", "")),
+        "ckpt_sha256": str(rollout.metadata.get("ckpt_sha256", "")),
+        "ngc_version": str(rollout.metadata.get("ngc_version", "")),
+        "physicsnemo_sha": str(rollout.metadata.get("physicsnemo_sha", PHYSICSNEMO_SHA)),
+        "physics_lint_sha_sarif_emission": git_sha,
+        "physics_lint_sha_inference": str(rollout.metadata.get("git_sha", git_sha)),
+        "rollout_npz_path": str(npz_path),
+        "n_rollout_steps": int(rollout.metadata.get("n_rollout_steps", rollout.n_timesteps)),
+    }
+
+    out_path_vol = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/mgn.sarif")
+    out_path_vol.parent.mkdir(parents=True, exist_ok=True)
+    emit_sarif(
+        rule_results,
+        output_path=out_path_vol,
+        run_properties=run_properties,
+    )
+    mgn_volume.commit()
+
+    rule_summary = {}
+    for r in rule_results:
+        if r.raw_value is not None:
+            rule_summary[r.rule_id] = f"raw_value={r.raw_value:.3e}"
+        else:
+            reason = str(r.extra_properties.get("skip_reason", "(no reason)"))
+            rule_summary[r.rule_id] = f"SKIP: {reason[:80]}"
+    print(f"=== MGN LINT VERDICT (traj_idx={rollout.metadata.get('trajectory_index')}) ===")
+    print(_json.dumps(rule_summary, indent=2))
+    return {
+        "sarif_path": str(out_path_vol),
+        "rule_summary": rule_summary,
+        "trajectory_index": int(rollout.metadata.get("trajectory_index", -1)),
+        "n_timesteps": int(rollout.n_timesteps),
+        "n_nodes": int(rollout.n_nodes),
+        "git_sha": git_sha,
+    }

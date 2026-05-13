@@ -1,0 +1,103 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "arm": "mgn-rollout",
+        "case_study": "02-physicsnemo-mgn",
+        "checkpoint_id": "0153803c8b2c0947",
+        "ckpt_sha256": "0153803c8b2c0947948757a2298eec6ef21e8ea28131834963db08f34b4a0726",
+        "dataset_name": "vortex_shedding_2d",
+        "harness_sarif_schema_version": "1.0",
+        "inference_run_status": "from_completed_inference",
+        "model_name": "modulus_ns_meshgraphnet",
+        "n_rollout_steps": 599,
+        "ngc_version": "latest",
+        "physics_lint_sha_inference": "4173b32",
+        "physics_lint_sha_sarif_emission": "4173b32",
+        "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+        "rollout_npz_path": "/vol/rollouts/physicsnemo/vortex_shedding_4173b32/mgn_rollout.npz",
+        "source": "rollout-anchor-harness",
+        "trajectory_index": 44
+      },
+      "results": [
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=5.881e-02"
+          },
+          "properties": {
+            "arm": "mgn-rollout",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "0153803c8b2c0947",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "modulus_ns_meshgraphnet",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 599,
+            "raw_value": 0.058808460094525686,
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); boundary-driven inflow continuously supplies KE; the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1) for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension."
+          },
+          "properties": {
+            "arm": "mgn-rollout",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "0153803c8b2c0947",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.45107534230354257,
+            "ke_initial": 0.3479510315009714,
+            "model": "modulus_ns_meshgraphnet",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 599,
+            "skip_reason": "system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); boundary-driven inflow continuously supplies KE; the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1) for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension.",
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); dE/dt > 0 over a stretch by physics (boundary-driven inflow supplies KE); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22 for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension."
+          },
+          "properties": {
+            "arm": "mgn-rollout",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "0153803c8b2c0947",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "modulus_ns_meshgraphnet",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 599,
+            "skip_reason": "system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); dE/dt > 0 over a stretch by physics (boundary-driven inflow supplies KE); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22 for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension.",
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/tyy0811/physics-lint",
+          "name": "physics-lint-rollout-anchor-harness",
+          "version": "0.1.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}
