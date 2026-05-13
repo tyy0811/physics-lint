@@ -2502,7 +2502,25 @@ Phase 2 fires the MGN inference end-to-end on the canonical cylinder_flow test t
 
 **Phase 2 cross-review (Task 11–12) findings will be triaged into this entry's closing table once Task 11 fires; the four-cell schema mirrors D0-23's Task-14 triage at commit `41232d2`.**
 
-Open until all 7 verdicts pinned (Tasks 5/6/7/8/9) + Phase 2 cross-review (Tasks 11–12) findings triaged.
+**Verdicts pinned (Tasks 5/6/7/8/9 — 2026-05-13).** All 7 PASS; no Pattern-A drift to absorb.
+
+1. **PH-CON-001 GT (Task 5; `4173b32`) → PASS.** `raw_value = 5.857e-02` ⇒ `5.857%`, inside the PASS band `≤ 6 %`. The harness-FE-on-P1 floor on canonical trajectory 44 is consistent with Phase 1 substrate-smoke's `≈ 5 %` on its auto-selected trajectory (trajectory-dependent variability ≈ `0.86 %` between substrate-smoke's pick and the canonical, well within the `≤ 6 %` PASS band). Phase 1's pre-registered floor is stable across the two trajectories observed.
+
+2. **PH-CON-001 MGN (Task 7; `11c7df2`) → PASS.** `raw_value = 5.881e-02` ⇒ `5.881%`, with the GT-vs-MGN gap = `|5.881 - 5.857| / 5.857 = 0.41 %`, well inside the PASS band `±20 %` of GT. **MGN reproduces GT-level mass conservation essentially at the harness-FE-on-P1 floor on the canonical trajectory** — physics-lint's PH-CON-001 doesn't distinguish a hypothetical MGN model-error contribution from the harness-floor contribution at this discretization. This is the floor-bounds-resolution finding the Phase 3 writeup will name (refinement 2 forward-flag): the rule's verdict on GT + MGN at the floor demonstrates "MGN reproduces GT at the floor," NOT "MGN is physically incompressible to 5%." A tighter discretization would be needed to distinguish whether MGN's `5 %` reflects model error or floor error.
+
+3. **PH-CON-002 (energy drift) on both arms → PASS.** Both gt.sarif and mgn.sarif emit SKIP with `skip_reason` citing `"system_class='open-driven-dissipative' (dataset='vortex_shedding_2d')"` + `D0-22`/`D0-23`. The v9 substrate-class dispatch (D0-23 v9) fired as designed on the graph-mesh inputs (lifted to fire-before-topology in Task 4's reorder).
+
+4. **PH-CON-003 (dissipation_sign_violation) on both arms → PASS.** Same dispatch as v3 ⇒ same SKIP with the same reason text on both arms. Uniform behavior across the GT control + MGN-rollout arms confirms the dispatch is substrate-anchored, not arm-anchored.
+
+5. **Loader-contract enforcement (Task 3; `3eb38b4`) → PASS.** All 4 rejection tests fail-closed on the wired `load_mesh_rollout_npz` path: fp64 velocity (on a manually-written NPZ that bypasses save's down-cast), wrong velocity key, missing `metadata["dataset"]`, invalid `node_type`. Synthetic-mesh rollouts (`framework="synthetic"`, model NOT `"modulus_*"`) bypass the MGN contract correctly per scope. 243 → 249 → 252 harness tests across Tasks 3/4/5.
+
+6. **Rollout-dir isolation (Task 6 + Task 7 smoke; `4d35faa` + `11c7df2`) → PASS.** Task 6's production path uses `tempfile.mkdtemp` with a `git-sha-prefixed` name (landed at `/tmp/mgn_rollout_p0_4173b32_x06lz8pq` for this fire); Task 7's 3 CPU smoke tests verify the Python-level invariants the production-path depends on (distinct paths under same prefix; no cross-dir CWD-relative reads; same invariant for `dir=None`). The F5 absorption is closed: two same-sha retries cannot read each other's CWD-relative stats.
+
+7. **`inference_run_status` field (Task 8; `3c028ff`) → PASS.** Both SARIFs carry the field at the design-§2.5-pinned values: `gt.sarif → "n/a_gt_control_arm"` (no inference fire on the control arm); `mgn.sarif → "from_completed_inference"` (Task 6's A10G fire was clean — no salvage). 3-test regression guards pin the values + restrict to the design-§2.5 enumerated set; a salvage-marker value here is a Phase-3 writeup forward-flag, not a code-patch.
+
+**No Pattern-A drift to absorb.** All 7 verdicts landed in their pre-registered PASS bands; no MARGINAL / FAIL routing fired; no D-entry amendment needed. The cross-stack consistency table for Phase 3 populates with `GT(5.857%) + MGN(5.881%)` both at the floor + the v9 substrate-class SKIP on both arms.
+
+Open until Phase 2 cross-review (Tasks 11–12) findings triaged.
 
 **Why pre-registered as skeleton:** mirrors D0-22 + D0-23's pre-registration-before-implementation pattern. Audit-trail discipline: by the time Phase 2 fires, every verdict has a recorded place; the routing is not interpreted-during-execution, and any Pattern-A drift (per design §3.1.A) lands as a D-entry amendment with the pre-fire bands as the comparison baseline.
 
