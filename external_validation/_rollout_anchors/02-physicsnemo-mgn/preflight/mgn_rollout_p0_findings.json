@@ -1,0 +1,21 @@
+{
+  "rollout_dir": "/tmp/mgn_rollout_p0_4173b32_x06lz8pq",
+  "out_npz": "/vol/rollouts/physicsnemo/vortex_shedding_4173b32/mgn_rollout.npz",
+  "traj_idx": 44,
+  "n_rollout_steps": 599,
+  "num_steps": 600,
+  "n_nodes": 1787,
+  "n_cells": 3340,
+  "device": "cuda",
+  "preflight": {
+    "ckpt_sha256": "0153803c8b2c0947948757a2298eec6ef21e8ea28131834963db08f34b4a0726",
+    "ckpt_path": "/vol/checkpoints/modulus_ns_meshgraphnet_latest/vortex_shedding_mgn/model.pt",
+    "torch_default_dtype": "float32",
+    "rollout_dir": "/tmp/mgn_rollout_p0_4173b32_x06lz8pq",
+    "rollout_output_dir": "/vol/rollouts/physicsnemo/vortex_shedding_4173b32",
+    "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+    "git_sha": "4173b32",
+    "device": "cuda",
+    "model_loaded": "strict=True OK (corrected name-remap adapter)"
+  }
+}

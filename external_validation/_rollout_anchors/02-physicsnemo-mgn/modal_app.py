@@ -2429,3 +2429,293 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
         "n_cells": int(cells.shape[0]),
         "git_sha": git_sha,
     }
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 -- Task 6: MGN inference on A10G (canonical traj N=1; F5 isolation).
+# ---------------------------------------------------------------------------
+
+
+def _preflight_mgn_inference_p0(rollout_dir: str, git_sha: str, ckpt_path: Path) -> dict:
+    """Pre-flight assertions before the MGN inference fire (Task 6).
+
+    Captures provenance (ckpt sha256 + git sha + dtype + cwd) and fails
+    loud on contract violations. Recorded in the Task 6 findings JSON.
+
+    Phase-1 known-unknowns covered:
+      - KU §5.6 fp32 default dtype (must precede dataset construction)
+      - KU §5.4 CWD discipline + stats files staged
+      - Persistent-volume rollout output path is writable
+      - NGC checkpoint file present + sha recorded (no equality pin yet
+        -- D0-23 v1 verifies architectural identity via the reproduction
+        gate; a hard sha pin would land as a follow-up if upstream drift
+        becomes a concern).
+    """
+    import hashlib
+    import os
+
+    import torch
+
+    findings: dict[str, object] = {}
+
+    assert ckpt_path.exists(), f"NGC checkpoint missing at {ckpt_path}"
+    h_ckpt = hashlib.sha256()
+    with open(ckpt_path, "rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h_ckpt.update(chunk)
+    findings["ckpt_sha256"] = h_ckpt.hexdigest()
+    findings["ckpt_path"] = str(ckpt_path)
+
+    assert torch.get_default_dtype() == torch.float32, (
+        f"torch.set_default_dtype(torch.float32) must precede dataset "
+        f"construction (KU §5.6); got {torch.get_default_dtype()}"
+    )
+    findings["torch_default_dtype"] = "float32"
+
+    assert os.getcwd() == rollout_dir, (
+        f"KU §5.4 CWD discipline: expected cwd={rollout_dir}, got {os.getcwd()}"
+    )
+    edge_stats_p = os.path.join(rollout_dir, "edge_stats.json")
+    node_stats_p = os.path.join(rollout_dir, "node_stats.json")
+    assert os.path.isfile(edge_stats_p), f"edge_stats.json not staged at {edge_stats_p}"
+    assert os.path.isfile(node_stats_p), f"node_stats.json not staged at {node_stats_p}"
+    findings["rollout_dir"] = rollout_dir
+
+    out_dir = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    test_path = out_dir / ".preflight_writable_check"
+    test_path.write_text("ok")
+    test_path.unlink()
+    findings["rollout_output_dir"] = str(out_dir)
+
+    findings["physicsnemo_sha"] = PHYSICSNEMO_SHA
+    findings["git_sha"] = git_sha
+    return findings
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    gpu="A10G",
+    timeout=60 * 60 * 2,
+)
+def mgn_rollout_p0_vortex_shedding(
+    git_sha: str,
+    full_git_sha: str,
+    traj_idx: int,
+    num_steps: int = 600,
+) -> dict:
+    """Phase 2 Task 6 -- MGN inference on the canonical cylinder_flow test
+    trajectory (selected via Task 1's Strouhal audit; D0-24 v0 result =
+    traj_idx 44). Reproduces ``inference.py``'s
+    denorm-renorm-model-denorm-mask-integrate protocol verbatim from the
+    substrate-class smoke, lifts to ``n_rollout_steps = num_steps - 1``
+    (= 599 by default; the full cylinder_flow trajectory horizon).
+
+    Writes:
+      - /vol/rollouts/physicsnemo/vortex_shedding_<sha>/mgn_rollout.npz
+      - /vol/rollouts/physicsnemo/vortex_shedding_<sha>/mgn_rollout_p0_findings.json
+
+    F5 absorption (Phase-1 cross-review Finding 5): rollout-dir isolation
+    pattern -- a fresh ``tempfile.mkdtemp`` per fire so parallel/retry runs
+    cannot collide on CWD-relative stats reads
+    (vortex_shedding_dataset.py:103,141 @ 1ca85d65). Task 7's smoke test
+    exercises the Python-level invariant on local pytest tmp_path; this
+    entrypoint demonstrates the pattern in the production path.
+
+    Cap discipline ([[feedback_cap_rationale_not_literal]]): ONE A10G fire
+    for Task 6. If it fails, diagnose CPU-only before any re-fire; do NOT
+    fix-iterate-on-GPU. A *verdict-confirmation* measurement-only re-fire
+    (no adapter change, no protocol change, instrumentation only) is a
+    separate cap category per the D0-23 refinement.
+
+    The metadata records ``cells_2d`` from the test trajectory's mesh so
+    Task 7's lint path (via Task 4's wired FE branch) can compute the
+    incompressibility defect on the rollout without inferring triangulation
+    from edge_index.
+    """
+    import json as _json
+    import os
+    import shutil
+    import sys
+    import tempfile
+
+    import numpy as np
+    import torch
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    for p in (
+        data_dir / "meta.json",
+        data_dir / "test.tfrecord",
+        data_dir / "edge_stats.json",
+        data_dir / "node_stats.json",
+    ):
+        if not p.exists():
+            raise FileNotFoundError(
+                f"{p} missing -- run download_dm_cylinder_flow_dataset + "
+                f"compute_cylinder_flow_stats first."
+            )
+    if _sha256_of_file(data_dir / "meta.json") != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(data_dir / "test.tfrecord") != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    sys.path.insert(0, "/root")  # for _legacy_checkpoint_name_remap.py
+
+    # F5: rollout-dir isolation. tempfile.mkdtemp guarantees a unique
+    # path even for two concurrent fires with the same prefix; the
+    # CWD-relative stats reads are therefore container-local.
+    rollout_dir = tempfile.mkdtemp(prefix=f"mgn_rollout_p0_{git_sha}_")
+    shutil.copy2(data_dir / "edge_stats.json", os.path.join(rollout_dir, "edge_stats.json"))
+    shutil.copy2(data_dir / "node_stats.json", os.path.join(rollout_dir, "node_stats.json"))
+    old_cwd = os.getcwd()
+
+    try:
+        os.chdir(rollout_dir)
+        torch.set_default_dtype(torch.float32)
+
+        ckpt_path = Path(
+            f"{VOLUME_CHECKPOINT_ROOT}/modulus_ns_meshgraphnet_{NGC_VORTEX_VERSION}/"
+            f"vortex_shedding_mgn/model.pt"
+        )
+        preflight = _preflight_mgn_inference_p0(rollout_dir, git_sha, ckpt_path)
+
+        from _legacy_checkpoint_name_remap import remap_modulus_to_physicsnemo_state_dict
+        from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+        from physicsnemo.models.meshgraphnet import MeshGraphNet
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        preflight["device"] = device
+
+        ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+        raw_sd = ckpt.get("model_state_dict", ckpt) if isinstance(ckpt, dict) else ckpt
+        model = MeshGraphNet(input_dim_nodes=6, input_dim_edges=3, output_dim=3)
+        model.load_state_dict(remap_modulus_to_physicsnemo_state_dict(raw_sd), strict=True)
+        model = model.to(device).eval()
+        preflight["model_loaded"] = "strict=True OK (corrected name-remap adapter)"
+
+        # Build dataset spanning traj_idx + 1 trajectories. The dataset
+        # iterates test.tfrecord in order, so trajectory T's pairs are at
+        # indices [T*(num_steps-1), (T+1)*(num_steps-1) - 1].
+        n_samples_needed = traj_idx + 1
+        ds = VortexSheddingDataset(
+            name="cylinder_flow",
+            data_dir=str(data_dir),
+            split="test",
+            num_samples=n_samples_needed,
+            num_steps=num_steps,
+            noise_std=0.0,  # ignored for split != "train" per loader-contract V-entries
+        )
+        stats = {k: v.to(device) for k, v in ds.node_stats.items()}
+        n_pairs = num_steps - 1
+        first_pair_idx = traj_idx * n_pairs
+
+        # Extract static mesh + node_type from the first pair of traj_idx.
+        graph0, cells0, _mask0 = ds[first_pair_idx]
+        mesh_pos = np.asarray(graph0["mesh_pos"]).astype(np.float32)  # (N, 2)
+        cells_np = np.asarray(cells0).astype(np.int64)  # (M, 3)
+        # Decode raw node_type from the one-hot encoding in graph.x[:, 2:6].
+        # vortex_shedding_dataset.py:363-368: class 0 -> NORMAL(0), class K>=1
+        # -> K+3 (so class 1->4=INFLOW, 2->5=OUTFLOW, 3->6=WALL).
+        node_class = np.asarray(graph0.x[:, 2:6].argmax(dim=1)).astype(np.int64)
+        node_type_raw = np.where(node_class == 0, 0, node_class + 3).astype(np.int64)
+        n_nodes = mesh_pos.shape[0]
+
+        # MGN rollout: inference.py predict() protocol with prev-prediction feedback.
+        # Mirrors substrate-class smoke lines 1776-1803 verbatim, lifted to traj_idx.
+        v_pred = np.empty((n_pairs, n_nodes, 2), dtype=np.float32)
+        p_pred = np.empty((n_pairs, n_nodes, 1), dtype=np.float32)
+        prev_v = None
+        with torch.no_grad():
+            for t in range(n_pairs):
+                idx = first_pair_idx + t
+                g_t, _c, mask_t = ds[idx]
+                g_t = g_t.to(device)
+                g_t.x[:, 0:2] = VortexSheddingDataset.denormalize(
+                    g_t.x[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )
+                invar = g_t.x.clone()
+                if t != 0:
+                    invar[:, 0:2] = prev_v
+                invar[:, 0:2] = VortexSheddingDataset.normalize_node(
+                    invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )
+                pred_i = model(invar, g_t.edge_attr, g_t).detach()
+                pred_i_velo = VortexSheddingDataset.denormalize(
+                    pred_i[:, 0:2], stats["velocity_diff_mean"], stats["velocity_diff_std"]
+                )
+                pred_i_pres = VortexSheddingDataset.denormalize(
+                    pred_i[:, 2:3], stats["pressure_mean"], stats["pressure_std"]
+                )
+                invar[:, 0:2] = VortexSheddingDataset.denormalize(
+                    invar[:, 0:2], stats["velocity_mean"], stats["velocity_std"]
+                )
+                mask2 = torch.cat((mask_t, mask_t), dim=-1).to(device)
+                v_diff_masked = torch.where(mask2, pred_i_velo, torch.zeros_like(pred_i_velo))
+                v_next = v_diff_masked + invar[:, 0:2]
+                v_pred[t] = v_next.cpu().numpy().astype(np.float32)
+                p_pred[t] = pred_i_pres.cpu().numpy().astype(np.float32)
+                prev_v = v_next.clone()
+                if (t + 1) % 100 == 0:
+                    print(f"  ... rolled out {t + 1}/{n_pairs} steps")
+
+        from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+            MeshRollout,
+            _assert_loader_contract_mgn,
+            save_mesh_rollout_npz,
+        )
+
+        rollout = MeshRollout(
+            node_positions=mesh_pos,
+            node_type=node_type_raw,
+            node_values={"velocity": v_pred, "pressure": p_pred},
+            dt=0.01,  # cylinder_flow meta.json
+            metadata={
+                "framework": "pytorch+dgl",  # honored even though v2.0.0 is PyG (KU §5.x)
+                "model": "modulus_ns_meshgraphnet",
+                "dataset": "vortex_shedding_2d",
+                "regular_grid": False,
+                "cells_2d": cells_np,  # for Task 4's FE path in Task 7's lint
+                "git_sha": git_sha,
+                "full_git_sha": full_git_sha,
+                "trajectory_index": traj_idx,
+                "ngc_version": NGC_VORTEX_VERSION,
+                "ckpt_sha256": preflight["ckpt_sha256"],
+                "ckpt_hash": preflight["ckpt_sha256"][:16],  # short for SARIF display
+                "physicsnemo_sha": PHYSICSNEMO_SHA,
+                "n_rollout_steps": n_pairs,
+            },
+            edge_index=None,  # cells_2d is the load-bearing topology for Task 4's FE
+        )
+        # Belt-and-braces fail-loud: the load_mesh_rollout_npz path also
+        # validates on read (Task 3 F3 wiring), but explicit save-side
+        # check surfaces materializer bugs at write time too.
+        _assert_loader_contract_mgn(rollout)
+
+        out_dir = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_npz = out_dir / "mgn_rollout.npz"
+        save_mesh_rollout_npz(rollout, out_npz)
+
+        findings = {
+            "rollout_dir": rollout_dir,
+            "out_npz": str(out_npz),
+            "traj_idx": traj_idx,
+            "n_rollout_steps": n_pairs,
+            "num_steps": num_steps,
+            "n_nodes": int(n_nodes),
+            "n_cells": int(cells_np.shape[0]),
+            "device": device,
+            "preflight": preflight,
+        }
+        out_findings = out_dir / "mgn_rollout_p0_findings.json"
+        out_findings.write_text(_json.dumps(findings, indent=2, default=str))
+        mgn_volume.commit()
+        print(f"=== MGN ROLLOUT P0 COMPLETE (traj_idx={traj_idx}) ===")
+        print(_json.dumps(findings, indent=2, default=str))
+        return findings
+    finally:
+        os.chdir(old_cwd)
+        # F5: rollout_dir is NOT removed -- Modal containers are destroyed
+        # at function exit anyway, so the tempfile.mkdtemp guarantees
+        # provide the actual isolation; the persistence here documents the
+        # path used in case a post-mortem inspection is needed.
