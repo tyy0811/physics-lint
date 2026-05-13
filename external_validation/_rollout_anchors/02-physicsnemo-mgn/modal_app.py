@@ -1951,3 +1951,298 @@ def smoke_substrate_class_vortex_shedding(num_steps: int = 400) -> dict:
     print("=== SUBSTRATE-CLASS SMOKE (vortex_shedding) VERDICT ===")
     print(_json.dumps(result, indent=2, default=str))
     return result
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — Task 1: Strouhal pre-check across cylinder_flow test trajectories.
+# ---------------------------------------------------------------------------
+
+
+def _strouhal_for_test_trajectory(rec, dt: float, traj_idx: int) -> dict:
+    """Compute per-trajectory Strouhal from one raw test.tfrecord record.
+
+    `rec`: a `VortexSheddingDataset._decode_record(...)` output -- dict of
+    arrays where `velocity` is `(T, N, 2)` and the static fields
+    (`mesh_pos`, `cells`, `node_type`) are tiled to `(T, ...)` by the
+    decoder (V10 / V12 per the loader-contract audit). Raw `node_type`
+    values are `{0, 3, 4, 5, 6}` per V16 -- the substrate-class smoke's
+    one-hot convention maps `4 -> INFLOW`, `5 -> OUTFLOW`, `6 -> WALL`.
+
+    Returns a dict with `strouhal_U_mean` / `strouhal_U_max` (the standard
+    two conventions for cylinder-wake Strouhal; the substrate-class smoke
+    reports both), the cylinder geometry, and the inflow-speed window.
+    On geometry-detection failures returns `{"traj_idx", "error"}` only;
+    the caller decides how to count those.
+    """
+    import numpy as np
+    import skfem
+
+    velocity = np.asarray(rec["velocity"]).astype(np.float64)  # (T, N, 2)
+    mesh_pos = np.asarray(rec["mesh_pos"][0]).astype(np.float64)  # (N, 2)
+    cells = np.asarray(rec["cells"][0]).astype(np.int64)  # (M, 3)
+    node_type = np.asarray(rec["node_type"][0]).reshape(-1).astype(int)  # (N,)
+
+    n_frames, n_nodes = velocity.shape[:2]
+    x_min, y_min = mesh_pos.min(axis=0)
+    x_max, y_max = mesh_pos.max(axis=0)
+
+    # Cylinder surface = WALL (==6) nodes NOT on the channel rectangle perimeter.
+    # Same machinery as smoke_substrate_class_vortex_shedding.
+    is_wall = node_type == 6
+    ytol = 0.02 * (y_max - y_min)
+    xtol = 0.02 * (x_max - x_min)
+    on_channel = (
+        (np.abs(mesh_pos[:, 1] - y_min) < ytol)
+        | (np.abs(mesh_pos[:, 1] - y_max) < ytol)
+        | (np.abs(mesh_pos[:, 0] - x_min) < xtol)
+        | (np.abs(mesh_pos[:, 0] - x_max) < xtol)
+    )
+    cyl_mask = is_wall & (~on_channel)
+    n_cyl = int(cyl_mask.sum())
+    if n_cyl < 4:
+        return {
+            "traj_idx": traj_idx,
+            "error": f"only {n_cyl} cylinder-surface nodes (need >= 4)",
+        }
+    cyl_xy = mesh_pos[cyl_mask]
+    diam_x = float(cyl_xy[:, 0].max() - cyl_xy[:, 0].min())
+    diam_y = float(cyl_xy[:, 1].max() - cyl_xy[:, 1].min())
+    cyl_d = max(diam_x, diam_y)
+    cyl_center = [float(cyl_xy[:, 0].mean()), float(cyl_xy[:, 1].mean())]
+    if not (0.0 < cyl_d < 0.5 * (y_max - y_min)):
+        return {
+            "traj_idx": traj_idx,
+            "error": (
+                f"implausible cylinder diameter {cyl_d:.4f} vs channel height "
+                f"{float(y_max - y_min):.4f} (WALL-node clustering picked up "
+                f"wrong nodes)"
+            ),
+        }
+
+    inflow_mask = node_type == 4
+    n_inflow = int(inflow_mask.sum())
+    if n_inflow == 0:
+        return {
+            "traj_idx": traj_idx,
+            "error": "no INFLOW (node_type==4) nodes; cannot estimate U",
+        }
+
+    mesh = skfem.MeshTri(np.ascontiguousarray(mesh_pos.T), np.ascontiguousarray(cells.T))
+    basis = skfem.Basis(mesh, skfem.ElementTriP1())
+    # Belt-and-braces invariant: skfem may reorder nodes; if so, the
+    # downstream FE-interpolate-by-node-array breaks. The substrate-class
+    # smoke asserts the same invariant.
+    if not np.allclose(mesh.p.T, mesh_pos):
+        return {
+            "traj_idx": traj_idx,
+            "error": "skfem reordered nodes -- DOF<->node map broken",
+        }
+
+    # Lift proxy: integral of v_y over the domain, per frame. Same as the
+    # substrate-class smoke's lift series. FFT of the post-warmup window
+    # yields the vortex-shedding frequency f_s.
+    lift = np.empty(n_frames, dtype=np.float64)
+    for t in range(n_frames):
+        vy_f = basis.interpolate(velocity[t, :, 1])
+        lift[t] = float(np.sum(vy_f.value * basis.dx))
+
+    warmup = min(40, n_frames // 5)
+    speed_in = np.linalg.norm(velocity[:, inflow_mask, :], axis=2)  # (T, n_inflow)
+    u_mean = float(speed_in[warmup:].mean())
+    u_max = float(speed_in[warmup:].max())
+
+    lift_post = lift[warmup:]
+    if len(lift_post) < 8:
+        return {
+            "traj_idx": traj_idx,
+            "error": f"post-warmup window too short ({len(lift_post)} frames)",
+        }
+    lp = (lift_post - lift_post.mean()) * np.hanning(len(lift_post))
+    spec = np.abs(np.fft.rfft(lp))
+    freqs = np.fft.rfftfreq(len(lift_post), d=dt)
+    peak_idx = int(np.argmax(spec[1:]) + 1)  # skip DC
+    f_s = float(freqs[peak_idx])
+    peak_prom = float(spec[peak_idx] / (np.median(spec[1:]) + 1e-30))
+
+    return {
+        "traj_idx": traj_idx,
+        "n_nodes": int(n_nodes),
+        "n_cells": int(cells.shape[0]),
+        "n_cyl_surface_nodes": n_cyl,
+        "n_inflow_nodes": n_inflow,
+        "cyl_diameter": cyl_d,
+        "cyl_diameter_x": diam_x,
+        "cyl_diameter_y": diam_y,
+        "cyl_center": cyl_center,
+        "U_mean": u_mean,
+        "U_max": u_max,
+        "f_s_Hz": f_s,
+        "shedding_peak_prominence": peak_prom,
+        "strouhal_U_mean": f_s * cyl_d / u_mean if u_mean > 0 else float("nan"),
+        "strouhal_U_max": f_s * cyl_d / u_max if u_max > 0 else float("nan"),
+        "warmup_frames": warmup,
+    }
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=60 * 30,
+)
+def audit_strouhal_test_trajectories(
+    git_sha: str,
+    count_only: bool = False,
+) -> dict:
+    """Phase 2 Task 1 -- pre-fire Strouhal audit across all cylinder_flow test
+    trajectories (refinement 1; design D0-24 v0). CPU-only; iterates raw
+    test.tfrecord records via the same machinery as
+    audit_cylinder_flow_loader_contract (lines 854-861) and reuses the
+    substrate-class smoke's Strouhal pipeline (volume-integrated lift proxy
+    + Hann-windowed FFT + scikit-fem P1 basis on the per-trajectory mesh).
+
+    For each test trajectory, computes f_s, U_mean, U_max, cylinder D, and
+    St in both conventions (U_mean, U_max). A trajectory is "in design band"
+    iff EITHER convention lands in [0.16, 0.21] (substrate-class smoke
+    convention; either-or hedges the U_mean-vs-U_max ambiguity in the
+    literature). Canonical Phase 2 trajectory = median-Strouhal-in-band
+    (sorted by strouhal_U_max for a deterministic order).
+
+    Writes findings + selection to
+    /vol/datasets/cylinder_flow/strouhal_test_trajectories.json.
+
+    --count-only mode: counts test.tfrecord records and prints N_test;
+    no Strouhal computation. Use for the Plan Step 1 sanity check.
+
+    Verdict:
+      OK           - >=1 in-band trajectory; canonical pinned. Proceed to Task 2.
+      INVESTIGATE  - 0 in-band; do NOT fire Phase 2 Task 6. Inspect band /
+                     geometry detection / U convention.
+    """
+    import json as _json
+
+    import numpy as np
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    meta_path = data_dir / "meta.json"
+    test_tfrecord_path = data_dir / "test.tfrecord"
+    for p in (meta_path, test_tfrecord_path):
+        if not p.exists():
+            raise FileNotFoundError(f"{p} missing -- run download_dm_cylinder_flow_dataset first.")
+    if _sha256_of_file(meta_path) != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(test_tfrecord_path) != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    meta = _json.loads(meta_path.read_text())
+    field_names = meta["field_names"]
+    trajectory_length = int(meta["trajectory_length"])
+    dt = 0.01  # cylinder_flow meta.json: "dt": 0.01
+
+    import tfrecord.torch.dataset as tfrecord_torch
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+
+    description = {k: "byte" for k in field_names}
+
+    def _records():
+        tfr = tfrecord_torch.TFRecordDataset(
+            str(test_tfrecord_path),
+            None,  # no .tfindex -> single-worker sequential read
+            description,
+            transform=lambda r: VortexSheddingDataset._decode_record(r, meta),
+        )
+        return iter(tfr)
+
+    if count_only:
+        n = sum(1 for _ in _records())
+        print(f"N_test = {n}")
+        return {
+            "N_test": n,
+            "physicsnemo_sha": PHYSICSNEMO_SHA,
+            "git_sha": git_sha,
+        }
+
+    design_band = (0.16, 0.21)
+    per_trajectory: list[dict] = []
+    for traj_idx, rec in enumerate(_records()):
+        try:
+            r = _strouhal_for_test_trajectory(rec, dt, traj_idx)
+        except Exception as e:
+            r = {"traj_idx": traj_idx, "error": f"{type(e).__name__}: {e}"}
+        # Either-or band check; the substrate-class smoke (line 1870-1875)
+        # treats both conventions as acceptable evidence.
+        in_band = False
+        if "error" not in r:
+            st_mean = r.get("strouhal_U_mean")
+            st_max = r.get("strouhal_U_max")
+            in_band_mean = isinstance(st_mean, float) and (
+                design_band[0] <= st_mean <= design_band[1]
+            )
+            in_band_max = isinstance(st_max, float) and (design_band[0] <= st_max <= design_band[1])
+            in_band = bool(in_band_mean or in_band_max)
+        r["in_design_band"] = in_band
+        per_trajectory.append(r)
+        if (traj_idx + 1) % 10 == 0:
+            print(f"  ... processed {traj_idx + 1} trajectories")
+
+    in_band_results = [r for r in per_trajectory if r.get("in_design_band")]
+    out_band_results = [
+        r for r in per_trajectory if not r.get("in_design_band") and "error" not in r
+    ]
+    errors = [r for r in per_trajectory if "error" in r]
+
+    if in_band_results:
+        # Deterministic ordering: rank by strouhal_U_max so the median pick
+        # is reproducible even when both conventions land in-band.
+        sorted_in_band = sorted(in_band_results, key=lambda r: r["strouhal_U_max"])
+        canonical = sorted_in_band[len(sorted_in_band) // 2]
+        verdict = "OK"
+        selection_reason = (
+            f"{len(in_band_results)}/{len(per_trajectory)} test trajectories "
+            f"land in design band [{design_band[0]}, {design_band[1]}] "
+            f"(either-or on strouhal_U_mean / strouhal_U_max); canonical = "
+            f"median-Strouhal in-band sorted by strouhal_U_max "
+            f"(traj_idx={canonical['traj_idx']}, "
+            f"St_U_mean={canonical['strouhal_U_mean']:.3f}, "
+            f"St_U_max={canonical['strouhal_U_max']:.3f})."
+        )
+    else:
+        canonical = None
+        verdict = "INVESTIGATE"
+        st_max_values = [
+            r["strouhal_U_max"]
+            for r in per_trajectory
+            if isinstance(r.get("strouhal_U_max"), float) and not (np.isnan(r["strouhal_U_max"]))
+        ]
+        if st_max_values:
+            range_str = f"strouhal_U_max range [{min(st_max_values):.3f}, {max(st_max_values):.3f}]"
+        else:
+            range_str = "no valid Strouhal computed"
+        selection_reason = (
+            f"0/{len(per_trajectory)} test trajectories land in design band "
+            f"[{design_band[0]}, {design_band[1]}]; {range_str}. The "
+            f"literature-anchored band may be wrong for this cylinder_flow "
+            f"distribution; investigate before Phase 2 Task 6 fires (see "
+            f"Task 1 outcome decision tree)."
+        )
+
+    findings = {
+        "verdict": verdict,
+        "n_test_trajectories": len(per_trajectory),
+        "n_in_design_band": len(in_band_results),
+        "n_out_of_design_band": len(out_band_results),
+        "n_errors": len(errors),
+        "design_band": list(design_band),
+        "trajectory_length": trajectory_length,
+        "dt": dt,
+        "per_trajectory": per_trajectory,
+        "canonical_trajectory": canonical,
+        "selection_reason": selection_reason,
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "git_sha": git_sha,
+    }
+
+    out_path = data_dir / "strouhal_test_trajectories.json"
+    out_path.write_text(_json.dumps(findings, indent=2, default=str))
+    mgn_volume.commit()
+    print(f"=== STROUHAL AUDIT VERDICT: {verdict} ===")
+    print(selection_reason)
+    return findings
