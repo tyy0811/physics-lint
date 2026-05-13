@@ -451,6 +451,55 @@ def test_renderer_ingests_from_multiple_dirs() -> None:
     assert "deepmind-cylinder-flow-gt" not in table
 
 
+def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
+    """Phase 3 Task 3 golden test: the unified 3-column rendering (LB
+    tgv2d_8e49339469 SARIFs + CS02 mgn.sarif; gt.sarif filtered by
+    arm) is byte-for-byte identical to the committed golden fixture.
+
+    Pins the cross-substrate cross-stack table's shape; any drift
+    between production SARIFs and the rendered table is caught at
+    test time. To regenerate after a deliberate SARIF re-emission,
+    re-run the CLI command in this docstring with the new SARIFs in
+    place and replace the fixture.
+
+    Regenerate:
+        python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \\
+            --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/ \\
+            --include-glob '*_tgv2d_8e49339469.sarif' \\
+            --sarif-dir external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/ \\
+            > external_validation/_rollout_anchors/methodology/tests/fixtures/cs02_unified_cross_stack_table_golden.md
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*_tgv2d_8e49339469.sarif")
+    )
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+
+    actual = render_cross_stack_table([*lb_sarifs, cs02_dir / "gt.sarif", cs02_dir / "mgn.sarif"])
+    expected = (FIXTURES_DIR / "cs02_unified_cross_stack_table_golden.md").read_text()
+    assert actual == expected, (
+        "Unified CS01+CS02 cross-stack table diverged from golden fixture.\n"
+        f"--- expected ---\n{expected}\n"
+        f"--- actual ---\n{actual}\n"
+        "If this divergence is intentional (e.g., deliberate SARIF "
+        "re-emission), regenerate the fixture per the docstring."
+    )
+
+
 def test_renderer_filters_control_arm_sarif_when_present() -> None:
     """If the caller passes CS02's gt.sarif AND mgn.sarif (e.g., via
     a directory glob that picks up both), the renderer must filter the
