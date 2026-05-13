@@ -2,6 +2,17 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Execution drift note (added at Phase 3 round-codex-2 finding 6 absorption).** Phase 3 execution surfaced four plan-vs-reality drifts in inline template prose. The drifts were caught + corrected DURING execution; the corrected text lives in the committed artifacts (CS02 README, cross-stack-table artifact, DECISIONS.md). The plan's template prose at the line numbers below was NOT retro-edited verbatim because the plan is preserved as a historical implementation contract; the corrections are recorded here so a re-reader follows the actual-committed text, not the template-as-originally-written:
+>
+> | Plan line | Stale template literal | Corrected in committed artifact | Absorbed at |
+> |---|---|---|---|
+> | L327 (Task 3 cross-stack-table headline template) | *"rule schema, unmodified"* | Cross-stack-table artifact uses *"three-row conservation result-schema ... result-row + run-level field reuse ... NOT public v1 rule-code reuse"* | round-codex-1 finding 2 (`4d66e44`) |
+> | L341 (Task 3 cross-stack-table "What extending preserves" template) | *"the `arm == 'control'` filter"* | Renderer + cross-stack artifact use `arm == 'gt-control'` (the actual SARIF emission literal) | Task 2 (`4616809`) |
+> | L482 (Task 5 README bridge template) | *"rule schema runs unmodified"* | README bridge now uses the narrower *result-row + run-level field reuse* framing with inline PH-CON-001 routing pointer | round-codex-2 finding 3 (`5ff6832`) |
+> | L640 (Task 7 README Reproducibility "Inference-gate test" template) | *"max-abs-error ≤ 10⁻³ ... gate-determining test for Gate D"* (the original criterion) | README "Inference-gate test" subsection now names D0-23's retirement of the `10⁻³` max-abs criterion + the RMSE-1 ≤ 5e-3 recalibrated band as the actual gate | round-codex-1 finding 1 (`a42784b`) |
+>
+> Additionally: Task 2's expected D-entry citations *"D0-22 + D0-23"* (in Task 3 expected-output section) were corrected mid-execution to the regex-extracted *"D0-22 (amendment 1)"* / *"D0-22"* that the actual SARIFs emit; the inline correction is at L300-308 of this plan, in the same commit (`4616809`) as the renderer extension.
+
 **Goal:** Compose the case-study-02 writeup (CS02 README expansion + new unified three-column cross-stack consistency table extending rung-4a + v2.1.1 methodology amendment dated artifact), land the Phase 3 boundary Codex prose-cross-review with cell-2 absorption, and close D0-24 + §4.3 acceptance with all artifacts pushed.
 
 **Architecture:**
