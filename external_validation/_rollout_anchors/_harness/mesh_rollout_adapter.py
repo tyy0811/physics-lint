@@ -293,7 +293,7 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         edge_index = (
             np.asarray(data["edge_index"], dtype=np.int64) if "edge_index" in data.files else None
         )
-    return MeshRollout(
+    rollout = MeshRollout(
         node_positions=node_positions,
         node_type=node_type,
         node_values=node_values,
@@ -301,6 +301,19 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         metadata=metadata,
         edge_index=edge_index,
     )
+    # Phase-1 cross-review Finding 3 absorption (Phase 2 Task 3): enforce
+    # the MGN loader contract at the first trusted boundary. Scope
+    # detection: `metadata["model"]` starting with "modulus_" identifies
+    # an MGN rollout (vs synthetic / FNO-on-Darcy / future stacks).
+    # Generic mesh rollouts bypass — they do not claim to satisfy the
+    # MGN contract. The narrow scope is P0 vortex_shedding_2d per design
+    # §2.1 + D0-23 v10; Amendment 1 (Ahmed Body / future MGN datasets)
+    # is the multi-instance trigger that would force a dataset-keyed
+    # dispatch over a name-prefix predicate.
+    model_name = str(rollout.metadata.get("model", ""))
+    if model_name.startswith("modulus_"):
+        _assert_loader_contract_mgn(rollout)
+    return rollout
 
 
 def _assert_loader_contract_mgn(rollout: MeshRollout) -> None:

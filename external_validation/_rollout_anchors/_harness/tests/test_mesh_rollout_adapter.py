@@ -34,6 +34,8 @@ from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
     _expect_velocity,
     dissipation_sign_violation_on_mesh,
     energy_drift_on_mesh,
+    load_mesh_rollout_npz,
+    save_mesh_rollout_npz,
 )
 
 # ---------------------------------------------------------------------------
@@ -325,3 +327,129 @@ def test_assert_loader_contract_mgn_raises_when_velocity_key_absent() -> None:
     )
     with pytest.raises(AssertionError, match="velocity"):
         _assert_loader_contract_mgn(rollout)
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 Task 3 — Finding 3 absorption: ``_assert_loader_contract_mgn`` is
+# wired into ``load_mesh_rollout_npz`` at the first trusted MGN boundary.
+# Tests exercise the helper through the wired path (NPZ round-trip), not
+# direct invocation. Scope detection: ``metadata["model"].startswith
+# ("modulus_")`` ⇒ MGN contract; everything else (``framework="synthetic"``,
+# FNO-on-Darcy, future stacks) bypasses.
+# ---------------------------------------------------------------------------
+
+
+def test_load_mesh_rollout_npz_rejects_mgn_rollout_with_fp64_velocity(tmp_path) -> None:
+    """Phase-1 cross-review Finding 3 absorption: an on-disk NPZ that
+    identifies as MGN (``metadata["model"]`` starts with ``"modulus_"``)
+    but carries fp64 velocity must fail-loud at load. Because
+    ``save_mesh_rollout_npz`` unconditionally down-casts to fp32 (the
+    intended sanitization path), the test bypasses it and writes the
+    NPZ directly with ``np.savez`` — modelling a materializer bug or
+    a third-party stack that bypasses the canonical save helper.
+    """
+    bad_path = tmp_path / "bad_fp64.npz"
+    np.savez(
+        bad_path,
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.zeros(10, dtype=np.int32),
+        node_values=np.array(
+            {"velocity": np.ones((5, 10, 2), dtype=np.float64)},  # fp64 — contract violation
+            dtype=object,
+        ),
+        dt=np.float64(0.01),
+        metadata=np.array(
+            {
+                "framework": "pytorch+dgl",
+                "model": "modulus_ns_meshgraphnet",  # MGN-scoped
+                "dataset": "vortex_shedding_2d",
+            },
+            dtype=object,
+        ),
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    with pytest.raises(AssertionError, match="float32"):
+        load_mesh_rollout_npz(bad_path)
+
+
+def test_load_mesh_rollout_npz_rejects_mgn_rollout_with_wrong_velocity_key(tmp_path) -> None:
+    """Finding 3 + Finding 2 absorption: an MGN-scoped NPZ with
+    ``node_values`` under the wrong key (e.g. ``"u"`` instead of
+    ``"velocity"``) fails-loud at load. The helper's velocity-key
+    enforcement was deepened in Finding 2; this verifies the wiring
+    propagates it through the NPZ round-trip path.
+    """
+    bad = _well_formed_mgn_rollout(
+        node_values={"u": np.ones((5, 10, 2), dtype=np.float32)},
+    )
+    save_mesh_rollout_npz(bad, tmp_path / "bad_key.npz")
+    with pytest.raises(AssertionError, match="velocity"):
+        load_mesh_rollout_npz(tmp_path / "bad_key.npz")
+
+
+def test_load_mesh_rollout_npz_rejects_mgn_rollout_missing_dataset_metadata(tmp_path) -> None:
+    """Finding 3 + Finding 1 absorption: an MGN-scoped NPZ missing
+    ``metadata["dataset"]`` fails-loud at load (else the v9 substrate-
+    class dispatch silently no-ops and the rule emits a misleading raw
+    value on an open-driven-dissipative substrate).
+    """
+    bad = _well_formed_mgn_rollout(
+        metadata={"framework": "pytorch+dgl", "model": "modulus_ns_meshgraphnet"},
+    )
+    save_mesh_rollout_npz(bad, tmp_path / "bad_meta.npz")
+    with pytest.raises(AssertionError, match="dataset"):
+        load_mesh_rollout_npz(tmp_path / "bad_meta.npz")
+
+
+def test_load_mesh_rollout_npz_rejects_mgn_rollout_with_invalid_node_type(tmp_path) -> None:
+    """Finding 3: an MGN-scoped NPZ with ``node_type`` values outside
+    ``{0, 3, 4, 5, 6}`` (the loader's one-hot domain after the value-3
+    shift; vortex_shedding_dataset.py:363-368 @ 1ca85d65) fails-loud at
+    load — the alternative is a downstream RuntimeError during the
+    one-hot encode rather than a diagnostic AssertionError here.
+    """
+    bad = _well_formed_mgn_rollout(
+        node_type=np.array([0, 3, 4, 5, 6, 7, 0, 0, 0, 0], dtype=np.int64),
+    )
+    save_mesh_rollout_npz(bad, tmp_path / "bad_ntype.npz")
+    with pytest.raises(AssertionError, match="node_type"):
+        load_mesh_rollout_npz(tmp_path / "bad_ntype.npz")
+
+
+def test_load_mesh_rollout_npz_passes_well_formed_mgn_rollout_round_trip(tmp_path) -> None:
+    """Sanity: a well-formed MGN rollout round-trips through save+load
+    without raising. Distinguishes Finding-3 wiring's fail-loud paths
+    from a wholesale block on the MGN scope.
+    """
+    good = _well_formed_mgn_rollout()
+    save_mesh_rollout_npz(good, tmp_path / "good.npz")
+    recovered = load_mesh_rollout_npz(tmp_path / "good.npz")
+    assert recovered.metadata["model"] == "modulus_ns_meshgraphnet"
+    assert recovered.node_values["velocity"].dtype == np.float32
+
+
+def test_load_mesh_rollout_npz_does_not_apply_mgn_contract_to_synthetic_rollouts(tmp_path) -> None:
+    """Finding 3 scoping: generic mesh rollouts (``framework="synthetic"``,
+    ``model`` NOT starting with ``"modulus_"``) bypass the MGN contract —
+    they don't claim to satisfy it, and the contract's narrow scope is
+    P0 vortex_shedding_2d per design §2.1 and D0-23 v10 scope note. A
+    synthetic rollout authored with a node_type value outside the MGN
+    one-hot domain (which would violate the MGN contract) must
+    round-trip without raising.
+    """
+    synthetic = MeshRollout(
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.array([0, 1, 2, 0, 0, 0, 0, 0, 0, 0], dtype=np.int64),  # 1,2 invalid for MGN
+        node_values={"velocity": np.ones((5, 10, 2), dtype=np.float32)},
+        dt=0.01,
+        metadata={
+            "framework": "synthetic",
+            "model": "synthetic_unit_square",  # NOT "modulus_*"
+            "dataset": "synthetic_unit_square",
+        },
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    save_mesh_rollout_npz(synthetic, tmp_path / "synthetic.npz")
+    recovered = load_mesh_rollout_npz(tmp_path / "synthetic.npz")  # must NOT raise
+    assert recovered.metadata["framework"] == "synthetic"
+    assert recovered.metadata["model"] == "synthetic_unit_square"
