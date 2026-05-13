@@ -17,17 +17,21 @@ fallback (folder renamed to `02-fno-darcy/` if Gate D triggers).*
 
 P0 results for `modulus_ns_meshgraphnet` on cylinder_flow vortex shedding (Phase 2 fires on canonical trajectory M = 44 — see scope qualifier below). SARIFs at [`outputs/sarif/`](outputs/sarif/) (`gt.sarif` = ground-truth control arm; `mgn.sarif` = MGN model under test). D0-24 verdict bands pre-registered before fires; all 7 verdicts pinned PASS at [DECISIONS.md D0-24](../methodology/DECISIONS.md).
 
+*Terminology used in the table below:* `open-driven-dissipative` is the [D0-22](../methodology/DECISIONS.md) substrate class whose `PH-CON-002` / `PH-CON-003` assumptions fail by design (kinetic-energy budget is not strictly dissipative and not strictly conservative; cylinder-wake flow imports KE from inflow and dissipates in the wake); `D0-23 v9` is the CS02 mesh-side substrate-class dispatch extension that fires the SKIP-with-reason path on this class; `rung-4a` denotes the LB-only cross-stack-table predecessor (`gns-tgv2d` + `segnn-tgv2d`).
+
 | Rule | GT (control arm) | MGN | D0-24 verdict |
 |---|---|---|---|
 | `PH-CON-001` mass / divergence-free | 5.857e-02 (5.857 %) | 5.881e-02 (5.881 %) | v1 PASS (GT ≤ 6 %); v2 PASS (gap = 0.41 % ≤ 20 %) |
 | `PH-CON-002` energy drift | SKIP (open-driven-dissipative, D0-22 + D0-23 v9) | SKIP (same dispatch) | v3 PASS (substrate-class dispatch fires on both arms) |
 | `PH-CON-003` dissipation sign violation | SKIP (same dispatch) | SKIP (same dispatch) | v4 PASS (same dispatch) |
 
+*PASS verdicts for `PH-CON-001` mean MGN is within the GT / harness-FE-on-P1 floor envelope on this trajectory; they are NOT a claim of physical incompressibility to 5 % — see "What physics-lint did NOT catch" §1 for the floor-bounds-resolution distinction.*
+
 See [`methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md`](../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md) for the unified three-column cross-stack consistency table including the rung-4a LB-side columns (GNS-TGV2D + SEGNN-TGV2D).
 
 ### Scope qualifier — single trajectory, in-band subset
 
-Phase 2 results report PH-CON-001 defect on a single cylinder_flow test trajectory (trajectory `M = 44`, Strouhal `St_U_max = 0.192` ∈ design band `[0.16, 0.21]`, cylinder diameter `D = 0.135`, inflow `U_max = 1.502`; Reynolds number not directly captured at Phase 2 — derivable as `Re = U · D / ν` from the cylinder_flow benchmark's `ν` if needed in Phase 3), selected via the Phase 2 pre-fire Strouhal audit (Task 1, 23 / 100 in-band) to be representative of the in-band subset under the pre-registered centerline-convention selection rule (median-`strouhal_U_max` among the 23 in-band trajectories). Trajectory `44` ranks 80th of 100 by `strouhal_U_max` on the full test set (the in-band subset occupies ranks 69-91; out-of-band trajectories sit at lower `strouhal_U_max` values, where the literature-anchored design band would not hold anyway). Coverage-not-statistics framing: physics-lint's value here is rule-firing on a real-world checkpoint, not a distribution over initial conditions. CI-gate threshold derivation from defect-magnitude distributions would require `N > 1` and is deferred (Phase 2 does NOT claim CI-gate calibration or full-distribution representativeness).
+Phase 2 results report PH-CON-001 defect on a single cylinder_flow test trajectory (trajectory `M = 44`, Strouhal `St_U_max = 0.192` ∈ design band `[0.16, 0.21]`, cylinder diameter `D = 0.135`, inflow `U_max = 1.502`; Reynolds number not directly captured at Phase 2 — derivable as `Re = U · D / ν` from the cylinder_flow benchmark's `ν` if needed in Phase 3), selected via the Phase 2 pre-fire Strouhal audit (Task 1, 23 / 100 in-band) as the centerline-Strouhal-central member of the in-band subset under the pre-registered selection rule (median-`strouhal_U_max` among the 23 in-band trajectories). Trajectory `44` ranks 80th of 100 by `strouhal_U_max` on the full test set (the in-band subset occupies ranks 69-91; out-of-band trajectories sit at lower `strouhal_U_max` values, where the literature-anchored design band would not hold anyway). Coverage-not-statistics framing: physics-lint's value here is rule-firing on a real-world checkpoint, not a distribution over initial conditions. CI-gate threshold derivation from defect-magnitude distributions would require `N > 1` and is deferred (Phase 2 does NOT claim CI-gate calibration or full-distribution representativeness).
 
 ### Bridge to the cross-stack story
 
@@ -76,7 +80,7 @@ Adapter: `_legacy_checkpoint_name_remap.py` (Phase 1 Gate D fix) — encoder/dec
 
 ### Inference-gate test
 
-Inference must pass `test_inference_matches_ngc_sample` (max-abs-error ≤ 10⁻³ on velocity components vs NGC's shipped sample) before rollouts proceed; this is the gate-determining test for Gate D (spec §6). Gate D PASSED at Phase 1 with RMSE-1 = 3.19e-3 ≤ 5e-3 (≈ 1.36× Pfaff et al. CylinderFlow RMSE-1 baseline) per [D0-23 verdict 4 recalibrated band](../methodology/DECISIONS.md).
+The original spec §6 Gate D criterion was a `max-abs-error ≤ 10⁻³` reproduction check vs an NGC-shipped reference tensor. D0-23 **retired** that criterion as a category error: the NGC checkpoint does not ship a paired reference tensor against which a max-abs reproduction error is well-defined. The Phase 1 Gate D verdict was held by the recalibrated `RMSE-1 ≤ 5e-3` band (≈ 1.36× Pfaff et al. CylinderFlow RMSE-1 baseline), which Phase 1 satisfied with `RMSE-1 = 3.19e-3`. The original `test_inference_matches_ngc_sample` test name in the test suite predates the recalibration and refers to the same RMSE-1 check post-D0-23. See [D0-23 verdict 4 recalibrated band](../methodology/DECISIONS.md) for the full audit trail.
 
 ## PH-CON-001 routing — harness, not public rule
 
