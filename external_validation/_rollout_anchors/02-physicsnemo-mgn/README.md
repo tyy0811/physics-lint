@@ -64,7 +64,7 @@ Adapter: `_legacy_checkpoint_name_remap.py` (Phase 1 Gate D fix) — encoder/dec
 
 ### Phase-3-close git_sha
 
-`<filled at Task 14 close — final commit sha on feature/case-study-02-physicsnemo-mgn>`
+`d5b0983` (pre-Task-14 final-prose sha; the Task 14 close commit itself supersedes by one).
 
 ### Image spec / dependency pinning
 
