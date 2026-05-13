@@ -20,6 +20,7 @@ from external_validation._rollout_anchors.methodology.tools.render_cross_stack_t
     ResultRowInvariantError,
     SchemaVersionMismatchError,
     SourceTagMismatchError,
+    main,
     render_cross_stack_table,
 )
 
@@ -500,6 +501,28 @@ def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
     )
 
 
+def test_renderer_raises_when_only_control_arm_sarif_passed() -> None:
+    """Phase 3 round-codex-2 (artifact-mode review) Finding 1: if every
+    input SARIF is filtered as a control-arm (here: caller passes only
+    gt.sarif), the renderer must fail loud rather than emit a
+    syntactically valid but empty table with only the `Rule` header.
+    The contract is "N upstream-rollout stacks under D0-19/D0-20"; an
+    all-filtered input is the no-input case after filtering.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+
+    with pytest.raises(MissingRunLevelFieldError, match="all input SARIFs were filtered"):
+        render_cross_stack_table([cs02_dir / "gt.sarif"])
+
+
 def test_renderer_filters_control_arm_sarif_when_present() -> None:
     """If the caller passes CS02's gt.sarif AND mgn.sarif (e.g., via
     a directory glob that picks up both), the renderer must filter the
@@ -533,3 +556,89 @@ def test_renderer_filters_control_arm_sarif_when_present() -> None:
 
     assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in table
     assert "deepmind-cylinder-flow-gt" not in table
+
+
+# ---------------------------------------------------------------------------
+# 9. CLI main() — multi-dir / paired-glob behavior (Phase 3 round-codex-2 Finding 2)
+# ---------------------------------------------------------------------------
+
+
+REPO_ROOT_FOR_CLI = Path(__file__).resolve().parents[4]
+LB_SARIF_DIR_REL = "external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/"
+CS02_SARIF_DIR_REL = "external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/"
+
+
+def test_cli_unified_invocation_renders_three_columns(capsys: pytest.CaptureFixture[str]) -> None:
+    """Phase 3 unified invocation (the docstring example): two --sarif-dir
+    flags + one --include-glob applied positionally to the LB dir. Exits
+    0 and writes the unified table to stdout.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / LB_SARIF_DIR_REL),
+            "--include-glob",
+            "*_tgv2d_8e49339469.sarif",
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+        ]
+    )
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "gns-tgv2d" in out
+    assert "segnn-tgv2d" in out
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in out
+    assert "deepmind-cylinder-flow-gt" not in out
+
+
+def test_cli_zero_globs_defaults_to_star_sarif(capsys: pytest.CaptureFixture[str]) -> None:
+    """When --include-glob is omitted entirely with multiple --sarif-dir
+    values, all positions default to '*.sarif'. The CS02 dir's gt.sarif
+    is then ingested + filtered by the arm filter; mgn.sarif renders. The
+    LB dir with default '*.sarif' would pick up the eps SARIFs and
+    trigger DuplicateStackLabelError, so this test uses only the CS02
+    dir (one model-arm SARIF after filtering).
+    """
+    rc = main(["--sarif-dir", str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in out
+    assert "deepmind-cylinder-flow-gt" not in out
+
+
+def test_cli_more_globs_than_dirs_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    """Strict positional pairing: more --include-glob values than
+    --sarif-dir values returns exit code 2 with a stderr explanation.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+            "--include-glob",
+            "*.sarif",
+            "--include-glob",
+            "extra.sarif",
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "cannot pair globs positionally" in err
+
+
+def test_cli_zero_match_glob_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    """If any --sarif-dir's resolved glob matches zero files, the CLI
+    exits 2 with the no-match message. Pre-existing behavior; pinned
+    now alongside the new multi-dir path.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+            "--include-glob",
+            "no_such_pattern_*.sarif",
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "No SARIF files matching glob" in err

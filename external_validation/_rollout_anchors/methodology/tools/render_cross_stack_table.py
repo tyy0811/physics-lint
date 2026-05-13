@@ -172,6 +172,23 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
         results = sarif["runs"][0].get("results", [])
         stacks.append((path, run_props, results))
 
+    # Phase-3-round-codex-2 (second-pass artifact-mode review) Finding 1:
+    # if every input SARIF was filtered as a control arm (e.g., caller
+    # passed only gt.sarif via a glob that matched only the control), the
+    # rest of the renderer would produce a syntactically valid but empty
+    # cross-stack table with only a `Rule` header column. Fail-loud
+    # instead — the renderer's whole contract is "N upstream-rollout
+    # stacks under D0-19/D0-20 enforcement"; an empty stack set after
+    # filtering is a no-input case, parallel to the up-front
+    # `MissingRunLevelFieldError` for an empty `paths` list.
+    if not stacks:
+        raise MissingRunLevelFieldError(
+            "render_cross_stack_table: all input SARIFs were filtered as "
+            "control-arm (arm == 'gt-control'); no model-under-test SARIF "
+            "remains to render. Pass at least one model-arm or arm-absent "
+            "SARIF (LB-side legacy or CS02-onwards mgn-rollout)."
+        )
+
     rule_ids = (
         "harness:mass_conservation_defect",
         "harness:energy_drift",
