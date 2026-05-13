@@ -35,14 +35,48 @@ The numbers above land in the unified cross-stack table at [`methodology/docs/20
 
 ## Reproducibility
 
-Modal entrypoint: `modal_app.py`. Inference script: `run_inference.py`.
-Lint driver: `lint_rollouts.py` — invokes
-`_rollout_anchors/_harness/mesh_rollout_adapter.py` (per-timestep
-materialization) plus the public `physics-lint check` CLI per timestep.
+### Modal entrypoints (Phase 1 + Phase 2 fires)
 
-Inference must pass `test_inference_matches_ngc_sample` (max-abs-error
-≤ 10⁻³ on velocity components vs NGC's shipped sample) before rollouts
-proceed; this is the gate-determining test for Gate D (spec §6).
+| Entrypoint | Purpose | Compute |
+|---|---|---|
+| `02-physicsnemo-mgn/modal_app.py::audit_ngc_sample_reproduction` | Phase 1 Gate D — NGC sample reproduction RMSE vs Pfaff et al. CylinderFlow RMSE-1 baseline (verdict 4 + 5) | A10G, ~10 min |
+| `02-physicsnemo-mgn/modal_app.py::audit_gate_a_pyg_to_meshfield` | Phase 1 Gate A — PyG-to-MeshField materialization smoke (verdict 2) | CPU, <1 min |
+| `02-physicsnemo-mgn/modal_app.py::smoke_substrate_class_vortex_shedding` | Phase 1 substrate-class smoke (verdicts 6 + 7 — ∫∇·v dV / KE budget / Strouhal) | A10G, ~5 min |
+| `02-physicsnemo-mgn/modal_app.py::audit_strouhal_test_trajectories` | Phase 2 Task 1 — Strouhal pre-check across cylinder_flow test trajectories (refinement 1) | CPU, ~10 min |
+| `02-physicsnemo-mgn/modal_app.py::lint_gt_trajectory` | Phase 2 Task 5 — GT-trajectory CPU lint → `gt.sarif` (control arm) | CPU, ~3 min |
+| `02-physicsnemo-mgn/modal_app.py::mgn_rollout_p0_vortex_shedding` | Phase 2 Task 6 — MGN inference on canonical trajectory 44 (599 rollout steps) | A10G, ~10 min |
+| `02-physicsnemo-mgn/modal_app.py::lint_mgn_rollout` | Phase 2 Task 7 — MGN-rollout CPU lint → `mgn.sarif` | CPU, ~3 min |
+
+### NGC checkpoint provenance
+
+| Field | Value |
+|---|---|
+| `checkpoint_id` | `0153803c8b2c0947` |
+| `ngc_version` | `latest` |
+| `ckpt_sha256` | `0153803c8b2c0947948757a2298eec6ef21e8ea28131834963db08f34b4a0726` |
+| `physicsnemo_sha` | `1ca85d65ac2ce28ea9762910c09a954c08a37140` |
+
+Adapter: `_legacy_checkpoint_name_remap.py` (Phase 1 Gate D fix) — encoder/decoder `.mlp.` → `.model.` rename + parallel-`{edge,node}_blocks` → interleaved-`processor_layers` restructure + edge-MLP first-Linear input-column reorder `[src, dst, edge]` → `[edge, src, dst]` (the bug found at Gate D Band-C re-audit; see [DECISIONS.md D0-23](../methodology/DECISIONS.md)).
+
+### Phase-3-close git_sha
+
+`<filled at Task 14 close — final commit sha on feature/case-study-02-physicsnemo-mgn>`
+
+### Image spec / dependency pinning
+
+`02-physicsnemo-mgn/modal_app.py` builds the Modal image with: `physicsnemo @ 1ca85d65ac2ce28ea9762910c09a954c08a37140`, `torch == 2.10.x`, `torch-scatter`, `scikit-fem == 12.0.1`, `dgl` removed (see [DECISIONS.md D0-23](../methodology/DECISIONS.md) for the image-build history that resolved the Gate D image-side failures).
+
+### Cross-references — methodology
+
+- **Validation plan v2.1**: [`methodology/docs/physics-lint-validation-plan-v2.1.md`](../methodology/docs/physics-lint-validation-plan-v2.1.md) — §1.5 Case Study 02 as a falsification surface (open prediction; this README closes Phase 3 of that prediction).
+- **Validation plan v2.1.1**: [`methodology/docs/physics-lint-validation-plan-v2.1.1.md`](../methodology/docs/physics-lint-validation-plan-v2.1.1.md) — Phase 3 amendment landing the four §5.5 items (pattern-C 4th instance + per-section convergence + D0-22 falsification + prose-vs-artifact-cross-review-modes).
+- **Methodology README**: [`methodology/README.md`](../methodology/README.md) — rung-4 series integrating README (composing 4a + 4b + 4c + case-study artifacts).
+- **DECISIONS catalogue**: [`methodology/DECISIONS.md`](../methodology/DECISIONS.md) — D0-22 (substrate-class taxonomy) · D0-23 (Phase 1 audit verdicts) · D0-24 (Phase 2 + Phase 3 audit verdicts; this case study's authoritative numbers).
+- **SCHEMA**: [`_harness/SCHEMA.md`](../_harness/SCHEMA.md) — SARIF run-level + result-level contract; D0-19 v1.0 already accommodates CS02-side optional fields (`arm`, `case_study`, `physicsnemo_sha`, `rollout_contract`, `trajectory_index`, `inference_run_status`, `ckpt_sha256`, `n_rollout_steps`, `ngc_version`, `rollout_npz_path`).
+
+### Inference-gate test
+
+Inference must pass `test_inference_matches_ngc_sample` (max-abs-error ≤ 10⁻³ on velocity components vs NGC's shipped sample) before rollouts proceed; this is the gate-determining test for Gate D (spec §6). Gate D PASSED at Phase 1 with RMSE-1 = 3.19e-3 ≤ 5e-3 (≈ 1.36× Pfaff et al. CylinderFlow RMSE-1 baseline) per [D0-23 verdict 4 recalibrated band](../methodology/DECISIONS.md).
 
 ## PH-CON-001 routing — harness, not public rule
 
