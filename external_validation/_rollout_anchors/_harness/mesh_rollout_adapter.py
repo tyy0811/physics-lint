@@ -326,6 +326,15 @@ def _expect_velocity(rollout: MeshRollout) -> HarnessDefect | np.ndarray:
 
     Returns the velocity array shaped ``(T, N_nodes, D)`` (D inferred
     from the field; scalar (T, N_nodes) velocity is lifted to (T, N_nodes, 1)).
+
+    NGC key pinned per D0-23 verdict 8: the NGC cylinder_flow dataset
+    (vortex_shedding_2d, modulus_ns_meshgraphnet v0.1 checkpoint) emits
+    node-resolved velocity under the literal key ``"velocity"`` (preflight
+    loader_contract_audit.json V3_field_names). Pattern-B P0 single-
+    instance enumeration: legacy LB / synthetic and NGC vortex-shedding
+    both use the same key, so no helper key list / metadata pivot lands
+    here. Amendment 1's Ahmed Body (a second NGC dataset) is the multi-
+    instance trigger that would force a generalization refactor.
     """
     if "velocity" not in rollout.node_values:
         return HarnessDefect(
