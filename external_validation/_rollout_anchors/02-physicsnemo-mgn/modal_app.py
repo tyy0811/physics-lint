@@ -2295,7 +2295,11 @@ def _decode_test_trajectory(traj_idx: int) -> dict:
     volumes={"/vol": mgn_volume},
     timeout=60 * 30,
 )
-def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
+def lint_gt_trajectory(
+    rollout_id: str,
+    sarif_emission_sha: str,
+    traj_idx: int,
+) -> dict:
     """Phase 2 Task 5 -- control-arm lint of the canonical GT cylinder_flow
     test trajectory through the mesh harness. CPU-only; no inference.
 
@@ -2305,6 +2309,17 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
     *_on_mesh rule mirrors via lint_mesh_rollout, and writes a
     SARIF artifact at both the Volume and (via the caller's
     ``modal volume get``) the local committed mirror.
+
+    Parameters split per round-codex-Phase2 Findings 2 + 3:
+      - ``rollout_id``: caller-supplied unique-per-fire path key. Two
+        same-key fires would collide; caller picks a globally-unique
+        identifier (e.g., ``"<sha>_<utc>"``).
+      - ``sarif_emission_sha``: the code sha that emitted the SARIF (the
+        ``physics_lint_sha_sarif_emission`` field). Distinct from the
+        rollout_id; the prior single ``git_sha`` parameter conflated
+        these two roles.
+
+    Output path: ``/vol/rollouts/physicsnemo/cs02_gt_lint_<rollout_id>/gt.sarif``.
 
     Expected outputs (D0-24 v1 + v3 + v4 bands):
       - harness:mass_conservation_defect: raw_value (the FE-on-P1 floor
@@ -2318,6 +2333,11 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
     ``"n/a_gt_control_arm"`` (design §2.5) -- the GT control arm has no
     inference fire, so the field documents the absence rather than
     omitting (a salvage-detection-by-omission anti-pattern).
+
+    All 10 D0-19 v1.0 run-level fields are emitted; LB-specific fields
+    (``physics_lint_sha_pkl_inference``, ``physics_lint_sha_npz_conversion``,
+    ``lagrangebench_sha``) carry CS02-shaped sentinel values rather than
+    being omitted (round-codex-Phase2 Finding 1).
     """
     import json as _json
     import sys
@@ -2351,6 +2371,8 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
     cells = np.asarray(rec["cells"][0]).astype(np.int64)  # (M, 3)
     node_type = np.asarray(rec["node_type"][0]).reshape(-1).astype(np.int64)
 
+    rollout_subdir = f"/vol/rollouts/physicsnemo/cs02_gt_lint_{rollout_id}/"
+
     rollout = MeshRollout(
         node_positions=mesh_pos,
         node_type=node_type,
@@ -2364,7 +2386,8 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
             "dataset": "vortex_shedding_2d",
             "regular_grid": False,
             "cells_2d": cells,
-            "git_sha": git_sha,
+            "rollout_id": rollout_id,
+            "sarif_emission_sha": sarif_emission_sha,
             "trajectory_index": traj_idx,
             "physicsnemo_sha": PHYSICSNEMO_SHA,
         },
@@ -2386,22 +2409,34 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
         },
     )
 
+    # All 10 D0-19 v1.0 run-level fields. The four LB-pipeline-specific
+    # fields carry CS02-shaped sentinel values (per Finding 1 absorption):
+    # CS02 has no .pkl stage (Modal inference saves .npz directly), no
+    # .pkl->.npz conversion stage, and no LagrangeBench upstream — those
+    # three sha fields are explicitly n/a; rollout_subdir reflects the
+    # caller-supplied unique path.
     run_properties: dict[str, object] = {
         "source": "rollout-anchor-harness",
         "harness_sarif_schema_version": "1.0",
+        "physics_lint_sha_pkl_inference": "n/a_cs02_no_pkl_stage",  # CS02 sentinel
+        "physics_lint_sha_npz_conversion": "n/a_cs02_no_conversion_stage",  # CS02 sentinel
+        "physics_lint_sha_sarif_emission": sarif_emission_sha,
+        "lagrangebench_sha": "n/a_cs02_physicsnemo",  # CS02 sentinel
+        "checkpoint_id": "n/a_gt_control_arm",
+        "model_name": "deepmind-cylinder-flow-gt",
+        "dataset_name": "vortex_shedding_2d",
+        "rollout_subdir": rollout_subdir,
+        # CS02-specific optional fields
         "case_study": "02-physicsnemo-mgn",
         "arm": "gt-control",
+        "rollout_id": rollout_id,
+        "rollout_contract": "n/a_gt_control_arm",  # GT is not an MGN rollout
         "inference_run_status": "n/a_gt_control_arm",  # design §2.5
         "trajectory_index": traj_idx,
-        "dataset_name": "vortex_shedding_2d",
-        "model_name": "deepmind-cylinder-flow-gt",
-        "checkpoint_id": "n/a_gt_control_arm",
         "physicsnemo_sha": PHYSICSNEMO_SHA,
-        "physics_lint_sha_sarif_emission": git_sha,
-        "rollout_subdir": f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/",
     }
 
-    out_dir_vol = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+    out_dir_vol = Path(rollout_subdir)
     out_dir_vol.mkdir(parents=True, exist_ok=True)
     out_path_vol = out_dir_vol / "gt.sarif"
     emit_sarif(
@@ -2422,12 +2457,14 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
     print(_json.dumps(rule_summary, indent=2))
     return {
         "sarif_path": str(out_path_vol),
+        "rollout_subdir": rollout_subdir,
         "rule_summary": rule_summary,
         "trajectory_index": traj_idx,
         "n_timesteps": int(velocity.shape[0]),
         "n_nodes": int(mesh_pos.shape[0]),
         "n_cells": int(cells.shape[0]),
-        "git_sha": git_sha,
+        "rollout_id": rollout_id,
+        "sarif_emission_sha": sarif_emission_sha,
     }
 
 
@@ -2436,7 +2473,19 @@ def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def _preflight_mgn_inference_p0(rollout_dir: str, git_sha: str, ckpt_path: Path) -> dict:
+def _make_rollout_inference_subdir(rollout_key: str, run_id: str) -> str:
+    """Compose the per-fire Volume subdir for an MGN inference rollout.
+
+    round-codex-Phase2 Finding 3 absorption: the prior path
+    ``vortex_shedding_<sha>`` was keyed on a single sha, so two same-sha
+    fires would silently overwrite each other's NPZ + findings. The
+    ``run_id`` suffix (caller-supplied, typically a UTC timestamp) makes
+    every fire produce a unique path even when ``rollout_key`` repeats.
+    """
+    return f"/vol/rollouts/physicsnemo/cs02_mgn_inference_{rollout_key}_{run_id}"
+
+
+def _preflight_mgn_inference_p0(rollout_dir: str, rollout_subdir: str, ckpt_path: Path) -> dict:
     """Pre-flight assertions before the MGN inference fire (Task 6).
 
     Captures provenance (ckpt sha256 + git sha + dtype + cwd) and fails
@@ -2481,7 +2530,7 @@ def _preflight_mgn_inference_p0(rollout_dir: str, git_sha: str, ckpt_path: Path)
     assert os.path.isfile(node_stats_p), f"node_stats.json not staged at {node_stats_p}"
     findings["rollout_dir"] = rollout_dir
 
-    out_dir = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+    out_dir = Path(rollout_subdir)
     out_dir.mkdir(parents=True, exist_ok=True)
     test_path = out_dir / ".preflight_writable_check"
     test_path.write_text("ok")
@@ -2489,7 +2538,7 @@ def _preflight_mgn_inference_p0(rollout_dir: str, git_sha: str, ckpt_path: Path)
     findings["rollout_output_dir"] = str(out_dir)
 
     findings["physicsnemo_sha"] = PHYSICSNEMO_SHA
-    findings["git_sha"] = git_sha
+    findings["rollout_subdir"] = rollout_subdir
     return findings
 
 
@@ -2499,8 +2548,9 @@ def _preflight_mgn_inference_p0(rollout_dir: str, git_sha: str, ckpt_path: Path)
     timeout=60 * 60 * 2,
 )
 def mgn_rollout_p0_vortex_shedding(
-    git_sha: str,
+    rollout_key: str,
     full_git_sha: str,
+    run_id: str,
     traj_idx: int,
     num_steps: int = 600,
 ) -> dict:
@@ -2561,10 +2611,15 @@ def mgn_rollout_p0_vortex_shedding(
 
     sys.path.insert(0, "/root")  # for _legacy_checkpoint_name_remap.py
 
+    # round-codex-Phase2 Finding 3 absorption: per-fire unique Volume
+    # subdir from (rollout_key, run_id). Two same-rollout_key fires get
+    # distinct paths because run_id varies (typically a UTC timestamp).
+    rollout_subdir = _make_rollout_inference_subdir(rollout_key, run_id)
+
     # F5: rollout-dir isolation. tempfile.mkdtemp guarantees a unique
     # path even for two concurrent fires with the same prefix; the
     # CWD-relative stats reads are therefore container-local.
-    rollout_dir = tempfile.mkdtemp(prefix=f"mgn_rollout_p0_{git_sha}_")
+    rollout_dir = tempfile.mkdtemp(prefix=f"mgn_rollout_p0_{rollout_key}_{run_id}_")
     shutil.copy2(data_dir / "edge_stats.json", os.path.join(rollout_dir, "edge_stats.json"))
     shutil.copy2(data_dir / "node_stats.json", os.path.join(rollout_dir, "node_stats.json"))
     old_cwd = os.getcwd()
@@ -2577,7 +2632,7 @@ def mgn_rollout_p0_vortex_shedding(
             f"{VOLUME_CHECKPOINT_ROOT}/modulus_ns_meshgraphnet_{NGC_VORTEX_VERSION}/"
             f"vortex_shedding_mgn/model.pt"
         )
-        preflight = _preflight_mgn_inference_p0(rollout_dir, git_sha, ckpt_path)
+        preflight = _preflight_mgn_inference_p0(rollout_dir, rollout_subdir, ckpt_path)
 
         from _legacy_checkpoint_name_remap import remap_modulus_to_physicsnemo_state_dict
         from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
@@ -2682,7 +2737,9 @@ def mgn_rollout_p0_vortex_shedding(
                 "dataset": "vortex_shedding_2d",
                 "regular_grid": False,
                 "cells_2d": cells_np,  # for Task 4's FE path in Task 7's lint
-                "git_sha": git_sha,
+                "rollout_key": rollout_key,
+                "run_id": run_id,
+                "git_sha": rollout_key,  # legacy alias for backward-compat readers
                 "full_git_sha": full_git_sha,
                 "trajectory_index": traj_idx,
                 "ngc_version": NGC_VORTEX_VERSION,
@@ -2698,14 +2755,17 @@ def mgn_rollout_p0_vortex_shedding(
         # check surfaces materializer bugs at write time too.
         _assert_loader_contract_mgn(rollout)
 
-        out_dir = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+        out_dir = Path(rollout_subdir)
         out_dir.mkdir(parents=True, exist_ok=True)
         out_npz = out_dir / "mgn_rollout.npz"
         save_mesh_rollout_npz(rollout, out_npz)
 
         findings = {
             "rollout_dir": rollout_dir,
+            "rollout_subdir": rollout_subdir,
             "out_npz": str(out_npz),
+            "rollout_key": rollout_key,
+            "run_id": run_id,
             "traj_idx": traj_idx,
             "n_rollout_steps": n_pairs,
             "num_steps": num_steps,
@@ -2737,14 +2797,28 @@ def mgn_rollout_p0_vortex_shedding(
     volumes={"/vol": mgn_volume},
     timeout=60 * 30,
 )
-def lint_mgn_rollout(git_sha: str) -> dict:
+def lint_mgn_rollout(
+    rollout_subdir: str,
+    sarif_emission_sha: str,
+) -> dict:
     """Phase 2 Task 7 -- MGN-arm lint of the rollout NPZ produced by Task 6.
 
-    Reads ``/vol/rollouts/physicsnemo/vortex_shedding_<git_sha>/mgn_rollout.npz``
-    via ``load_mesh_rollout_npz`` (Task 3 F3 contract auto-fires on the
-    MGN-scoped metadata), applies the three *_on_mesh rule mirrors via the
-    shared lint_mesh_rollout helper, emits mgn.sarif. CPU-only -- the
-    rollout was produced upstream by Task 6's A10G fire.
+    Reads ``<rollout_subdir>/mgn_rollout.npz`` via ``load_mesh_rollout_npz``
+    (Task 3 F3 contract auto-fires on the MGN-scoped metadata: the explicit
+    ``rollout_contract`` key OR the legacy ``"modulus_*"`` model prefix
+    per round-codex-Phase2 Finding 4 absorption), applies the three
+    *_on_mesh rule mirrors via the shared lint_mesh_rollout helper, emits
+    ``<rollout_subdir>/mgn.sarif``. CPU-only -- the rollout was produced
+    upstream by Task 6's A10G fire.
+
+    Parameters split per round-codex-Phase2 Findings 2 + 3:
+      - ``rollout_subdir``: full Volume path containing ``mgn_rollout.npz``
+        (e.g., ``"/vol/rollouts/physicsnemo/vortex_shedding_4173b32"``).
+        Replaces the prior ``git_sha`` parameter; caller resolves the
+        full path explicitly, eliminating the same-key collision risk.
+      - ``sarif_emission_sha``: the code sha that emitted the SARIF.
+        Distinct from the rollout-genesis sha (which lives in the NPZ
+        metadata).
 
     Expected outputs (D0-24 v2 + v3 + v4 bands):
       - harness:mass_conservation_defect: raw_value; the verdict
@@ -2760,6 +2834,10 @@ def lint_mgn_rollout(git_sha: str) -> dict:
 
     ``inference_run_status`` = ``"from_completed_inference"`` (design §2.5)
     -- the rollout came from Task 6's clean A10G fire (no salvage).
+
+    All 10 D0-19 v1.0 run-level fields are emitted; LB-specific fields
+    carry CS02-shaped sentinel values rather than being omitted
+    (round-codex-Phase2 Finding 1).
     """
     import json as _json
     import sys
@@ -2773,12 +2851,10 @@ def lint_mgn_rollout(git_sha: str) -> dict:
     )
     from external_validation._rollout_anchors._harness.sarif_emitter import emit_sarif
 
-    npz_path = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/mgn_rollout.npz")
+    rollout_subdir_path = Path(rollout_subdir)
+    npz_path = rollout_subdir_path / "mgn_rollout.npz"
     if not npz_path.exists():
         raise FileNotFoundError(f"{npz_path} missing -- run mgn_rollout_p0_vortex_shedding first.")
-    # F3 contract fires inside load_mesh_rollout_npz on metadata["model"]
-    # starting with "modulus_" -- belt-and-braces verification that the
-    # NPZ on disk satisfies the MGN loader contract.
     rollout = load_mesh_rollout_npz(npz_path)
 
     rule_results = lint_mesh_rollout(
@@ -2796,26 +2872,41 @@ def lint_mgn_rollout(git_sha: str) -> dict:
         },
     )
 
+    # All 10 D0-19 v1.0 run-level fields, with CS02 sentinels for the
+    # LB-specific stages (per Finding 1 absorption). The
+    # physics_lint_sha_sarif_emission is distinct from the rollout-key
+    # sha (per Finding 2 absorption): the rollout's genesis sha is
+    # recorded separately as ``physics_lint_sha_inference`` for
+    # provenance.
+    inference_sha = str(rollout.metadata.get("git_sha", "n/a"))
     run_properties: dict[str, object] = {
         "source": "rollout-anchor-harness",
         "harness_sarif_schema_version": "1.0",
+        "physics_lint_sha_pkl_inference": "n/a_cs02_no_pkl_stage",  # CS02 sentinel
+        "physics_lint_sha_npz_conversion": "n/a_cs02_no_conversion_stage",  # CS02 sentinel
+        "physics_lint_sha_sarif_emission": sarif_emission_sha,
+        "lagrangebench_sha": "n/a_cs02_physicsnemo",  # CS02 sentinel
+        "checkpoint_id": str(rollout.metadata.get("ckpt_hash", "")),
+        "model_name": str(rollout.metadata.get("model", "modulus_ns_meshgraphnet")),
+        "dataset_name": str(rollout.metadata.get("dataset", "vortex_shedding_2d")),
+        "rollout_subdir": rollout_subdir if rollout_subdir.endswith("/") else rollout_subdir + "/",
+        # CS02-specific optional fields
         "case_study": "02-physicsnemo-mgn",
         "arm": "mgn-rollout",
+        "rollout_contract": str(
+            rollout.metadata.get("rollout_contract", "physicsnemo_mgn_vortex_shedding_p0")
+        ),
         "inference_run_status": "from_completed_inference",  # design §2.5
+        "physics_lint_sha_inference": inference_sha,
         "trajectory_index": int(rollout.metadata.get("trajectory_index", -1)),
-        "dataset_name": str(rollout.metadata.get("dataset", "vortex_shedding_2d")),
-        "model_name": str(rollout.metadata.get("model", "modulus_ns_meshgraphnet")),
-        "checkpoint_id": str(rollout.metadata.get("ckpt_hash", "")),
         "ckpt_sha256": str(rollout.metadata.get("ckpt_sha256", "")),
         "ngc_version": str(rollout.metadata.get("ngc_version", "")),
         "physicsnemo_sha": str(rollout.metadata.get("physicsnemo_sha", PHYSICSNEMO_SHA)),
-        "physics_lint_sha_sarif_emission": git_sha,
-        "physics_lint_sha_inference": str(rollout.metadata.get("git_sha", git_sha)),
         "rollout_npz_path": str(npz_path),
         "n_rollout_steps": int(rollout.metadata.get("n_rollout_steps", rollout.n_timesteps)),
     }
 
-    out_path_vol = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/mgn.sarif")
+    out_path_vol = rollout_subdir_path / "mgn.sarif"
     out_path_vol.parent.mkdir(parents=True, exist_ok=True)
     emit_sarif(
         rule_results,
@@ -2835,9 +2926,11 @@ def lint_mgn_rollout(git_sha: str) -> dict:
     print(_json.dumps(rule_summary, indent=2))
     return {
         "sarif_path": str(out_path_vol),
+        "rollout_subdir": str(rollout_subdir_path),
         "rule_summary": rule_summary,
         "trajectory_index": int(rollout.metadata.get("trajectory_index", -1)),
         "n_timesteps": int(rollout.n_timesteps),
         "n_nodes": int(rollout.n_nodes),
-        "git_sha": git_sha,
+        "sarif_emission_sha": sarif_emission_sha,
+        "physics_lint_sha_inference": inference_sha,
     }

@@ -21,7 +21,10 @@ CPU-only; no Modal dependency; runs in standard pytest.
 
 from __future__ import annotations
 
+import ast
 import os
+import pathlib
+import re
 import tempfile
 
 
@@ -89,3 +92,103 @@ def test_distinct_rollout_dirs_when_dir_arg_is_tmp_default(tmp_path) -> None:
     finally:
         os.rmdir(dir_a)
         os.rmdir(dir_b)
+
+
+# ---------------------------------------------------------------------------
+# round-codex-Phase2 Finding 3 absorption: per-fire persistent path
+# uniqueness via the (rollout_key, run_id) tuple.
+#
+# Verifies the path-construction invariants without importing modal_app
+# (which would require the Modal SDK on every test environment). Uses
+# AST parsing per the test_modal_app_imports.py pattern to bind on the
+# specific f-string format the production code emits, then asserts the
+# uniqueness invariants by hand-applying that format.
+# ---------------------------------------------------------------------------
+
+_MODAL_APP_PATH = pathlib.Path(__file__).resolve().parent.parent / "modal_app.py"
+
+
+def _extract_inference_subdir_format() -> str:
+    """Parse modal_app.py and pull out the f-string body of
+    ``_make_rollout_inference_subdir``'s return statement. The body
+    must be a single f-string (one Joined-Str AST node) so the test
+    can rebuild it without importing modal.
+    """
+    tree = ast.parse(_MODAL_APP_PATH.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef):
+            continue
+        if node.name != "_make_rollout_inference_subdir":
+            continue
+        # Find the single Return statement; its value must be a JoinedStr
+        # (f-string) with the literal+expression-name shape we assert.
+        returns = [n for n in node.body if isinstance(n, ast.Return)]
+        assert len(returns) == 1, "_make_rollout_inference_subdir must have exactly one Return"
+        joined = returns[0].value
+        assert isinstance(joined, ast.JoinedStr), (
+            "_make_rollout_inference_subdir return must be a single f-string"
+        )
+        return ast.unparse(joined)
+    raise AssertionError("_make_rollout_inference_subdir not found in modal_app.py")
+
+
+def test_make_rollout_inference_subdir_format_matches_expected_pattern() -> None:
+    """Bind the production f-string to the expected format. Catches
+    silent drift (e.g., if someone reorders rollout_key and run_id, or
+    changes the volume mount prefix).
+    """
+    unparsed = _extract_inference_subdir_format()
+    # The exact f-string canonical form Python's ast.unparse emits.
+    expected = "f'/vol/rollouts/physicsnemo/cs02_mgn_inference_{rollout_key}_{run_id}'"
+    assert unparsed == expected, (
+        f"_make_rollout_inference_subdir format drifted; got {unparsed!r}, "
+        f"expected {expected!r}. Update the test if the change is intentional."
+    )
+
+
+def test_inference_subdir_uniqueness_under_same_rollout_key() -> None:
+    """Finding 3: two fires with the SAME ``rollout_key`` but different
+    ``run_id`` values produce distinct persistent Volume subdirs. This
+    is the absorption fix for the prior path scheme
+    ``vortex_shedding_<sha>`` which collided on same-sha re-fires.
+    Verifies the invariant by hand-applying the format string.
+    """
+    rollout_key = "4173b32"
+    subdir_a = f"/vol/rollouts/physicsnemo/cs02_mgn_inference_{rollout_key}_20260513T154500Z"
+    subdir_b = f"/vol/rollouts/physicsnemo/cs02_mgn_inference_{rollout_key}_20260513T154501Z"
+    assert subdir_a != subdir_b, (
+        f"two same-rollout_key fires with distinct run_ids must produce "
+        f"distinct Volume subdirs; got both = {subdir_a}"
+    )
+    assert subdir_a.startswith(f"/vol/rollouts/physicsnemo/cs02_mgn_inference_{rollout_key}_")
+
+
+def test_inference_subdir_uniqueness_under_same_run_id() -> None:
+    """Finding 3 contrapositive: two fires with the SAME ``run_id`` but
+    different ``rollout_key`` values produce distinct subdirs. Defense-
+    in-depth — the path-construction must not lose information from
+    either component.
+    """
+    run_id = "20260513T154500Z"
+    subdir_a = f"/vol/rollouts/physicsnemo/cs02_mgn_inference_4173b32_{run_id}"
+    subdir_b = f"/vol/rollouts/physicsnemo/cs02_mgn_inference_deadbee_{run_id}"
+    assert subdir_a != subdir_b
+
+
+def test_inference_subdir_format_has_no_legacy_vortex_shedding_path_segment() -> None:
+    """Finding 3 regression guard: the new path scheme replaces the
+    legacy ``vortex_shedding_<sha>`` segment. If a refactor accidentally
+    restores the old prefix, the same-sha collision risk returns. The
+    production f-string must not contain that segment.
+    """
+    unparsed = _extract_inference_subdir_format()
+    assert "vortex_shedding_" not in unparsed, (
+        "_make_rollout_inference_subdir must NOT reuse the legacy "
+        "'vortex_shedding_<sha>' segment; that scheme collided on "
+        "same-sha re-fires (round-codex-Phase2 Finding 3)."
+    )
+    # The new segment must be present.
+    assert re.search(r"cs02_mgn_inference_", unparsed), (
+        "_make_rollout_inference_subdir must use the new "
+        "'cs02_mgn_inference_<rollout_key>_<run_id>' scheme."
+    )
