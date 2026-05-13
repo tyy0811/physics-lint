@@ -529,6 +529,122 @@ def _gridded_velocity_view(rollout: MeshRollout, velocity: np.ndarray) -> np.nda
     return velocity.reshape((t_size, *tuple(grid_shape), d_field))
 
 
+def _can_compute_graph_mesh_fe(rollout: MeshRollout) -> HarnessDefect | None:
+    """Phase 2 Task 4: precondition gate for the graph-mesh scikit-fem path.
+
+    Returns None if the rule mirror can compute on the graph mesh; else a
+    HarnessDefect whose ``skip_reason`` explains the gap. Three checks:
+
+    1. scikit-fem is importable (under the [mesh] optional extra).
+    2. ``metadata["cells_2d"]`` is present — the triangulation. The PyG
+       MGN datapipe carries cells per timestep on its ``Data`` object;
+       materializers must stage one frame's cells under this key (the
+       mesh is static per :class:`MeshRollout` invariants). Without
+       cells, reconstruction would require inferring triangulation from
+       ``edge_index`` alone, which is a separate scope (Gate A PARTIAL).
+    3. Velocity is 2D (``shape[-1] == 2``). The substrate-class smoke
+       and the FE divergence integrand below are 2D-specific; the 3D
+       generalization (Ahmed Body / future amendments) would add ``vz``
+       and the cross-derivative terms.
+    """
+    try:
+        import skfem  # noqa: F401
+    except ImportError as e:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"scikit-fem not available ({e}); install the 'mesh' "
+                f"extra (`pip install physics-lint[mesh]`). The graph-mesh "
+                f"FE path is gated on this dependency."
+            ),
+        )
+    if rollout.metadata.get("cells_2d") is None:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                "graph-mesh FE path needs metadata['cells_2d'] (a "
+                "static (M, 3) triangulation). Materializers must stage "
+                "one frame's cells under this key. See D0-23 verdict 3 "
+                "(Gate A PASS — MeshTri reconstruction)."
+            ),
+        )
+    velocity = rollout.node_values.get("velocity")
+    if velocity is None:
+        return HarnessDefect(
+            value=None,
+            skip_reason="graph-mesh FE path needs 'velocity' in node_values.",
+        )
+    velocity_arr = np.asarray(velocity)
+    if velocity_arr.ndim != 3 or velocity_arr.shape[-1] != 2:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"graph-mesh FE path supports 2D velocity only (T, N, 2); "
+                f"got shape {velocity_arr.shape}. The 3D extension (Ahmed "
+                f"Body / future amendments) is out of P0 scope per design "
+                f"§2.1."
+            ),
+        )
+    return None
+
+
+def _build_graph_mesh_basis(rollout: MeshRollout) -> tuple[Any, Any]:
+    """Build a scikit-fem ``MeshTri`` + ``Basis(ElementTriP1())`` from the
+    rollout's static topology. Assumes :func:`_can_compute_graph_mesh_fe`
+    has returned ``None`` (preconditions met). Lifts the substrate-class
+    smoke's coercion pattern (`02-physicsnemo-mgn/modal_app.py`
+    ``smoke_substrate_class_vortex_shedding`` line ≈1713) — the Gate A
+    PASS branch from D0-23 verdict 3.
+    """
+    import skfem
+
+    cells = np.asarray(rollout.metadata["cells_2d"]).astype(np.int64)
+    mesh = skfem.MeshTri(
+        np.ascontiguousarray(rollout.node_positions.astype(np.float64).T),
+        np.ascontiguousarray(cells.T),
+    )
+    basis = skfem.Basis(mesh, skfem.ElementTriP1())
+    return mesh, basis
+
+
+def _fe_divergence_defect_max(basis: Any, velocity: np.ndarray) -> float:
+    """Max over t of the FE-integrated relative divergence defect
+    ``∫|∇·v| / ∫‖∇v‖_F``. Mirrors the substrate-class smoke's
+    ``_field_observables.rel_div`` (modal_app.py lines ≈1718-1737).
+    """
+    n_t = velocity.shape[0]
+    max_rel = 0.0
+    for t_idx in range(n_t):
+        v_t = velocity[t_idx].astype(np.float64)
+        vx_f = basis.interpolate(v_t[:, 0])
+        vy_f = basis.interpolate(v_t[:, 1])
+        gvx = vx_f.grad  # (2, n_elem, n_qp): [dvx/dx, dvx/dy]
+        gvy = vy_f.grad  # [dvy/dx, dvy/dy]
+        div = gvx[0] + gvy[1]
+        frob = np.sqrt(gvx[0] ** 2 + gvx[1] ** 2 + gvy[0] ** 2 + gvy[1] ** 2)
+        int_abs_div = float(np.sum(np.abs(div) * basis.dx))
+        int_frob = float(np.sum(frob * basis.dx))
+        rel = int_abs_div / max(int_frob, 1e-12)
+        if rel > max_rel:
+            max_rel = rel
+    return max_rel
+
+
+def _fe_kinetic_energy_series(basis: Any, velocity: np.ndarray) -> np.ndarray:
+    """``(T,)`` array of ``KE(t) = 0.5 ∫ |v(t)|^2 dV`` via FE basis;
+    unit density (incompressible NS or the synthetic channel-flow
+    fixture). Mirrors the substrate-class smoke's ``_field_observables.ke``.
+    """
+    n_t = velocity.shape[0]
+    ke = np.empty(n_t, dtype=np.float64)
+    for t_idx in range(n_t):
+        v_t = velocity[t_idx].astype(np.float64)
+        vx_f = basis.interpolate(v_t[:, 0])
+        vy_f = basis.interpolate(v_t[:, 1])
+        ke[t_idx] = 0.5 * float(np.sum((vx_f.value**2 + vy_f.value**2) * basis.dx))
+    return ke
+
+
 def mass_conservation_defect_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     """Per-timestep relative L2 of grid-divergence of velocity, max over t.
 
@@ -539,32 +655,28 @@ def mass_conservation_defect_on_mesh(rollout: MeshRollout) -> HarnessDefect:
         defect = max_t  || ∇·v(t) ||_L2 / || v(t) ||_L2
 
     where ``∇·v`` and ``v`` are computed on the regular grid via
-    fourth-order centered FD. This mirrors the v3 plan §4.2 step 4
-    framing ("PH-CON-001 (mass) on vortex shedding: divergence-free
-    check on velocity field") explicitly — note that this is
-    structural-identity reapplication, not a public-API
+    fourth-order centered FD, or via scikit-fem P1 finite elements on
+    a graph mesh (Phase 2 Task 4 — Gate A PASS branch from D0-23 v3,
+    lifted from the substrate-class smoke's incompressibility computation).
+    Structural-identity reapplication, not a public-API
     PH-CON-001 invocation per DECISIONS.md D0-03.
 
     SKIPS with reason when:
 
     - ``node_values`` lacks a ``velocity`` field.
-    - The rollout is on a graph mesh (the divergence operator on
-      irregular DGL topology is gated on the Day 2 hour 1 NGC audit;
-      no speculative graph-divergence machinery is implemented here).
+    - The mesh is graph-topology AND any of the FE preconditions are
+      unmet (scikit-fem missing, ``cells_2d`` absent, or velocity ≠ 2D);
+      :func:`_can_compute_graph_mesh_fe` carries the precise reason.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
     if not rollout.is_regular_grid:
-        return HarnessDefect(
-            value=None,
-            skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-divergence "
-                f"is gated on Day 2 hour 1 NGC audit per DECISIONS.md D0-03 "
-                f"and is not implemented in this Day 0.5 commit"
-            ),
-        )
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
+        _, basis = _build_graph_mesh_basis(rollout)
+        return HarnessDefect(value=_fe_divergence_defect_max(basis, np.asarray(velocity)))
 
     v_grid = _gridded_velocity_view(rollout, velocity)
     spacings = rollout.grid_spacing
@@ -603,23 +715,36 @@ def kinetic_energy_series_on_mesh(rollout: MeshRollout) -> np.ndarray:
     """(T,) array of KE(t) = 0.5 * Σ_node rho_node * |v_node|^2 * cell_volume.
 
     Constant unit density assumed in V1 (incompressible NS or the
-    synthetic channel flow). Cell volume on a regular grid is
-    ``prod(grid_spacing)``. Sum over nodes approximates the volume
-    integral via midpoint quadrature.
+    synthetic channel flow). On a regular grid: cell volume is
+    ``prod(grid_spacing)`` and the sum over nodes approximates the
+    volume integral via midpoint quadrature. On a graph mesh: FE
+    integration via scikit-fem P1 (Phase 2 Task 4 — Gate A PASS branch
+    from D0-23 v3) lifts the prior NaN-on-graph behavior.
 
-    For graph-mesh inputs, this function returns NaN (the caller
-    should consult :func:`energy_drift_on_mesh` or
-    :func:`dissipation_sign_violation_on_mesh`, which surface the
-    skip-with-reason cleanly).
+    Returns NaN for the trajectory length when:
+
+    - ``node_values`` lacks ``velocity``.
+    - The mesh is graph-topology AND any FE precondition is unmet
+      (scikit-fem missing, ``cells_2d`` absent, or velocity ≠ 2D).
+
+    The HarnessDefect-returning rule mirrors
+    (:func:`energy_drift_on_mesh` / :func:`dissipation_sign_violation_on_mesh`)
+    surface the precise SKIP reason; this function returns the array
+    form for callers that integrate KE into a longer pipeline.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return np.full(rollout.n_timesteps, float("nan"))
-    if not rollout.is_regular_grid:
+    if rollout.is_regular_grid:
+        cell_volume = float(np.prod(rollout.grid_spacing))
+        speeds_sq = np.sum(velocity**2, axis=2)  # (T, N_nodes)
+        return 0.5 * cell_volume * np.sum(speeds_sq, axis=1)  # (T,)
+    # Graph-mesh path: FE-integrated KE.
+    precheck = _can_compute_graph_mesh_fe(rollout)
+    if precheck is not None:
         return np.full(rollout.n_timesteps, float("nan"))
-    cell_volume = float(np.prod(rollout.grid_spacing))
-    speeds_sq = np.sum(velocity**2, axis=2)  # (T, N_nodes)
-    return 0.5 * cell_volume * np.sum(speeds_sq, axis=1)  # (T,)
+    _, basis = _build_graph_mesh_basis(rollout)
+    return _fe_kinetic_energy_series(basis, np.asarray(velocity))
 
 
 def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
@@ -633,25 +758,25 @@ def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     driven-dissipative substrates SKIP with reason — the strictly-
     dissipative-or-conservative assumption underpinning energy_drift
     does not apply when boundary-driven inflow continuously supplies KE.
+
+    Phase 2 Task 4 reorder: the substrate-class dispatch fires BEFORE
+    the topology branch, so a graph-mesh ODD rollout SKIPs with the
+    physics-grounded reason rather than the implementation-grounded
+    "graph-topology" reason. The reorder activates D0-23 v9 on real
+    NGC inputs (which were previously preempted by the graph-mesh
+    SKIP). On non-ODD substrates with graph-mesh topology, the FE
+    KE-integration path from :func:`kinetic_energy_series_on_mesh`
+    is used (Gate A PASS branch).
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
-    if not rollout.is_regular_grid:
-        return HarnessDefect(
-            value=None,
-            skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-mesh KE "
-                f"integration is gated on Day 2 hour 1 NGC audit"
-            ),
-        )
 
-    # D0-23 verdict 9 substrate-class dispatch (parallel to D0-22
-    # amendment 1 on particle side). Fires BEFORE the KE-rest gate
-    # because the substrate class is the load-bearing assumption that
-    # energy_drift's contract depends on; if the assumption is violated,
-    # KE-rest gating is moot.
+    # D0-23 verdict 9 substrate-class dispatch — fires FIRST so the
+    # physics-grounded SKIP outranks the topology-grounded one. The
+    # load-bearing assumption (strictly-dissipative-or-conservative) is
+    # violated by substrate class on this rollout; if so, no KE
+    # computation is necessary or appropriate.
     dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
     system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
     if system_class == "open-driven-dissipative":
@@ -666,6 +791,14 @@ def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
                 "(verdict 9) for the mesh-side extension."
             ),
         )
+
+    # On a graph mesh, the FE KE path requires the same preconditions
+    # as :func:`mass_conservation_defect_on_mesh`. Surface the precise
+    # gap as a HarnessDefect SKIP rather than the prior topology blanket.
+    if not rollout.is_regular_grid:
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
 
     e_series = kinetic_energy_series_on_mesh(rollout)
     e0 = float(e_series[0])
@@ -695,23 +828,15 @@ def dissipation_sign_violation_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     stretch by physics (boundary-driven inflow supplies KE); the
     strictly-dissipative-or-conservative assumption that
     dissipation_sign_violation encodes does not apply.
+
+    Phase 2 Task 4 reorder: same as :func:`energy_drift_on_mesh` —
+    substrate-class dispatch fires BEFORE the topology branch.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
-    if not rollout.is_regular_grid:
-        return HarnessDefect(
-            value=None,
-            skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-mesh dKE/dt "
-                f"is gated on Day 2 hour 1 NGC audit"
-            ),
-        )
 
-    # D0-23 verdict 9 substrate-class dispatch (parallel to D0-22 base
-    # gate on particle side). Fires BEFORE the timestep / KE-rest gates
-    # because the substrate class is the load-bearing assumption.
+    # D0-23 verdict 9 substrate-class dispatch — fires first.
     dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
     system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
     if system_class == "open-driven-dissipative":
@@ -726,6 +851,12 @@ def dissipation_sign_violation_on_mesh(rollout: MeshRollout) -> HarnessDefect:
                 "and D0-23 (verdict 9) for the mesh-side extension."
             ),
         )
+
+    # Graph-mesh FE precondition gate (Phase 2 Task 4).
+    if not rollout.is_regular_grid:
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
 
     if rollout.n_timesteps < 2:
         raise ValueError(

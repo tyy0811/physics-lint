@@ -35,6 +35,7 @@ from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
     dissipation_sign_violation_on_mesh,
     energy_drift_on_mesh,
     load_mesh_rollout_npz,
+    mass_conservation_defect_on_mesh,
     save_mesh_rollout_npz,
 )
 
@@ -453,3 +454,194 @@ def test_load_mesh_rollout_npz_does_not_apply_mgn_contract_to_synthetic_rollouts
     recovered = load_mesh_rollout_npz(tmp_path / "synthetic.npz")  # must NOT raise
     assert recovered.metadata["framework"] == "synthetic"
     assert recovered.metadata["model"] == "synthetic_unit_square"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 Task 4 — Gate A PASS branch lift: the *_on_mesh rule mirrors run
+# on graph-mesh inputs via scikit-fem P1 finite elements rather than SKIP.
+# Activates the D0-23 v9 substrate-class dispatch on real-shape (graph)
+# inputs — previously dead code, preempted by the graph-mesh blanket SKIP.
+# ---------------------------------------------------------------------------
+
+
+def _build_unit_square_triangulation(nx: int, ny: int) -> tuple[np.ndarray, np.ndarray]:
+    """Return ``(positions, cells)`` for an ``nx*ny`` vertex grid on
+    ``[0, 1]^2``. Each rectangular cell is split into two triangles
+    (lower-right + upper-left), giving ``2 * (nx-1) * (ny-1)`` triangles.
+    Node index = ``i * ny + j`` so the mesh is ``np.meshgrid(..., indexing='ij')``-
+    compatible. Returns fp32 positions, int64 cells.
+    """
+    xs, ys = np.meshgrid(np.linspace(0.0, 1.0, nx), np.linspace(0.0, 1.0, ny), indexing="ij")
+    positions = np.stack([xs.ravel(), ys.ravel()], axis=1).astype(np.float32)
+    cells: list[list[int]] = []
+    for i in range(nx - 1):
+        for j in range(ny - 1):
+            n00 = i * ny + j
+            n01 = i * ny + (j + 1)
+            n10 = (i + 1) * ny + j
+            n11 = (i + 1) * ny + (j + 1)
+            cells.append([n00, n10, n11])  # lower-right triangle
+            cells.append([n00, n11, n01])  # upper-left triangle
+    return positions, np.array(cells, dtype=np.int64)
+
+
+def _cells_to_edge_index(cells: np.ndarray) -> np.ndarray:
+    """Convert ``(M, 3)`` triangle cells into an undirected ``(2, n_edges)``
+    edge_index (each unordered edge once). Used to satisfy the
+    :class:`MeshRollout` invariant that graph-mesh rollouts carry an
+    edge_index; the FE path itself reads cells directly.
+    """
+    edge_set: set[tuple[int, int]] = set()
+    for tri in cells:
+        a, b, c = int(tri[0]), int(tri[1]), int(tri[2])
+        for u, v in ((a, b), (b, c), (c, a)):
+            edge_set.add((min(u, v), max(u, v)))
+    return np.array(sorted(edge_set), dtype=np.int64).T  # (2, n_edges)
+
+
+def _build_graph_mesh_rollout(
+    *,
+    velocity_field: str = "divfree",  # "divfree" => v=(y,-x); "constant" => v=(1,0)
+    dataset: str = "synthetic_unit_square",
+    n_timesteps: int = 3,
+) -> MeshRollout:
+    """Build a graph-mesh MeshRollout on a 5x5 unit-square triangulation.
+
+    Two velocity-field choices:
+
+    - ``"divfree"``: ``v = (y, -x)`` — analytically divergence-free; FE
+      integration of ``|∇·v|`` returns the discretization floor
+      (machine-epsilon-ish on a P1 basis since v is itself P1).
+    - ``"constant"``: ``v = (1, 0)`` — KE constant over t; drift = 0;
+      dissipation_sign_violation = 0.
+    """
+    nx = ny = 5
+    positions, cells = _build_unit_square_triangulation(nx, ny)
+    n_nodes = positions.shape[0]
+    if velocity_field == "divfree":
+        v0 = np.stack([positions[:, 1], -positions[:, 0]], axis=1).astype(np.float32)
+    elif velocity_field == "constant":
+        v0 = np.stack(
+            [np.ones(n_nodes, dtype=np.float32), np.zeros(n_nodes, dtype=np.float32)], axis=1
+        )
+    else:
+        raise ValueError(f"unknown velocity_field {velocity_field!r}")
+    velocity = np.tile(v0[None, ...], (n_timesteps, 1, 1))
+    return MeshRollout(
+        node_positions=positions,
+        node_type=np.zeros(n_nodes, dtype=np.int64),
+        node_values={"velocity": velocity},
+        dt=0.01,
+        metadata={
+            "framework": "pytorch+dgl",  # graph mesh (is_regular_grid == False)
+            "model": "synthetic-test",  # NOT "modulus_*" — bypasses MGN loader contract
+            "dataset": dataset,
+            "cells_2d": cells,  # supplied so the FE path runs
+        },
+        edge_index=_cells_to_edge_index(cells),
+    )
+
+
+def test_mass_conservation_defect_on_mesh_runs_on_graph_mesh_via_meshfield() -> None:
+    """Phase 2 Task 4: Gate A PASS branch wires scikit-fem P1 into the
+    rule mirror. A graph-mesh rollout no longer SKIPs; instead, the rule
+    computes ``∫|∇·v|/∫‖∇v‖_F`` via FE.
+
+    Fixture: 5x5 unit-square triangulation + analytically-divergence-free
+    velocity ``v = (y, -x)``. Expected: defect at the FE floor
+    (machine-epsilon-ish — ``v`` is exactly P1-representable so its
+    divergence is exactly 0 in the P1 basis up to float arithmetic).
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="divfree")
+    result = mass_conservation_defect_on_mesh(rollout)
+    assert result.value is not None, (
+        f"graph-mesh path must lift the SKIP; got skip_reason={result.skip_reason}"
+    )
+    assert result.value < 1e-12, (
+        f"divergence-free v=(y,-x) on P1 must give FE-floor defect; got {result.value:.3e}"
+    )
+
+
+def test_mass_conservation_defect_on_mesh_skips_when_cells_2d_absent() -> None:
+    """Phase 2 Task 4 precondition gate: a graph-mesh rollout WITHOUT
+    metadata['cells_2d'] SKIPs with an informative reason rather than
+    silently failing inside scikit-fem. Mirrors the F3 contract's
+    fail-loud discipline on missing metadata.
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="divfree")
+    # Strip cells_2d
+    md = dict(rollout.metadata)
+    md.pop("cells_2d")
+    rollout_no_cells = MeshRollout(
+        node_positions=rollout.node_positions,
+        node_type=rollout.node_type,
+        node_values=rollout.node_values,
+        dt=rollout.dt,
+        metadata=md,
+        edge_index=rollout.edge_index,
+    )
+    result = mass_conservation_defect_on_mesh(rollout_no_cells)
+    assert result.value is None
+    assert result.skip_reason is not None
+    assert "cells_2d" in result.skip_reason
+
+
+def test_energy_drift_on_graph_mesh_fires_substrate_class_dispatch() -> None:
+    """Phase 2 Task 4 + D0-23 v9 cross-check: with the graph-mesh blanket
+    SKIP lifted, the v9 substrate-class dispatch now fires on real-shape
+    (graph) MGN inputs. ``metadata['dataset']='vortex_shedding_2d'`` ⇒
+    SKIP-with-reason citing the substrate class. The substrate-class
+    SKIP outranks both the topology SKIP and any KE-rest gating —
+    physics-grounded reasons are more informative than implementation-
+    grounded ones.
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="constant", dataset="vortex_shedding_2d")
+    result = energy_drift_on_mesh(rollout)
+    assert result.value is None
+    assert result.skip_reason is not None
+    assert "open-driven-dissipative" in result.skip_reason
+    assert "D0-22" in result.skip_reason or "D0-23" in result.skip_reason
+
+
+def test_dissipation_sign_violation_on_graph_mesh_fires_substrate_class_dispatch() -> None:
+    """Phase 2 Task 4 + D0-23 v9: same as the energy_drift test, for
+    dissipation_sign_violation. The mesh-side v9 dispatch fires uniformly
+    across both KE-anchored rules on the open-driven-dissipative
+    substrate class.
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="constant", dataset="vortex_shedding_2d")
+    result = dissipation_sign_violation_on_mesh(rollout)
+    assert result.value is None
+    assert result.skip_reason is not None
+    assert "open-driven-dissipative" in result.skip_reason
+
+
+def test_energy_drift_on_mesh_runs_on_graph_mesh_with_non_substrate_dataset() -> None:
+    """Phase 2 Task 4: on a graph mesh with a dataset NOT in
+    MGN_DATASET_SYSTEM_CLASS (so the substrate-class dispatch does
+    not fire), the FE KE-integration path runs and computes drift =
+    0 for a constant-velocity rollout (KE is constant in time, so
+    max|KE(t) - KE(0)| / |KE(0)| = 0).
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="constant", dataset="synthetic_unit_square")
+    result = energy_drift_on_mesh(rollout)
+    assert result.value is not None, (
+        f"non-substrate-class graph-mesh path must run; got skip_reason={result.skip_reason}"
+    )
+    # Constant velocity → KE constant → drift = 0.
+    assert result.value == 0.0, f"constant-velocity graph-mesh drift must be 0; got {result.value}"
+
+
+def test_dissipation_sign_violation_on_mesh_runs_on_graph_mesh_with_non_substrate_dataset() -> None:
+    """Phase 2 Task 4 mirror of the energy_drift test for
+    dissipation_sign_violation. Constant velocity ⇒ KE constant ⇒
+    dKE/dt = 0 ⇒ max(0, max(dKE/dt)) = 0 ⇒ violation = 0.
+    """
+    rollout = _build_graph_mesh_rollout(velocity_field="constant", dataset="synthetic_unit_square")
+    result = dissipation_sign_violation_on_mesh(rollout)
+    assert result.value is not None, (
+        f"non-substrate-class graph-mesh path must run; got skip_reason={result.skip_reason}"
+    )
+    assert result.value == 0.0, (
+        f"constant-velocity graph-mesh dissipation violation must be 0; got {result.value}"
+    )

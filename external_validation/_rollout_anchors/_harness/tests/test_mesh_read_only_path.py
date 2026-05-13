@@ -204,17 +204,25 @@ def test_divergence_violation_scales_linearly_with_alpha():
 
 
 # ---------------------------------------------------------------------------
-# Graph-mesh skip-with-reason (Day 2 audit gate)
+# Graph-mesh skip-with-reason
+#
+# Phase 2 Task 4 update: the graph-mesh SKIP message changed from the prior
+# "Day 2 hour 1 NGC audit" / "graph-topology" blanket to a more specific
+# "needs metadata['cells_2d']" reason once the FE path landed (the path is
+# implemented; the SKIP now only fires when the triangulation key isn't
+# supplied by the materializer). When `cells_2d` IS supplied, the rule
+# RUNs and emits a value instead of SKIPping — exercised in the dedicated
+# Phase 2 Task 4 graph-mesh-FE tests in test_mesh_rollout_adapter.py.
 # ---------------------------------------------------------------------------
 
 
-def test_graph_mesh_mass_conservation_skips_with_audit_reason():
+def test_graph_mesh_mass_conservation_skips_when_cells_2d_absent():
     case = build_graph_mesh_skip_case()
     result = mass_conservation_defect_on_mesh(case.rollout)
     assert result.value is None
     assert result.skip_reason is not None
-    assert "graph-topology" in result.skip_reason
-    assert "Day 2 hour 1 NGC audit" in result.skip_reason or "D0-03" in result.skip_reason
+    assert "cells_2d" in result.skip_reason
+    assert "D0-23" in result.skip_reason or "Gate A" in result.skip_reason
 
 
 def test_graph_mesh_energy_drift_skips_with_audit_reason():
