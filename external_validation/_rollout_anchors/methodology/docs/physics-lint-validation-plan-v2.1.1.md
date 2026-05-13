@@ -56,12 +56,18 @@ v2.1.1 records this flag. The corrective amendment (re-assigning the strictly-co
 
 ### §2.2 Prose-cross-review vs artifact-cross-review modes flag
 
-Round-prose-2's forward-flag (v2.1 §3 changelog) named the distinction between the two cross-review modes: artifact-cross-review surfaces fail-open paths (round-codex-2/-3/-4 precedent); prose-cross-review surfaces first-impression weaknesses (round-prose-1 + round-prose-2 precedent). Round-code-1 already INSTANTIATED the flag (committed prose + working SARIF upload + Security tab populated); CS02 Phase 3's prose cross-review provides a fifth instance (ordering / forward-cite hygiene; reader-first cross-reference placement; see [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md) meta-summary), completing the empirical evidence for the distinction.
+Round-prose-2's forward-flag (v2.1 §3 changelog) named the distinction between the two cross-review modes: artifact-cross-review surfaces fail-open paths (round-codex-2/-3/-4 precedent); prose-cross-review surfaces first-impression weaknesses (round-prose-1 + round-prose-2 precedent). Round-code-1 already INSTANTIATED the flag (committed prose + working SARIF upload + Security tab populated); CS02 Phase 3's prose cross-review is the **fourth prose-mode review-event** (counted as review-events, not as individual walls — see counting unit below), bringing further weight to the distinction (ordering / forward-cite hygiene; reader-first cross-reference placement; see [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md) meta-summary).
+
+**Counting unit.** "Instance" / "precedent" in this section means a *single review-event* (one cross-review fire by an external agent against committed prose), NOT an individual wall or finding. A single event may contribute multiple sub-findings (round-code-1's three walls were sub-findings of one round-event; CS02 Phase 3's six findings were sub-findings of one round-event); the four-event count below treats those events as one each.
 
 v2.1.1 names the flag with a one-paragraph summary and points outward. Full instantiation evidence:
 
-- **Prose-cross-review precedents** (first-impression weaknesses; ordering / forward-cite hygiene): round-prose-1, round-prose-2, round-code-1 prose dimension (level rendering / file-path location / prose framing walls), CS02 Phase 3 cross-review (this Phase — six findings clustered on Headline-ordering and shorthand-before-glossary).
-- **Artifact-cross-review precedents** (fail-open paths; data-level invariants): round-codex-2 + round-codex-3 + round-codex-4 (rung-4c PR #9 reviews), CS02 Phase 2 cross-review (one HIGH SARIF-data finding — sentinel field — plus four MEDIUM data-level prose-or-comment findings).
+- **Prose-cross-review review-events** (first-impression weaknesses; ordering / forward-cite hygiene): **4 events** —
+  1. round-prose-1 (v2.1 round 1 prose review),
+  2. round-prose-2 (v2.1 round 2 prose review; N-asymmetry; Stuttgart/Munich voice),
+  3. round-code-1 prose dimension (rung-4c PR #10; three sub-findings as individual walls: level rendering / file-path location / prose framing),
+  4. CS02 Phase 3 prose cross-review (this Phase; six sub-findings clustered on Headline-ordering and shorthand-before-glossary).
+- **Artifact-cross-review review-events** (fail-open paths; data-level invariants): **4 events** — round-codex-2 + round-codex-3 + round-codex-4 (rung-4c PR #9 reviews; three events), plus CS02 Phase 2 cross-review (one HIGH SARIF-data finding — sentinel field — plus four MEDIUM data-level prose-or-comment findings; one event). The CS02 Phase 3 round-codex-2 artifact-mode review (this Phase's second cross-review fire, six findings absorbed in-rung) is the **fifth artifact-mode review-event**.
 
 The §1.4 review-discipline triple (smoke + source + cross) does not currently distinguish the two cross-review modes; v2.1.2 §1.4 amendment is the right venue for adding the distinction with worked criteria for when each mode applies.
 
