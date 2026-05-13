@@ -74,6 +74,41 @@ def test_load_mesh_rollout_npz_missing_field_raises(tmp_path):
         load_mesh_rollout_npz(tmp_path / "incomplete.npz")
 
 
+def test_mesh_rollout_npz_round_trip_preserves_fp32_dtype(tmp_path):
+    """Phase-1 cross-review Finding 4: load_mesh_rollout_npz previously
+    upcast node_values to fp64 via `np.asarray(v, dtype=float)`,
+    contradicting SCHEMA.md §2's fp32 contract and Task 12's
+    `_assert_loader_contract_mgn` fp32 assertion. Now the loader
+    preserves on-disk dtype, so a well-formed fp32 round trip stays fp32.
+    """
+    from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+        MeshRollout,
+    )
+
+    rollout = MeshRollout(
+        node_positions=np.zeros((4, 2), dtype=np.float32),
+        node_type=np.zeros(4, dtype=np.int64),
+        node_values={"velocity": np.ones((3, 4, 2), dtype=np.float32)},
+        dt=0.01,
+        metadata={
+            "framework": "pytorch+dgl",
+            "model": "modulus_ns_meshgraphnet",
+            "dataset": "vortex_shedding_2d",
+        },
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    saved = save_mesh_rollout_npz(rollout, tmp_path / "mgn_fp32.npz")
+    reloaded = load_mesh_rollout_npz(saved)
+
+    assert reloaded.node_positions.dtype == np.float32, (
+        f"node_positions dtype must round-trip fp32 → fp32; got {reloaded.node_positions.dtype}"
+    )
+    assert reloaded.node_values["velocity"].dtype == np.float32, (
+        f"node_values['velocity'] dtype must round-trip fp32 → fp32; "
+        f"got {reloaded.node_values['velocity'].dtype}"
+    )
+
+
 # ---------------------------------------------------------------------------
 # Uniform channel flow (mass-conservation by construction)
 # ---------------------------------------------------------------------------

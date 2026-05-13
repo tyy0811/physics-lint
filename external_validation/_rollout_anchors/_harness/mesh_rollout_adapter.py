@@ -270,11 +270,22 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         missing = required - set(data.files)
         if missing:
             raise KeyError(f"mesh_rollout.npz {p} missing required fields: {sorted(missing)}")
-        node_positions = np.asarray(data["node_positions"], dtype=float)
+        # Preserve on-disk dtype per SCHEMA.md §2 fp32 contract. The
+        # prior `dtype=float` upcast silently promoted fp32 stored
+        # arrays to fp64, contradicting the SCHEMA contract and Task 12's
+        # `_assert_loader_contract_mgn` fp32 assertion — a layered-fail-
+        # open path surfaced by Phase-1 cross-review Finding 4: a
+        # well-formed mesh_rollout.npz saved with fp32 values would fail
+        # the loader-contract helper if Phase 2 wired it in after the
+        # canonical NPZ load. Preserving on-disk dtype keeps the round-
+        # trip honest and lets a buggy materializer that writes fp64 be
+        # caught by `_assert_loader_contract_mgn` rather than masked by
+        # this upcast.
+        node_positions = np.asarray(data["node_positions"])
         node_type = np.asarray(data["node_type"])
         nv_obj = data["node_values"]
         node_values_raw = nv_obj.item() if hasattr(nv_obj, "item") else dict(nv_obj)
-        node_values = {k: np.asarray(v, dtype=float) for k, v in node_values_raw.items()}
+        node_values = {k: np.asarray(v) for k, v in node_values_raw.items()}
         dt_arr = data["dt"]
         dt = float(dt_arr.item() if hasattr(dt_arr, "item") else dt_arr)
         meta_obj = data["metadata"]
