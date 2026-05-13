@@ -2325,7 +2325,7 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
 
 ---
 
-## D0-23 — 2026-05-11 — Case Study 02 Phase 1 audit verdicts (open)
+## D0-23 — 2026-05-11 — Case Study 02 Phase 1 audit verdicts (resolved at 2026-05-13; Tasks 1-12 verdicts pinned)
 
 **Status:** open. Skeleton pre-registered before Phase 1 fires; verdicts populate as audit tasks land per `methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-phase-1-plan.md`.
 
@@ -2381,10 +2381,25 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
    - Source: `audit_cylinder_flow_loader_contract` findings (verdict 2 above) + `vortex_shedding_dataset.py:122-124,165-174` @ `1ca85d65`.
 
 9. **`MGN_DATASET_SYSTEM_CLASS` dispatch (Task 11):** introduced; class label per verdict 6.
-   - Verdict: [pending]
+   - **Verdict: LANDED at 504e104** (`02-physicsnemo-mgn: Task 11 — MGN_DATASET_SYSTEM_CLASS + substrate-class dispatch on *_on_mesh`). `MGN_DATASET_SYSTEM_CLASS = {"vortex_shedding_2d": "open-driven-dissipative"}` in `_harness/mesh_rollout_adapter.py` (parallel to particle-side `LAGRANGEBENCH_DATASET_SYSTEM_CLASS`, per design §2.2 P0-resolvable Pattern-B response: *duplicated route*, NOT a stack-agnostic refactor). Dispatch wired into both `energy_drift_on_mesh` and `dissipation_sign_violation_on_mesh` — fires AFTER `_expect_velocity` + `is_regular_grid` checks, BEFORE the KE-rest / KE-max gates (substrate-class is the load-bearing assumption; KE gating is moot if the assumption is violated). SKIP message cites D0-22 (particle-side precedent) and D0-23 v9 (mesh-side extension). 4 tests added (entry-pinning + SKIP-on-open-driven for each function + no-dispatch regression guard on unknown dataset name). **Phase-2 readiness note:** dispatch is currently dead code on real NGC cylinder_flow rollouts (framework=pytorch+dgl ⇒ `is_regular_grid=False` ⇒ graph-mesh SKIP fires first); becomes live when Phase 2 lands the DGL→MeshField materialization path that lifts the graph-mesh SKIP. Duplicate-logic-drift risk is *named* per round-codex-4 catalogue, not eliminated; stack-agnostic refactor gated on amendment 1 / case study 03 evidence.
 
 10. **Pre-flight assertions (Task 12):** loader-contract assertions written in `_harness/mesh_rollout_adapter.py`.
-    - Verdict: [pending]
+    - **Verdict: LANDED at 468de33** (`02-physicsnemo-mgn: Task 12 — _assert_loader_contract_mgn defensive validation`). New helper `_assert_loader_contract_mgn(rollout)` covers the V-entries / known-unknowns that survive into the `MeshRollout` boundary (after V1-V11/V13-V15/V17-V18 are already past at TFRecord-decode time): **KU §5.6** velocity dtype == float32 (NGC checkpoint was trained at default-torch-dtype=float32; fp64 would silently change numerical behavior at `torch.tensor(..., dtype=torch.float)` lift, vortex_shedding_dataset.py:373); **V12 + V18** velocity is 3D `(T, N_nodes, D)`, D ∈ {2, 3}; **KU §5.7 / V16** node_type ∈ {0, 3, 4, 5, 6} (one_hot num_classes=4 bound after value-3 shift, vortex_shedding_dataset.py:363-368); **V-entries on metadata** framework + model present (anchors for v9 dispatch and framework-conditioned SKIP paths). Velocity-absent path is a no-op — `_expect_velocity` owns the informative SKIP wording in that branch. Scope: P0 vortex_shedding_2d only; amendment 1 (Ahmed Body) is the multi-instance trigger that would force generalization (e.g., a dataset-keyed assertion dispatch table). 6 tests added (well-formed-rollout passes + 4 rejection tests + velocity-absent no-op). Full harness suite still 235 passed.
+
+**Phase 1 acceptance criteria (per design §4.1) — all checked:**
+
+- [x] BLOCKING-1 CPU state-dict smoke (verdict 1; commit 9873962).
+- [x] NGC checkpoint downloaded; hash pinned (verdict 1 + Task 4).
+- [x] Day 2 hour 1 NGC audit findings (verdicts 2 + 8).
+- [x] Gate A verdict (verdict 3 + D0-02 amendment; Task 6).
+- [x] Gate D verdict (verdict 5; Task 7-8, commit 46fc1ff — RMSE-1 = 3.19e-3 ≈ 1.36× Pfaff et al.).
+- [x] `test_inference_matches_ngc_sample` verdict (verdict 4).
+- [x] Empirical substrate-class smoke verdict (verdict 6; Task 9, commit 773101e — open-driven-dissipative).
+- [x] `MGN_DATASET_SYSTEM_CLASS` + dispatch (verdict 9; Task 11, commit 504e104).
+- [x] `_expect_velocity` key resolution (verdict 8; Task 10, commit 82d7f68 — pinned to "velocity").
+- [x] Pre-flight assertions (verdict 10; Task 12, commit 468de33).
+- [x] Persistent-volume decision (verdict 7 — Y; rollout-dir isolation pattern carries to Phase 2).
+- [ ] Phase 1 boundary cross-review (Tasks 14-15; pending).
 
 **Phase 1 data provenance pins (Task 5 prerequisite):**
 
