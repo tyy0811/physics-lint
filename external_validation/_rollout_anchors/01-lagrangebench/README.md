@@ -31,5 +31,14 @@ schema in [`../_harness/SCHEMA.md`](../_harness/SCHEMA.md).
 
 ## Cross-references
 
-- **Cross-stack writeup (rung 4a):** [`../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md`](../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md) — methodology writeup over the SARIF artifacts in `outputs/sarif/`.
-- **Methodology decisions (D0-19, D0-20):** [`../methodology/DECISIONS.md`](../methodology/DECISIONS.md).
+### Cross-stack tables
+
+- **Original LB-only (rung-4a, frozen):** [`../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md`](../methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md) — the original two-column cross-stack table over GNS-TGV2D + SEGNN-TGV2D. Preserved frozen at its commit date for regression-check value (LB-side comparison baseline if the extended renderer ever drifts).
+- **Extended (CS02, canonical going forward):** [`../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md`](../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md) — unified three-column table extending rung-4a with the CS02 MGN-on-vortex-shedding column. The schema-uniformity claim now spans two substrate classes (dissipative-isotropic + open-driven-dissipative). Amendment 1 (Ahmed Body) extends with a fourth column when that row lands.
+
+Both artifacts exist deliberately: the rung-4a artifact preserves the LB-only state at its commit date; the 2026-05-13 artifact extends that state with cross-substrate evidence per the frozen-original-plus-pointer methodology discipline.
+
+### Methodology decisions
+
+- **D0-19, D0-20** (rung-4a pre-registrations): [`../methodology/DECISIONS.md`](../methodology/DECISIONS.md).
+- **D0-23, D0-24** (Case Study 02 Phase 1 + Phase 2 audit verdicts): same file.
