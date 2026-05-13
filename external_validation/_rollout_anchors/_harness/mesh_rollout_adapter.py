@@ -310,14 +310,33 @@ def _assert_loader_contract_mgn(rollout: MeshRollout) -> None:
     V3 / V4 / V5). Amendment 1 (Ahmed Body, D0-23 forward-flag) is the
     multi-instance trigger that would force generalization (e.g., a
     dataset-keyed assertion dispatch table).
+
+    Phase-1 cross-review absorption (Findings 1 + 2): the helper is
+    MGN-contract-fail-loud, not lax. Absence of the "velocity" key or
+    the "dataset" / "framework" / "model" metadata keys raises
+    AssertionError rather than no-op'ing, closing the layered-fail-open
+    path where _assert_loader_contract_mgn passes silently while the
+    downstream rule SKIPs on a contract violation.
     """
-    # V12 / V14: velocity field present + correct shape. The helper
-    # _expect_velocity returns an informative HarnessDefect when the
-    # field is absent, so the assertion below is a no-op in that branch
-    # — let _expect_velocity own the SKIP-reason wording.
+    # V8 / V12: the "velocity" key must be present. Absorbed in-rung
+    # per Phase-1 cross-review Finding 2: previously this helper
+    # no-op'd on velocity-absent (delegating SKIP wording to
+    # _expect_velocity), creating a layered-fail-open path —
+    # _assert_loader_contract_mgn passes, then _expect_velocity SKIPs,
+    # then the rule reports a legitimate-looking skip while the
+    # underlying loader-contract violation is invisible. The helper is
+    # MGN-scoped (caller assertion implied by the function name and
+    # docstring); absence of "velocity" is therefore a contract
+    # failure, not an optional rule SKIP. D0-23 verdict 8 pins the key
+    # to literal "velocity".
     velocity = rollout.node_values.get("velocity")
-    if velocity is None:
-        return
+    assert velocity is not None, (
+        f"MGN rollout must include node_values['velocity'] per preflight V8 "
+        f"+ D0-23 verdict 8 (NGC cylinder_flow record schema; "
+        f"vortex_shedding_dataset.py:86-124 @ 1ca85d65). Got keys: "
+        f"{sorted(rollout.node_values.keys())}. See "
+        f"docs/2026-05-13-case-study-02-phase-1-cross-review.md Finding 2."
+    )
 
     velocity_arr = np.asarray(velocity)
 
@@ -365,14 +384,20 @@ def _assert_loader_contract_mgn(rollout: MeshRollout) -> None:
         f"{sorted(invalid)}. See DECISIONS.md D0-23 verdict 10."
     )
 
-    # V-entries on metadata schema: framework + model must be present
-    # so the dispatch (D0-23 verdict 9) and the framework-conditioned
-    # paths (is_regular_grid, graph-mesh SKIP) have anchors.
-    for required_meta_key in ("framework", "model"):
+    # V-entries on metadata schema: framework + model + dataset must
+    # all be present. Absorbed in-rung per Phase-1 cross-review
+    # Finding 1: `dataset` was missing from the required set even
+    # though MGN_DATASET_SYSTEM_CLASS (D0-23 v9) keys the substrate-
+    # class dispatch off it. Without the dataset key, the dispatch
+    # silently no-ops and the rule emits a misleading raw value on
+    # an open-driven-dissipative substrate. Making dataset required
+    # closes that fail-open path at the contract boundary.
+    for required_meta_key in ("framework", "model", "dataset"):
         assert required_meta_key in rollout.metadata, (
             f"MGN rollout metadata must include {required_meta_key!r}; "
             f"got keys: {sorted(rollout.metadata.keys())}. See preflight "
-            f"V-entries on rollout schema + DECISIONS.md D0-23 verdict 10."
+            f"V-entries on rollout schema + DECISIONS.md D0-23 verdict 10. "
+            f"`dataset` is load-bearing for the v9 substrate-class dispatch."
         )
 
 

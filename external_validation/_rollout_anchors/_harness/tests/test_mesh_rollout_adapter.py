@@ -283,9 +283,12 @@ def test_assert_loader_contract_mgn_rejects_node_type_out_of_set() -> None:
         _assert_loader_contract_mgn(rollout)
 
 
-def test_assert_loader_contract_mgn_requires_framework_and_model_metadata() -> None:
-    """Metadata must include framework + model — anchors for the
-    dispatch (D0-23 v9) and framework-conditioned SKIP paths.
+def test_assert_loader_contract_mgn_requires_framework_and_model_and_dataset_metadata() -> None:
+    """Metadata must include framework + model + dataset — anchors for
+    the v9 substrate-class dispatch and framework-conditioned SKIP paths.
+    Phase-1 cross-review Finding 1: `dataset` was previously missing from
+    the required set, allowing the dispatch to silently no-op on
+    well-shaped-but-incomplete MGN rollouts.
     """
     rollout = _well_formed_mgn_rollout(
         metadata={"framework": "pytorch+dgl", "dataset": "vortex_shedding_2d"},
@@ -294,12 +297,31 @@ def test_assert_loader_contract_mgn_requires_framework_and_model_metadata() -> N
         _assert_loader_contract_mgn(rollout)
 
 
-def test_assert_loader_contract_mgn_is_no_op_when_velocity_absent() -> None:
-    """When velocity is absent, the helper is a no-op: _expect_velocity
-    owns the informative SKIP-reason wording. The contract assertion
-    must not raise here — the absence is a SKIP, not a contract violation.
+def test_assert_loader_contract_mgn_requires_dataset_metadata() -> None:
+    """Phase-1 cross-review Finding 1: `dataset` is load-bearing for the
+    v9 substrate-class dispatch (MGN_DATASET_SYSTEM_CLASS). The helper
+    must require it so a materializer that forgets to set it cannot fail
+    open into rule kernels that emit raw values on an open-driven-
+    dissipative substrate.
+    """
+    rollout = _well_formed_mgn_rollout(
+        metadata={"framework": "pytorch+dgl", "model": "modulus_ns_meshgraphnet"},
+    )
+    with pytest.raises(AssertionError, match="dataset"):
+        _assert_loader_contract_mgn(rollout)
+
+
+def test_assert_loader_contract_mgn_raises_when_velocity_key_absent() -> None:
+    """Phase-1 cross-review Finding 2: absence of the "velocity" key in
+    an MGN-scoped rollout is a contract failure (D0-23 verdict 8 pins
+    the NGC key to literal "velocity"), not an optional rule SKIP.
+    Previously this path no-op'd — creating a layered-fail-open where
+    _assert_loader_contract_mgn passed silently while _expect_velocity
+    skipped downstream, hiding the underlying loader-contract violation
+    behind a legitimate-looking SKIP report.
     """
     rollout = _well_formed_mgn_rollout(
         node_values={"pressure": np.ones((5, 10), dtype=np.float32)},
     )
-    _assert_loader_contract_mgn(rollout)  # no AssertionError
+    with pytest.raises(AssertionError, match="velocity"):
+        _assert_loader_contract_mgn(rollout)
