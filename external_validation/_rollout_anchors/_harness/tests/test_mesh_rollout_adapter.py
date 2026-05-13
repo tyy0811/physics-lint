@@ -25,10 +25,12 @@ Lands the Phase-1D code-absorption coverage for case study 02:
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
     MGN_DATASET_SYSTEM_CLASS,
     MeshRollout,
+    _assert_loader_contract_mgn,
     _expect_velocity,
     dissipation_sign_violation_on_mesh,
     energy_drift_on_mesh,
@@ -202,3 +204,102 @@ def test_energy_drift_on_mesh_does_not_skip_when_no_substrate_class_match() -> N
     )
     # Constant velocity → drift = 0.
     assert result.value == 0.0
+
+
+# ---------------------------------------------------------------------------
+# Task 12 — pre-flight loader-contract assertions (D0-23 v10)
+# ---------------------------------------------------------------------------
+
+
+def _well_formed_mgn_rollout(**overrides) -> MeshRollout:
+    """Builder for an MGN-shaped rollout that satisfies all loader-contract
+    assertions out of the box. Tests override one field at a time to
+    exercise a single assertion in isolation.
+    """
+    kwargs = dict(
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.zeros(10, dtype=np.int64),  # all NORMAL → in {0,3,4,5,6}
+        node_values={"velocity": np.ones((5, 10, 2), dtype=np.float32)},
+        dt=0.01,
+        metadata={
+            "framework": "pytorch+dgl",
+            "model": "modulus_ns_meshgraphnet",
+            "dataset": "vortex_shedding_2d",
+        },
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    if "node_values" in overrides:
+        kwargs["node_values"] = overrides.pop("node_values")
+    if "metadata" in overrides:
+        kwargs["metadata"] = overrides.pop("metadata")
+    kwargs.update(overrides)
+    return MeshRollout(**kwargs)
+
+
+def test_assert_loader_contract_mgn_passes_on_well_formed_rollout() -> None:
+    """Sanity: a well-formed NGC-shaped rollout passes all assertions."""
+    rollout = _well_formed_mgn_rollout()
+    _assert_loader_contract_mgn(rollout)  # no AssertionError
+
+
+def test_assert_loader_contract_mgn_rejects_fp64_velocity() -> None:
+    """Per preflight known-unknown §5.6: velocity must be float32. fp64
+    surfaces as a loader-contract violation. Citation:
+    vortex_shedding_dataset.py:373 @ 1ca85d65.
+    """
+    rollout = _well_formed_mgn_rollout(
+        node_values={"velocity": np.ones((5, 10, 2), dtype=np.float64)},
+    )
+    with pytest.raises(AssertionError, match="float32"):
+        _assert_loader_contract_mgn(rollout)
+
+
+def test_assert_loader_contract_mgn_rejects_2d_velocity_shape() -> None:
+    """Per preflight V12 + V18: velocity must be 3D (T, N_nodes, D).
+    A degenerate 2D shape (T, N) would slip past _expect_velocity's
+    lifting branch into the rule kernels with the wrong contract.
+
+    Note: MeshRollout.__post_init__ accepts ndim>=2, so a (T,N) shape
+    constructs successfully; the assertion fires on the explicit ndim
+    check inside _assert_loader_contract_mgn.
+    """
+    rollout = _well_formed_mgn_rollout(
+        node_values={"velocity": np.ones((5, 10), dtype=np.float32)},
+    )
+    with pytest.raises(AssertionError, match="3D"):
+        _assert_loader_contract_mgn(rollout)
+
+
+def test_assert_loader_contract_mgn_rejects_node_type_out_of_set() -> None:
+    """Per preflight known-unknown §5.7 / V16: node_type ∈ {0,3,4,5,6}.
+    The loader's one-hot encoder triggers a downstream RuntimeError on
+    out-of-range values; pre-flight surfaces this as a diagnostic
+    AssertionError instead.
+    """
+    rollout = _well_formed_mgn_rollout(
+        node_type=np.array([0, 3, 4, 5, 6, 7, 0, 0, 0, 0], dtype=np.int64),  # 7 invalid
+    )
+    with pytest.raises(AssertionError, match="node_type"):
+        _assert_loader_contract_mgn(rollout)
+
+
+def test_assert_loader_contract_mgn_requires_framework_and_model_metadata() -> None:
+    """Metadata must include framework + model — anchors for the
+    dispatch (D0-23 v9) and framework-conditioned SKIP paths.
+    """
+    rollout = _well_formed_mgn_rollout(
+        metadata={"framework": "pytorch+dgl", "dataset": "vortex_shedding_2d"},
+    )
+    with pytest.raises(AssertionError, match="model"):
+        _assert_loader_contract_mgn(rollout)
+
+
+def test_assert_loader_contract_mgn_is_no_op_when_velocity_absent() -> None:
+    """When velocity is absent, the helper is a no-op: _expect_velocity
+    owns the informative SKIP-reason wording. The contract assertion
+    must not raise here — the absence is a SKIP, not a contract violation.
+    """
+    rollout = _well_formed_mgn_rollout(
+        node_values={"pressure": np.ones((5, 10), dtype=np.float32)},
+    )
+    _assert_loader_contract_mgn(rollout)  # no AssertionError

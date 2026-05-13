@@ -292,6 +292,90 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
     )
 
 
+def _assert_loader_contract_mgn(rollout: MeshRollout) -> None:
+    """MGN materializer loader-contract assertions per D0-23 verdict 10.
+
+    Each assertion is grounded in a preflight V-entry or known-unknown
+    (see ``02-physicsnemo-mgn/preflight/mgn_loader_contract.md`` §3.1
+    and §5). Fires defensively on incoming MGN rollouts BEFORE the rule
+    kernels consume them; informative AssertionError if any contract is
+    violated.
+
+    Per case study 02 design §2.1 (source-method-implementing-pattern-A-
+    discipline): written from source review, catches Pattern-A divergence
+    at runtime before P0 inference data flows into the rules.
+
+    Scope: P0 vortex_shedding_2d only — assertions hold for the NGC
+    cylinder_flow record schema (preflight loader_contract_audit.json
+    V3 / V4 / V5). Amendment 1 (Ahmed Body, D0-23 forward-flag) is the
+    multi-instance trigger that would force generalization (e.g., a
+    dataset-keyed assertion dispatch table).
+    """
+    # V12 / V14: velocity field present + correct shape. The helper
+    # _expect_velocity returns an informative HarnessDefect when the
+    # field is absent, so the assertion below is a no-op in that branch
+    # — let _expect_velocity own the SKIP-reason wording.
+    velocity = rollout.node_values.get("velocity")
+    if velocity is None:
+        return
+
+    velocity_arr = np.asarray(velocity)
+
+    # Known-unknown §5.6: fp32 vs fp64 precision contract. The NGC
+    # checkpoint was trained at default-torch-dtype=float32; if the
+    # materializer image runs at float64, `torch.tensor(..., dtype=
+    # torch.float)` (vortex_shedding_dataset.py:373) promotes silently
+    # and changes numerical behavior. Materializer must
+    # torch.set_default_dtype(torch.float32) before dataset construction.
+    assert velocity_arr.dtype == np.float32, (
+        f"MGN velocity dtype must be float32 per preflight known-unknown §5.6 "
+        f"(materializer must torch.set_default_dtype(torch.float32) before "
+        f"dataset construction; vortex_shedding_dataset.py:373 @ 1ca85d65). "
+        f"Got: {velocity_arr.dtype}. See DECISIONS.md D0-23 verdict 10."
+    )
+
+    # V12 / V18: time-axis-first velocity shape (T, N_nodes, D).
+    assert velocity_arr.ndim == 3, (
+        f"MGN velocity must be 3D (T, N_nodes, D); got shape "
+        f"{velocity_arr.shape}. See preflight V12 + V18."
+    )
+    # V17 + V18: D ∈ {2, 3} (2D vortex shedding uses D=2; 3D Ahmed body
+    # would use D=3). A degenerate D=1 lift would slip past _expect_velocity
+    # (which lifts 2D arrays to (T,N,1)), so explicit-check here.
+    assert velocity_arr.shape[2] in (2, 3), (
+        f"MGN velocity last-dim must be 2 (2D) or 3 (3D); got "
+        f"{velocity_arr.shape[2]}. See preflight V17 + V18."
+    )
+
+    # Known-unknown §5.7 / V16: node_type values must lie in
+    # {0, 3, 4, 5, 6}. The loader's one-hot encoder
+    # (vortex_shedding_dataset.py:363-368 @ 1ca85d65) maps 0→0 and
+    # non-zero→value-3, then F.one_hot(num_classes=4) — any out-of-range
+    # value triggers RuntimeError in production rather than a
+    # diagnostic message at validation time. Pre-flight makes the
+    # implicit contract explicit.
+    node_type = np.asarray(rollout.node_type)
+    valid_node_types = {0, 3, 4, 5, 6}
+    actual_types = set(int(v) for v in np.unique(node_type).tolist())
+    invalid = actual_types - valid_node_types
+    assert not invalid, (
+        f"MGN node_type values must be in {sorted(valid_node_types)} per preflight "
+        f"known-unknown §5.7 / V16 (one_hot num_classes=4 bound after value-3 shift; "
+        f"vortex_shedding_dataset.py:363-368 @ 1ca85d65). Invalid values: "
+        f"{sorted(invalid)}. See DECISIONS.md D0-23 verdict 10."
+    )
+
+    # V-entries on metadata schema: framework + model must be present
+    # so the dispatch (D0-23 verdict 9) and the framework-conditioned
+    # paths (is_regular_grid, graph-mesh SKIP) have anchors.
+    for required_meta_key in ("framework", "model"):
+        assert required_meta_key in rollout.metadata, (
+            f"MGN rollout metadata must include {required_meta_key!r}; "
+            f"got keys: {sorted(rollout.metadata.keys())}. See preflight "
+            f"V-entries on rollout schema + DECISIONS.md D0-23 verdict 10."
+        )
+
+
 def save_mesh_rollout_npz(rollout: MeshRollout, path: Path | str) -> Path:
     """Write a `MeshRollout` to disk per `SCHEMA.md` §2.
 
