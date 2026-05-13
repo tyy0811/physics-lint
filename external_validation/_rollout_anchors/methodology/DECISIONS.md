@@ -2459,6 +2459,55 @@ Pre-flight contract: any Phase 1 entrypoint consuming `meta.json` / `test.tfreco
 
 ---
 
+## D0-24 — 2026-05-13 — Case Study 02 Phase 2 audit verdicts (open)
+
+Phase 2 fires the MGN inference end-to-end on the canonical cylinder_flow test trajectory selected in Task 1, then lints both the GT trajectory (CPU control arm) and the MGN rollout (Modal A10G) through the mesh harness. Verdicts pre-registered here BEFORE the Phase 2 Modal fires for Tasks 5/6/7 (D0-23 pattern; cap-rationale per [[feedback_cap_rationale_not_literal]]). Task 1's Strouhal-audit findings (refinement 1) are landed; the 7 verdict bands below are open until Task 9 pins them and Task 12's cross-review triage resolves the entry.
+
+**Canonical trajectory (Task 1 result, `f22319d`):** `traj_idx=44`, `St_U_max=0.192` (in design band `[0.16, 0.21]`), `St_U_mean=0.413` (above band — the U-convention ambiguity flagged in the substrate-class smoke; the canonical's in-band hit is on the centerline / U_max convention), `cyl_d=0.135`, `U_max=1.502`, `U_mean=0.699`. Selection criterion = median-Strouhal-in-band, sorted by `strouhal_U_max` for deterministic ordering. See `02-physicsnemo-mgn/preflight/strouhal_test_trajectories.json`.
+
+**Task 1 substrate-variability finding (per the refinement-1 decision tree, "OK with subset in band" branch):** 23/100 test trajectories land in the design band via the either-or `(strouhal_U_mean ∈ [0.16, 0.21]) OR (strouhal_U_max ∈ [0.16, 0.21])` check; 77/100 land out-of-band on the same check; 0 errors in geometry detection. Inspecting the distribution: `strouhal_U_mean` is systematically larger than `strouhal_U_max` across trajectories (consistent with U_mean < U_max, expected for a near-parabolic inflow profile where the mean inflow speed averaged across all inflow nodes is lower than the centerline / max). Most out-of-band trajectories have `strouhal_U_max ∈ [0.16, 0.21]` while `strouhal_U_mean` exceeds 0.21 — i.e. the literature-anchored `[0.16, 0.21]` Strouhal band for cylinder-wake Re ∈ [100, 300] holds on the centerline convention but not the bulk-mean convention. The canonical traj_idx=44 sits inside the band on the centerline convention; the bulk-mean discrepancy is a substrate-variability finding (not a verdict), recorded here per the decision tree's instruction to "record the out-of-band count + indices as a substrate-variability finding." Out-of-band indices are enumerated in `per_trajectory[].in_design_band == false` in the findings JSON.
+
+**Verdict bands (pre-fire commit):**
+
+1. **PH-CON-001 (mass) on the GT trajectory (Task 5):** the harness-FE-on-P1 floor was ≈5% relative divergence per Phase 1 substrate-smoke (`preflight/substrate_class_smoke.json` `incompressibility` row, which was measured on Phase 1's auto-selected GT trajectory — likely trajectory 0 by accident, not 44). Phase 2 bands on the canonical trajectory's GT lint:
+   - **≤ 6 %** (10 % wider than the Phase-1 floor): **PASS-control** — the FE+P1 floor is stable across cylinder_flow trajectories.
+   - **(6 %, 10 %]**: **MARGINAL** — trajectory-dependent floor; record per-trajectory variability in the Phase-3 writeup but no methodology amendment.
+   - **> 10 %**: **FAIL-control** — the harness floor is unstable across trajectories; widen the substrate-smoke design-band claim or audit the FE implementation. Halts Phase 2.
+
+2. **PH-CON-001 (mass) on the MGN rollout (Task 7):** Phase 1 substrate-smoke had ≈5 % on the 399-step MGN rollout (auto-selected trajectory). Phase 2 bands on the canonical trajectory's MGN-rollout lint (`n_rollout_steps = 599` per `inference.py` default; matches `meta["trajectory_length"] - 1 = 599`):
+   - **within ±20 % of the GT-trajectory PH-CON-001 value (verdict 1)**: **PASS** — MGN reproduces GT-level mass conservation at the harness floor.
+   - **20–50 % above GT**: **MARGINAL** — bounded model error above the floor; named in the Phase-3 writeup but no amendment.
+   - **> 50 % above GT**: **FAIL** — MGN's mass-conservation defect exceeds the harness-floor noise; PH-CON-001 has a meaningful surrogate-vs-GT signal. This IS the case-study-02 headline finding if it lands.
+
+3. **PH-CON-002 (energy drift):** D0-23 v9 routes `vortex_shedding_2d` via the open-driven-dissipative dispatch ⇒ SKIP-with-reason expected on both arms (GT and MGN). Bands:
+   - **SKIP-with-reason cites D0-22 + D0-23 v9**: **PASS** (dispatch fires as designed; the rule mirror's substrate-class branch lands).
+   - **Raw value emitted (dispatch missed)**: **FAIL** — Task 3's `_assert_loader_contract_mgn` should have caught the missing/wrong `metadata["dataset"]` upstream; OR Task 4's MeshField path failed to route through the v9 dispatch.
+
+4. **PH-CON-003 (dissipation_sign_violation):** same dispatch as verdict 3 ⇒ SKIP expected on both arms. Bands as verdict 3.
+
+5. **Loader-contract enforcement (Task 3, F3 absorption):** Task 3 wires `_assert_loader_contract_mgn` into `load_mesh_rollout_npz`; the 4 rejection tests must fail-closed on each of: fp64 velocity, wrong velocity key, missing `metadata["dataset"]`, invalid `node_type` (out of `{0, 3, 4, 5, 6}`). Bands:
+   - **All 4 reject with informative `AssertionError`**, AND synthetic-mesh tests still pass (generic `framework="synthetic"` rollouts bypass): **PASS**.
+   - **Any rejection fails-open, OR synthetic rollouts subjected to the MGN contract**: **FAIL** — bug in Task 3's wiring or scope-detection logic.
+
+6. **Rollout-dir isolation (Task 6 + Task 7, F5 absorption):** Task 6's Modal entrypoint reproduces the Phase 1 isolation pattern (`tempfile.mkdtemp` → stage `{edge,node}_stats.json` → `os.chdir(rollout_dir)` → `try / finally: os.chdir(old_cwd)`); Task 7's smoke assertion verifies two same-sha retries cannot read each other's CWD-relative stats. Bands:
+   - **Smoke assertion fires green on a fresh container**: **PASS**.
+   - **Smoke assertion FAILs**: **FAIL** — bug in Task 6's `tempfile`-pattern; fix + re-fire Task 6 (separate fix-iteration A10G fire under its own pre-registered cap per [[feedback_cap_rationale_not_literal]], NOT a verdict-confirmation re-fire).
+
+7. **`inference_run_status` field (Task 8, design §2.5):** Task 8's regression test pins:
+   - `gt.sarif`: `inference_run_status = "n/a_gt_control_arm"`.
+   - `mgn.sarif`: `inference_run_status = "from_completed_inference"`.
+   Bands:
+   - **Both SARIFs carry the field at the pinned values**: **PASS**.
+   - **Either field missing OR value is a salvage marker (`from_post_oom_salvage` / `from_truncated_inference`)**: **FORWARD-FLAG** — the salvage triggers were design-anticipated but Phase 2's N=1 path is supposed to be uniformly `from_completed_inference`; a salvage outcome is a Phase-3-writeup forward-flag rather than a code-patch (per design §2.5 the field exists precisely so salvage shows up rather than hiding).
+
+**Phase 2 cross-review (Task 11–12) findings will be triaged into this entry's closing table once Task 11 fires; the four-cell schema mirrors D0-23's Task-14 triage at commit `41232d2`.**
+
+Open until all 7 verdicts pinned (Tasks 5/6/7/8/9) + Phase 2 cross-review (Tasks 11–12) findings triaged.
+
+**Why pre-registered as skeleton:** mirrors D0-22 + D0-23's pre-registration-before-implementation pattern. Audit-trail discipline: by the time Phase 2 fires, every verdict has a recorded place; the routing is not interpreted-during-execution, and any Pattern-A drift (per design §3.1.A) lands as a D-entry amendment with the pre-fire bands as the comparison baseline.
+
+---
+
 ## D0-25 — 2026-05-12 — P2 Reverse-Poiseuille-2D substrate-class probe — trilateral substrate-class evidence (pre-registration)
 
 **Renumber note (PR #11 merge, 2026-05-15).** This entry was originally numbered **D0-24** (committed to master via PR #10 before CS02 Phase 2 had merged). PR #11's CS02 Phase 2 verdicts also claimed D0-24, with 94 references across 11 files when PR #11 branched from master. Per the original D0-24 prose explicitly inviting this reconciliation ("merge-time numbering reconciliation is the user's call") and per propagation-footprint asymmetry (renaming RPF2D = 7 textual references; renaming CS02 = 94), this entry was renumbered **D0-24 → D0-25** at merge time. The "Numbering note" paragraph below preserves the historical numbering rationale at original-authoring time. Methodology principle landed: D-entry numbering collisions between parallel branches resolve by propagation-footprint asymmetry, not commit chronology — the entry with the smaller reference footprint yields. If the original entry's prose pre-registered the deferability (as this entry's did), the rename is a pre-registered fallback, not a post-hoc compromise.
