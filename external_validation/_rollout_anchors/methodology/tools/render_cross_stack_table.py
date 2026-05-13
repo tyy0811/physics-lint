@@ -12,13 +12,25 @@ Generator-vs-consumer separation: this module imports nothing from
 `_harness/` or `01-lagrangebench/`. The SARIF schema is the wire
 protocol; harness_sarif_schema_version is asserted on read.
 
-INVOKE FROM REPO ROOT:
+INVOKE FROM REPO ROOT (rung-4a LB-only — backwards compatible):
 
     python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \
         --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/
 
-The rendered table is what the rung-4a writeup includes via copy-paste,
-plus the rederivability footer that records the exact command + sha.
+INVOKE FOR THE UNIFIED CS01 + CS02 CROSS-STACK TABLE (Phase 3):
+
+    python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \
+        --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/ \
+        --include-glob '*_tgv2d_8e49339469.sarif' \
+        --sarif-dir external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/
+
+The rendered table is what the rung-4a / Phase-3 writeup includes via
+copy-paste, plus the rederivability footer that records the exact
+command + sha. Multiple ``--sarif-dir`` values accumulate; the
+``--include-glob`` filter applies positionally to the corresponding
+``--sarif-dir`` (with ``*.sarif`` filling any unspecified positions).
+Control-arm SARIFs (``arm == 'gt-control'``; CS02-onwards convention)
+are filtered out so they do NOT become cross-stack columns.
 """
 
 from __future__ import annotations
@@ -144,6 +156,19 @@ def render_cross_stack_table(sarif_paths: Iterable[Path | str]) -> str:
     for path in paths:
         sarif = json.loads(path.read_text())
         run_props = _assert_run_level(sarif, path)
+        # Filter out per-case-study control-arm SARIFs (CS02-onwards
+        # convention). Control-arm SARIFs (`arm == 'gt-control'`) carry
+        # ground-truth-vs-rule-floor evidence for the case study itself;
+        # they are NOT cross-stack columns. Model-under-test SARIFs
+        # (`arm == 'mgn-rollout'`) and LB-side legacy SARIFs (no `arm`
+        # field; pre-CS02 convention) flow through to the cross-stack
+        # table. Phase 3 Task 2 plan literal was `arm == 'control'`;
+        # the actual CS02 emission uses `'gt-control'` (and
+        # `'mgn-rollout'` for the model arm), so the filter binds on
+        # that concrete value.
+        arm = run_props.get("arm")
+        if arm == "gt-control":
+            continue
         results = sarif["runs"][0].get("results", [])
         stacks.append((path, run_props, results))
 
@@ -306,30 +331,54 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--sarif-dir",
         type=Path,
+        action="append",
         required=True,
-        help="Directory containing the harness SARIF files (e.g., outputs/sarif/).",
+        help=(
+            "Directory containing the harness SARIF files (e.g., outputs/sarif/). "
+            "May be specified multiple times to ingest from multiple case-study "
+            "directories in a single invocation (Phase 3 unified CS01+CS02 cross-stack "
+            "table). Each --sarif-dir pairs positionally with the corresponding "
+            "--include-glob; unpaired positions default to '*.sarif'."
+        ),
     )
     parser.add_argument(
         "--include-glob",
         type=str,
-        default="*.sarif",
+        action="append",
+        default=None,
         help=(
             "Glob pattern (relative to --sarif-dir) for files to include. Defaults to "
             "'*.sarif'. Use to render a subset of SARIFs in a directory that mixes "
             "schema versions (e.g., '--include-glob \"*tgv2d*.sarif\"' to skip "
             "rung-4b eps SARIFs at v1.1, or '--include-glob \"*dam2d*.sarif\"' for "
             "rung-4c dam-break-only). The fail-loud schema-mismatch assertion still "
-            "applies to the filtered set."
+            "applies to the filtered set. With multiple --sarif-dir values, each "
+            "--include-glob pairs positionally with the corresponding --sarif-dir."
         ),
     )
     args = parser.parse_args(argv)
-    sarif_paths = sorted(args.sarif_dir.glob(args.include_glob))
-    if not sarif_paths:
+    dirs: list[Path] = list(args.sarif_dir)
+    globs: list[str] = list(args.include_glob) if args.include_glob else []
+    if len(globs) > len(dirs):
         print(
-            f"No SARIF files matching glob {args.include_glob!r} in {args.sarif_dir}",
+            f"--include-glob specified {len(globs)} times but --sarif-dir only "
+            f"{len(dirs)} times; cannot pair globs positionally.",
             file=sys.stderr,
         )
         return 2
+    # Pad unpaired positions with the default glob.
+    globs.extend(["*.sarif"] * (len(dirs) - len(globs)))
+
+    sarif_paths: list[Path] = []
+    for d, glob in zip(dirs, globs, strict=True):
+        matched = sorted(d.glob(glob))
+        if not matched:
+            print(
+                f"No SARIF files matching glob {glob!r} in {d}",
+                file=sys.stderr,
+            )
+            return 2
+        sarif_paths.extend(matched)
     print(render_cross_stack_table(sarif_paths))
     return 0
 

@@ -406,3 +406,81 @@ def test_renderer_marks_absent_status_as_n_a_in_mixed_set(tmp_path: Path) -> Non
     assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
     assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
     assert "synthetic_gns-synthetic_dissipative_d**: n/a (pre-salvage-tag-schema)" in rendered
+
+
+# ---------------------------------------------------------------------------
+# 8. Multi-dir ingestion + GT-arm filter (Phase 3 Task 2)
+# ---------------------------------------------------------------------------
+
+
+def test_renderer_ingests_from_multiple_dirs() -> None:
+    """Multi-dir ingestion: the renderer reads SARIFs from BOTH
+    01-lagrangebench/outputs/sarif/ AND 02-physicsnemo-mgn/outputs/sarif/
+    in a single invocation, producing a unified three-column table
+    (gns-tgv2d, segnn-tgv2d, modulus_ns_meshgraphnet-vortex_shedding_2d).
+    GT-arm SARIF (02-physicsnemo-mgn/outputs/sarif/gt.sarif) is filtered
+    out — it is a per-case-study control arm, not a cross-stack column.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*tgv2d_8e49339469.sarif")
+    )
+    cs02_mgn_sarif = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+        / "mgn.sarif"
+    )
+
+    table = render_cross_stack_table([*lb_sarifs, cs02_mgn_sarif])
+
+    assert "gns-tgv2d" in table
+    assert "segnn-tgv2d" in table
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in table
+    # GT-arm should NOT appear as a column — control arm, not cross-stack
+    assert "deepmind-cylinder-flow-gt" not in table
+
+
+def test_renderer_filters_control_arm_sarif_when_present() -> None:
+    """If the caller passes CS02's gt.sarif AND mgn.sarif (e.g., via
+    a directory glob that picks up both), the renderer must filter the
+    control-arm SARIF and use only the model-under-test SARIF for the
+    cross-stack column. The filter binds on the run-level `arm` field:
+    `arm == 'gt-control'` → filtered out; `arm == 'mgn-rollout'` (or
+    absent for LB-side legacy SARIFs) → included.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*tgv2d_8e49339469.sarif")
+    )
+
+    # Pass BOTH gt.sarif and mgn.sarif explicitly; renderer must filter gt
+    table = render_cross_stack_table([*lb_sarifs, cs02_dir / "gt.sarif", cs02_dir / "mgn.sarif"])
+
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in table
+    assert "deepmind-cylinder-flow-gt" not in table

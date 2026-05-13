@@ -179,8 +179,12 @@ def test_renderer_filters_control_arm_sarif_when_present() -> None:
     a directory glob that picks up both), the renderer must filter the
     control-arm SARIF and use only the model-under-test SARIF for the
     cross-stack column. The filter binds on the run-level `arm` field:
-    `arm == 'control'` → filtered out; `arm == 'model'` (or absent for
-    LB-side legacy SARIFs) → included.
+    `arm == 'gt-control'` → filtered out; `arm == 'mgn-rollout'` (or
+    absent for LB-side legacy SARIFs) → included. (Plan literal pre-
+    Task-2 said `'control'` / `'model'`; the actual CS02 emission uses
+    `'gt-control'` / `'mgn-rollout'`, so the filter binds on those
+    concrete values — see Task 2 commit message for the plan-vs-reality
+    drift.)
     """
     from pathlib import Path
 
@@ -220,13 +224,14 @@ Locate the `stacks: list[tuple[Path, dict[str, Any], list[dict[str, Any]]]] = []
 
 ```python
         # Filter out per-case-study control-arm SARIFs (CS02-onwards
-        # convention). Control-arm SARIFs (`arm == 'control'`) carry
+        # convention). Control-arm SARIFs (`arm == 'gt-control'`) carry
         # ground-truth-vs-rule-floor evidence for the case study itself;
         # they are NOT cross-stack columns. Model-under-test SARIFs
-        # (`arm == 'model'`) and LB-side legacy SARIFs (no `arm` field;
-        # pre-CS02 convention) flow through to the cross-stack table.
+        # (`arm == 'mgn-rollout'`) and LB-side legacy SARIFs (no `arm`
+        # field; pre-CS02 convention) flow through to the cross-stack
+        # table.
         arm = run_props.get("arm")
-        if arm == "control":
+        if arm == "gt-control":
             continue
 ```
 
@@ -290,12 +295,13 @@ python external_validation/_rollout_anchors/methodology/tools/render_cross_stack
 cat /tmp/cs02_cross_stack_table.md
 ```
 
-Expected: a three-column markdown table similar to rung-4a's two-column table, plus a Provenance block with three-sha per stack. The MGN column should show:
-- `mass_conservation_defect` → `5.881e-02 (x1)` (single fire; D0-24 v2)
-- `energy_drift` → `SKIP (x1, D0-22 + D0-23)` (substrate-class dispatch fires on open-driven-dissipative; D0-24 v3)
-- `dissipation_sign_violation` → `SKIP (x1, D0-22 + D0-23)` (same dispatch; D0-24 v4)
+Expected: a three-column markdown table similar to rung-4a's two-column table, plus a Provenance block with three-sha per stack. The MGN column should show (actual output verified at Task 2 close — the D-entry regex extracts the first `DECISIONS.md D0-NN` citation from each skip_reason, so the cited entry per cell reflects which D-decision the emitter's skip_reason cites first; the SKIP itself is dispatched per D0-22 + D0-23 v9 but the cell label cites only the regex-extracted entry):
 
-(Exact stack-label strings come from the SARIF's `model_name` + `dataset_name`; verify against actual output before committing the writeup.)
+- `mass_conservation_defect` → `5.881e-02 (x1 identical)` (single fire; D0-24 v2)
+- `energy_drift` → `SKIP (x1, D0-22 (amendment 1))` (open-driven dispatch via D0-22 amendment 1; D0-24 v3)
+- `dissipation_sign_violation` → `SKIP (x1, D0-22)` (open-driven dispatch via D0-22; D0-24 v4)
+
+(Exact stack-label strings come from the SARIF's `model_name` + `dataset_name`; verified actual output: `modulus_ns_meshgraphnet-vortex_shedding_2d`.)
 
 - [ ] **Step 2: Write the new dated artifact using rung-4a's layout as a template.**
 
