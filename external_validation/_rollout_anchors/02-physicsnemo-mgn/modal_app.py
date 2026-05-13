@@ -74,6 +74,14 @@ mgn_image = (
         "external_validation/_rollout_anchors/02-physicsnemo-mgn/_legacy_checkpoint_name_remap.py",
         "/root/_legacy_checkpoint_name_remap.py",
     )
+    # Phase 2 Tasks 5-7 import the mesh-side harness modules (lint_mesh_rollout,
+    # mesh_rollout_adapter, sarif_emitter, particle_rollout_adapter) inside the
+    # container. add_local_python_source ships the entire `external_validation`
+    # package to /root/external_validation/ on container start; the hyphenated
+    # `02-physicsnemo-mgn` subdir is skipped on import (not Python-importable
+    # anyway). Skips dot-prefixed subdirs + __pycache__/.pyc by default; only
+    # .py files are included.
+    .add_local_python_source("external_validation")
 )
 
 # Modal Volume for NGC checkpoints + rollout outputs.
@@ -2246,3 +2254,178 @@ def audit_strouhal_test_trajectories(
     print(f"=== STROUHAL AUDIT VERDICT: {verdict} ===")
     print(selection_reason)
     return findings
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 -- Task 5: GT-trajectory lint entrypoint + gt.sarif (CPU control arm).
+# ---------------------------------------------------------------------------
+
+
+def _decode_test_trajectory(traj_idx: int) -> dict:
+    """Decode the ``traj_idx``-th test.tfrecord record, no dataset
+    instantiation (= no CWD-relative stats reads). Iterates raw records
+    via the same machinery as ``audit_cylinder_flow_loader_contract``
+    lines 854-861 and ``audit_strouhal_test_trajectories``. CPU-only.
+    """
+    import json as _json
+
+    import tfrecord.torch.dataset as tfrecord_torch
+    from physicsnemo.datapipes.gnn.vortex_shedding_dataset import VortexSheddingDataset
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    meta = _json.loads((data_dir / "meta.json").read_text())
+    description = {k: "byte" for k in meta["field_names"]}
+    tfr = tfrecord_torch.TFRecordDataset(
+        str(data_dir / "test.tfrecord"),
+        None,  # no .tfindex -> sequential read
+        description,
+        transform=lambda r: VortexSheddingDataset._decode_record(r, meta),
+    )
+    last_idx = -1
+    for idx, rec in enumerate(tfr):
+        last_idx = idx
+        if idx == traj_idx:
+            return rec
+    raise IndexError(
+        f"traj_idx={traj_idx} not found in test.tfrecord; count exhausted at {last_idx + 1}"
+    )
+
+
+@app.function(
+    volumes={"/vol": mgn_volume},
+    timeout=60 * 30,
+)
+def lint_gt_trajectory(git_sha: str, traj_idx: int) -> dict:
+    """Phase 2 Task 5 -- control-arm lint of the canonical GT cylinder_flow
+    test trajectory through the mesh harness. CPU-only; no inference.
+
+    Loads the trajectory's raw record from test.tfrecord, materializes a
+    MeshRollout (framework='deepmind-cylinder-flow-gt', regular_grid=False,
+    cells_2d supplied so Task 4's FE path runs), applies the three
+    *_on_mesh rule mirrors via lint_mesh_rollout, and writes a
+    SARIF artifact at both the Volume and (via the caller's
+    ``modal volume get``) the local committed mirror.
+
+    Expected outputs (D0-24 v1 + v3 + v4 bands):
+      - harness:mass_conservation_defect: raw_value (the FE-on-P1 floor
+        on this trajectory; D0-24 v1 PASS band is <= 6%).
+      - harness:energy_drift: SKIP via the v9 substrate-class dispatch
+        (vortex_shedding_2d -> open-driven-dissipative); D0-24 v3 PASS.
+      - harness:dissipation_sign_violation: SKIP via the same dispatch;
+        D0-24 v4 PASS.
+
+    The ``inference_run_status`` run-level property is fixed to
+    ``"n/a_gt_control_arm"`` (design §2.5) -- the GT control arm has no
+    inference fire, so the field documents the absence rather than
+    omitting (a salvage-detection-by-omission anti-pattern).
+    """
+    import json as _json
+    import sys
+
+    import numpy as np
+
+    data_dir = Path(DM_CYLINDER_FLOW_DIR)
+    meta_path = data_dir / "meta.json"
+    test_tfrecord_path = data_dir / "test.tfrecord"
+    for p in (meta_path, test_tfrecord_path):
+        if not p.exists():
+            raise FileNotFoundError(f"{p} missing -- run download_dm_cylinder_flow_dataset first.")
+    if _sha256_of_file(meta_path) != DM_CYLINDER_FLOW_META_SHA256:
+        raise RuntimeError("meta.json sha mismatch vs D0-23 pin")
+    if _sha256_of_file(test_tfrecord_path) != DM_CYLINDER_FLOW_TEST_SHA256:
+        raise RuntimeError("test.tfrecord sha mismatch vs D0-23 pin")
+
+    sys.path.insert(0, "/root")  # for adapter / harness imports
+    from external_validation._rollout_anchors._harness.lint_mesh_rollout import (
+        lint_mesh_rollout,
+    )
+    from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
+        MeshRollout,
+    )
+    from external_validation._rollout_anchors._harness.sarif_emitter import emit_sarif
+
+    rec = _decode_test_trajectory(traj_idx)
+    velocity = np.asarray(rec["velocity"]).astype(np.float32)  # (T, N, 2)
+    pressure = np.asarray(rec["pressure"]).astype(np.float32)  # (T, N, 1)
+    mesh_pos = np.asarray(rec["mesh_pos"][0]).astype(np.float32)  # (N, 2)
+    cells = np.asarray(rec["cells"][0]).astype(np.int64)  # (M, 3)
+    node_type = np.asarray(rec["node_type"][0]).reshape(-1).astype(np.int64)
+
+    rollout = MeshRollout(
+        node_positions=mesh_pos,
+        node_type=node_type,
+        node_values={"velocity": velocity, "pressure": pressure},
+        dt=0.01,  # cylinder_flow meta.json
+        metadata={
+            # framework=NOT "pytorch+dgl" -- this is GT, not MGN inference output.
+            # is_regular_grid stays False so the FE graph-mesh path is taken.
+            "framework": "deepmind-cylinder-flow-gt",
+            "model": "deepmind-meshgraphnets-2020",  # NOT "modulus_*" -> F3 bypasses
+            "dataset": "vortex_shedding_2d",
+            "regular_grid": False,
+            "cells_2d": cells,
+            "git_sha": git_sha,
+            "trajectory_index": traj_idx,
+            "physicsnemo_sha": PHYSICSNEMO_SHA,
+        },
+        edge_index=None,
+    )
+
+    rule_results = lint_mesh_rollout(
+        rollout,
+        case_study="02-physicsnemo-mgn",
+        dataset="vortex_shedding_2d",
+        model="deepmind-cylinder-flow-gt",
+        ckpt_hash="n/a_gt_control_arm",
+        extra_properties={
+            "arm": "gt-control",
+            "trajectory_index": traj_idx,
+            "n_timesteps": int(velocity.shape[0]),
+            "n_nodes": int(mesh_pos.shape[0]),
+            "n_cells": int(cells.shape[0]),
+        },
+    )
+
+    run_properties: dict[str, object] = {
+        "source": "rollout-anchor-harness",
+        "harness_sarif_schema_version": "1.0",
+        "case_study": "02-physicsnemo-mgn",
+        "arm": "gt-control",
+        "inference_run_status": "n/a_gt_control_arm",  # design §2.5
+        "trajectory_index": traj_idx,
+        "dataset_name": "vortex_shedding_2d",
+        "model_name": "deepmind-cylinder-flow-gt",
+        "checkpoint_id": "n/a_gt_control_arm",
+        "physicsnemo_sha": PHYSICSNEMO_SHA,
+        "physics_lint_sha_sarif_emission": git_sha,
+        "rollout_subdir": f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}/",
+    }
+
+    out_dir_vol = Path(f"/vol/rollouts/physicsnemo/vortex_shedding_{git_sha}")
+    out_dir_vol.mkdir(parents=True, exist_ok=True)
+    out_path_vol = out_dir_vol / "gt.sarif"
+    emit_sarif(
+        rule_results,
+        output_path=out_path_vol,
+        run_properties=run_properties,
+    )
+    mgn_volume.commit()
+
+    rule_summary = {}
+    for r in rule_results:
+        if r.raw_value is not None:
+            rule_summary[r.rule_id] = f"raw_value={r.raw_value:.3e}"
+        else:
+            reason = str(r.extra_properties.get("skip_reason", "(no reason)"))
+            rule_summary[r.rule_id] = f"SKIP: {reason[:80]}"
+    print(f"=== GT LINT VERDICT (traj_idx={traj_idx}) ===")
+    print(_json.dumps(rule_summary, indent=2))
+    return {
+        "sarif_path": str(out_path_vol),
+        "rule_summary": rule_summary,
+        "trajectory_index": traj_idx,
+        "n_timesteps": int(velocity.shape[0]),
+        "n_nodes": int(mesh_pos.shape[0]),
+        "n_cells": int(cells.shape[0]),
+        "git_sha": git_sha,
+    }

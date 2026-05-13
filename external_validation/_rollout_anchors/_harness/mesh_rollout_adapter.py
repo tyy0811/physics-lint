@@ -51,7 +51,11 @@ from external_validation._rollout_anchors._harness.particle_rollout_adapter impo
     KE_REST_THRESHOLD,
     HarnessDefect,
 )
-from physics_lint import GridField
+
+# `physics_lint.GridField` is imported lazily inside :func:`materialize_grid_field`
+# so this module remains importable inside Modal containers that don't have the
+# public physics-lint package installed (the Phase 2 lint entrypoints don't call
+# the materialization path; they only need the *_on_mesh rule mirrors).
 
 # Pre-registered FD-noise upper bound on `mass_conservation_defect_on_mesh`
 # for divergence-free input fields. See `physics-lint-validation/DECISIONS.md`
@@ -103,8 +107,8 @@ def materialize_grid_field(
     h: float | tuple[float, ...],
     periodic: bool = False,
     backend: str = "fd",
-) -> GridField:
-    """Wrap a numpy array of per-timestep node values as a GridField.
+) -> Any:
+    """Wrap a numpy array of per-timestep node values as a ``GridField``.
 
     Used by the FNO-on-Darcy fallback (Gate D), where the model output
     is already on a regular grid, and by the GridField PARTIAL fallback
@@ -114,7 +118,14 @@ def materialize_grid_field(
     the materialization step explicit in the call graph so a code
     reviewer can see "this is the public-API entry point for the mesh
     case study", not to add behaviour over ``GridField.__init__``.
+
+    ``physics_lint`` is imported lazily here so that this module remains
+    importable inside Modal containers that don't have the public
+    physics-lint package installed (the Phase-2 lint entrypoints invoke
+    only the *_on_mesh rule mirrors below, never materialize_grid_field).
     """
+    from physics_lint import GridField
+
     return GridField(values, h=h, periodic=periodic, backend=backend)  # type: ignore[arg-type]
 
 

@@ -1,0 +1,99 @@
+{
+  "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0.json",
+  "runs": [
+    {
+      "properties": {
+        "arm": "gt-control",
+        "case_study": "02-physicsnemo-mgn",
+        "checkpoint_id": "n/a_gt_control_arm",
+        "dataset_name": "vortex_shedding_2d",
+        "harness_sarif_schema_version": "1.0",
+        "inference_run_status": "n/a_gt_control_arm",
+        "model_name": "deepmind-cylinder-flow-gt",
+        "physics_lint_sha_sarif_emission": "4debbbf",
+        "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+        "rollout_subdir": "/vol/rollouts/physicsnemo/vortex_shedding_4debbbf/",
+        "source": "rollout-anchor-harness",
+        "trajectory_index": 44
+      },
+      "results": [
+        {
+          "level": "note",
+          "message": {
+            "text": "raw_value=5.857e-02"
+          },
+          "properties": {
+            "arm": "gt-control",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "n/a_gt_control_arm",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "deepmind-cylinder-flow-gt",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 600,
+            "raw_value": 0.05856792645203396,
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:mass_conservation_defect"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); boundary-driven inflow continuously supplies KE; the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1) for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension."
+          },
+          "properties": {
+            "arm": "gt-control",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "n/a_gt_control_arm",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "ke_final": 0.4152373012783077,
+            "ke_initial": 0.3453236830017718,
+            "model": "deepmind-cylinder-flow-gt",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 600,
+            "skip_reason": "system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); boundary-driven inflow continuously supplies KE; the strictly-dissipative-or-conservative assumption underpinning energy_drift does not apply. See DECISIONS.md D0-22 (amendment 1) for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension.",
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:energy_drift"
+        },
+        {
+          "level": "note",
+          "message": {
+            "text": "SKIP: system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); dE/dt > 0 over a stretch by physics (boundary-driven inflow supplies KE); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22 for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension."
+          },
+          "properties": {
+            "arm": "gt-control",
+            "case_study": "02-physicsnemo-mgn",
+            "ckpt_hash": "n/a_gt_control_arm",
+            "dataset": "vortex_shedding_2d",
+            "harness_validation_passed": null,
+            "harness_vs_public_epsilon": null,
+            "model": "deepmind-cylinder-flow-gt",
+            "n_cells": 3340,
+            "n_nodes": 1787,
+            "n_timesteps": 600,
+            "skip_reason": "system_class='open-driven-dissipative' (dataset='vortex_shedding_2d'); dE/dt > 0 over a stretch by physics (boundary-driven inflow supplies KE); the strictly-dissipative-or-conservative assumption underpinning dissipation_sign_violation does not apply. See DECISIONS.md D0-22 for the particle-side precedent and D0-23 (verdict 9) for the mesh-side extension.",
+            "source": "rollout-anchor-harness",
+            "trajectory_index": 44
+          },
+          "ruleId": "harness:dissipation_sign_violation"
+        }
+      ],
+      "tool": {
+        "driver": {
+          "informationUri": "https://github.com/tyy0811/physics-lint",
+          "name": "physics-lint-rollout-anchor-harness",
+          "version": "0.1.0"
+        }
+      }
+    }
+  ],
+  "version": "2.1.0"
+}
