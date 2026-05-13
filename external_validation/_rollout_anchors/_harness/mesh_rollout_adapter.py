@@ -70,6 +70,28 @@ from physics_lint import GridField
 MESH_FD_NOISE_TOLERANCE: float = 1e-10
 
 
+# Mesh-side substrate-class taxonomy. Parallel to
+# `particle_rollout_adapter.py::LAGRANGEBENCH_DATASET_SYSTEM_CLASS`.
+# Per case study 02 design §2.2 P0-resolvable Pattern-B response
+# (duplicated route, NOT a stack-agnostic refactor): the duplicate-logic-
+# drift risk is *named* per round-codex-4 catalogue, not eliminated.
+# A stack-agnostic refactor triggers only on amendment 1 / case study 03
+# evidence (a second mesh-side substrate that disagrees with its
+# particle-side analog on substrate class).
+#
+# Empirical classification per the "classify when you exercise" rule:
+# entries land only after Phase 1's empirical probe confirms the
+# substrate's behavior. The vortex_shedding_2d entry below is anchored to
+# D0-23 verdict 6 (substrate-class smoke on cylinder_flow GT + 399-step
+# MGN rollout: ∫|∇·v|/∫‖∇v‖_F ≈ 5%, KE oscillates around steady mean
+# with 42 sign-changes, Strouhal St ≈ 0.16 in design band [0.16, 0.21]
+# — boundary-driven sub-class). Findings:
+# 02-physicsnemo-mgn/preflight/substrate_class_smoke.json.
+MGN_DATASET_SYSTEM_CLASS: dict[str, str] = {
+    "vortex_shedding_2d": "open-driven-dissipative",  # D0-23 verdict 6
+}
+
+
 # ---------------------------------------------------------------------------
 # Materialization path
 # ---------------------------------------------------------------------------
@@ -472,6 +494,12 @@ def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     KE-rest threshold as the particle side (DECISIONS.md D0-08).
 
     Mirrors :func:`particle_rollout_adapter.energy_drift` for mesh data.
+
+    Substrate-class dispatch added at D0-23 verdict 9 (case study 02
+    Phase 1): mirrors D0-22 amendment 1's particle-side gate. Open-
+    driven-dissipative substrates SKIP with reason — the strictly-
+    dissipative-or-conservative assumption underpinning energy_drift
+    does not apply when boundary-driven inflow continuously supplies KE.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
@@ -485,6 +513,27 @@ def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
                 f"integration is gated on Day 2 hour 1 NGC audit"
             ),
         )
+
+    # D0-23 verdict 9 substrate-class dispatch (parallel to D0-22
+    # amendment 1 on particle side). Fires BEFORE the KE-rest gate
+    # because the substrate class is the load-bearing assumption that
+    # energy_drift's contract depends on; if the assumption is violated,
+    # KE-rest gating is moot.
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
+    if system_class == "open-driven-dissipative":
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "boundary-driven inflow continuously supplies KE; the strictly-"
+                "dissipative-or-conservative assumption underpinning "
+                "energy_drift does not apply. See DECISIONS.md D0-22 "
+                "(amendment 1) for the particle-side precedent and D0-23 "
+                "(verdict 9) for the mesh-side extension."
+            ),
+        )
+
     e_series = kinetic_energy_series_on_mesh(rollout)
     e0 = float(e_series[0])
     if abs(e0) < KE_REST_THRESHOLD:
@@ -506,6 +555,13 @@ def dissipation_sign_violation_on_mesh(rollout: MeshRollout) -> HarnessDefect:
 
     Mirrors :func:`particle_rollout_adapter.dissipation_sign_violation`
     for mesh data.
+
+    Substrate-class dispatch added at D0-23 verdict 9 (case study 02
+    Phase 1): mirrors D0-22 base gate's particle-side dispatch. Open-
+    driven-dissipative substrates SKIP with reason — dE/dt > 0 over a
+    stretch by physics (boundary-driven inflow supplies KE); the
+    strictly-dissipative-or-conservative assumption that
+    dissipation_sign_violation encodes does not apply.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
@@ -519,6 +575,25 @@ def dissipation_sign_violation_on_mesh(rollout: MeshRollout) -> HarnessDefect:
                 f"is gated on Day 2 hour 1 NGC audit"
             ),
         )
+
+    # D0-23 verdict 9 substrate-class dispatch (parallel to D0-22 base
+    # gate on particle side). Fires BEFORE the timestep / KE-rest gates
+    # because the substrate class is the load-bearing assumption.
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
+    if system_class == "open-driven-dissipative":
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "dE/dt > 0 over a stretch by physics (boundary-driven inflow "
+                "supplies KE); the strictly-dissipative-or-conservative "
+                "assumption underpinning dissipation_sign_violation does not "
+                "apply. See DECISIONS.md D0-22 for the particle-side precedent "
+                "and D0-23 (verdict 9) for the mesh-side extension."
+            ),
+        )
+
     if rollout.n_timesteps < 2:
         raise ValueError(
             f"dissipation_sign_violation_on_mesh needs at least 2 timesteps; "
