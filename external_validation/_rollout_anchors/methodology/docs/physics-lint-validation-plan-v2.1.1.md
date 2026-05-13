@@ -32,7 +32,7 @@ v2.1.1's four amendments split into two categories:
 
 The pattern-C catalogue at v2.1 §1.3 currently lists three within-rung-4c instances (rung-4c §9 fold-in round 1 + round 2 + round 3). Round-prose-1's absorption already started counting a 4th cell-2 instance (round-prose-1 itself). CS02 Phase 1's D0-23 + Phase 2's D0-24 + Phase 3's prose cross-review supply additional cell-2 instances; v2.1.1 documents the 4th-instance threshold being crossed and elevates pattern-C from "rung-4c-internal observation" to "validated within at least one cross-rung context (CS02)."
 
-**Outward pointer:** see [DECISIONS.md D0-23 + D0-24](./DECISIONS.md) for the per-case-study triage tables; v2.1 §1.3 receives a pointer to this v2.1.1 entry marking the 4th-instance threshold cross.
+**Outward pointer:** see [DECISIONS.md D0-23 + D0-24](../DECISIONS.md) for the per-case-study triage tables; v2.1 §1.3 receives a pointer to this v2.1.1 entry marking the 4th-instance threshold cross.
 
 ### §1.2 Per-section convergence-pattern observation (resolves v2.1 §1.3 + §3 changelog)
 
@@ -65,7 +65,7 @@ v2.1.1 names the flag with a one-paragraph summary and points outward. Full inst
 
 The §1.4 review-discipline triple (smoke + source + cross) does not currently distinguish the two cross-review modes; v2.1.2 §1.4 amendment is the right venue for adding the distinction with worked criteria for when each mode applies.
 
-**Outward pointer:** see v2.1 §3 round-prose-2 changelog forward-flag which is now RESOLVED with a pointer to this v2.1.1 entry; full instantiation evidence at [round-code-1 PR #10 merge](../../../README.md) (level rendering / file-path location / prose framing) + [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md).
+**Outward pointer:** see v2.1 §3 round-prose-2 changelog forward-flag which is now RESOLVED with a pointer to this v2.1.1 entry; full instantiation evidence at [round-code-1 PR #10 merge](../../../../README.md#hero-physics-lint-in-ci) (level rendering / file-path location / prose framing) + [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md).
 
 ---
 
