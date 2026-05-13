@@ -2520,6 +2520,40 @@ Phase 2 fires the MGN inference end-to-end on the canonical cylinder_flow test t
 
 **No Pattern-A drift to absorb.** All 7 verdicts landed in their pre-registered PASS bands; no MARGINAL / FAIL routing fired; no D-entry amendment needed. The cross-stack consistency table for Phase 3 populates with `GT(5.857%) + MGN(5.881%)` both at the floor + the v9 substrate-class SKIP on both arms.
 
+**Phase 2 §4.2 acceptance checklist (Task 10; complete except cross-review pending).**
+
+| # | Criterion | Status | Evidence |
+|---|---|---|---|
+| 1 | Modal entrypoint for MGN inference committed; pre-flight assertions cover persistent-volume write path, NGC checkpoint hash verification, rollout output schema, CWD discipline, fp32 default-dtype, split="test". | ☑ | Task 6 (`4d35faa`); `_preflight_mgn_inference_p0` covers all 6 items + `_assert_loader_contract_mgn` belt-and-braces at save time. |
+| 2 | Round-codex-4 rollout-dir isolation applied IFF Phase 1 committed persistent volume. | ☑ | Task 6 (`4d35faa`) `tempfile.mkdtemp` + `chdir` + `try / finally`; rollout_dir landed at `/tmp/mgn_rollout_p0_4173b32_x06lz8pq`. |
+| 3 | P0 vortex-shedding rollout completed end-to-end on Modal (n_trajs per Phase 1 cost estimate; rung-4c discipline). | ☑ | Task 6 (`4d35faa`); N=1 on canonical traj 44 (refinement 1 + Task 1 Strouhal audit); 599 steps inferred on A10G in one fire. |
+| 4 | Per-timestep MeshField/GridField materialization works per Gate A branch. | ☑ | Task 4 (`4debbbf`) wired scikit-fem P1 graph-mesh path into the three `*_on_mesh` rule mirrors; exercised end-to-end in Tasks 5 + 7 (PH-CON-001 = 5.857% / 5.881% via `_fe_divergence_defect_max`). |
+| 5 | PH-CON-001 SARIF committed at `02-physicsnemo-mgn/outputs/sarif/`; values within Phase-1-pre-registered mass-conservation drift bound. | ☑ | `gt.sarif` (`4173b32`) + `mgn.sarif` (`11c7df2`); D0-24 v1 = PASS (5.857% ≤ 6%) and v2 = PASS (0.41% gap ≤ 20%). |
+| 6 | PH-CON-002 (`energy_drift_on_mesh`) SARIF committed; behavior consistent with `MGN_DATASET_SYSTEM_CLASS` dispatch (SKIP-with-reason or RAW per dispatch). | ☑ | Both SARIFs SKIP with `open-driven-dissipative` reason citing D0-22 + D0-23 (D0-24 v3 = PASS); v9 dispatch fires as designed. |
+| 7 | PH-CON-003 (`dissipation_sign_violation_on_mesh`) SARIF committed; SKIP/RAW outcome per dispatch. | ☑ | Same dispatch ⇒ same SKIP on both arms (D0-24 v4 = PASS). |
+| 8 | `inference_run_status` field lands per §2.5 (uniformly `from_completed_inference` predicted; salvage triggers fire forward-flag instead). | ☑ | Task 8 (`3c028ff`); 3 regression tests pin the field at design-§2.5 values (`gt → "n/a_gt_control_arm"`, `mgn → "from_completed_inference"`) + restrict to the enumerated set. |
+| 9 | Smoke check: rule outputs vs Phase-1-pre-registered tolerances; pattern-A drift absorbed via D-entry amendment if any. | ☑ | Task 9 (`3380742`); all 7 verdicts PASS; no Pattern-A drift to absorb. |
+| 10 | Phase 2 boundary cross-review (Codex pass over SARIF + rule outputs) complete; findings triaged. | ☐ | Pending Tasks 11 + 12. |
+
+Plus the two Phase 1 forward-flags Phase 2 inherited:
+
+| # | Forward-flag | Status | Evidence |
+|---|---|---|---|
+| F3 | `_assert_loader_contract_mgn` wired into `load_mesh_rollout_npz` (the first trusted MGN boundary). | ☑ | Task 3 (`3eb38b4`); 5 tests on the wired path (4 rejection + 1 round-trip + 1 synthetic bypass) all PASS. |
+| F5 | Rollout-dir isolation pattern reproduced in the MGN inference entrypoint + smoke assertion that two same-sha retries cannot read each other's CWD-relative stats. | ☑ | Task 6 (`4d35faa`) production-path pattern; Task 7 (`11c7df2`) 3 CPU smoke tests on the Python-level invariants. |
+
+**Phase 3 writeup-framing requirements (refinement 2 forward-flag; lands as Phase 3 writing-plans input).**
+
+The Phase 3 plan must include:
+
+1. **Scope qualifier paragraph** (verbatim, in case-study-02 README's results section): *"Phase 2 results report PH-CON-001 defect on a single cylinder_flow test trajectory (trajectory `M = 44`, Strouhal `St_U_max = 0.192` ∈ design band `[0.16, 0.21]`, cylinder diameter `D = 0.135`, inflow `U_max = 1.502`; Reynolds number not directly captured at Phase 2 — derivable as `Re = U · D / ν` from the cylinder_flow benchmark's `ν` if needed in Phase 3), selected via the Phase 2 pre-fire Strouhal audit (Task 1, 23 / 100 in-band; median-Strouhal-in-band selection) to be representative of the test-set distribution on the centerline convention. Coverage-not-statistics framing: physics-lint's value here is rule-firing on a real-world checkpoint, not a distribution over initial conditions. CI-gate threshold derivation from defect-magnitude distributions would require `N > 1` and is deferred (Phase 2 does NOT claim CI-gate calibration)."*
+
+2. **Floor-bounds-resolution distinction** in §3.3 "what physics-lint did NOT catch": name the harness-FE-on-P1 floor (`≈ 5.8 %` on this trajectory; `≈ 5 %` on Phase 1 substrate-smoke's auto-selected trajectory) explicitly as bounding PH-CON-001's discriminating resolution. The rule's verdict on GT + MGN at `5.857 %` / `5.881 %` (0.41 % gap, within the harness-floor envelope) demonstrates **"MGN reproduces GT at the floor,"** NOT **"MGN is physically incompressible to 5 %."** At this discretization (test-trajectory mesh; `N_nodes = 1787`, `N_cells = 3340`; P1 basis), PH-CON-001 bounds MGN's deviation from GT-equivalence rather than from physical incompressibility. A tighter discretization would distinguish whether the `5 %` reflects model error or floor error. The Phase 3 writeup must hold this distinction explicitly to avoid the over-read.
+
+3. **Substrate-variability finding** (Task 1 result, refinement 1 + decision tree's "OK with subset in band" branch): record that 23 / 100 test trajectories land in the literature-anchored design band `[0.16, 0.21]` on the either-or convention check; 77 / 100 land out-of-band on the same check (mostly with `St_U_mean > 0.21` while `St_U_max ∈ [0.16, 0.21]` — the U-convention ambiguity). The Phase 3 writeup notes this as a substrate-variability characterization, not a methodology failing — the canonical trajectory selection (median-Strouhal-in-band on `strouhal_U_max`) is deterministic and reproducible.
+
+4. **Methodology forward-flag (out of Phase 2 + 3 scope):** `physics-lint-validation-plan-v2.1.2` §1.4 *"Prose scope-qualifiers — claim precision about what evidence demonstrates vs adjacent claims it could be over-read to support."* This is the fourth empirical instance (after round-code-1's three walls — level rendering, file-path location, prose framing): physics-lint's PH-CON-001 verdict on this case study supports the narrow claim "MGN reproduces GT at the harness-FE-on-P1 floor on trajectory 44" but could be over-read to support "MGN is physically incompressible to 5 %" — distinct claims separated by the floor-bounds-resolution distinction. The cumulative pattern is strong enough to formalize as a v2.1.2 methodology entry. Tracked separately, does NOT block Phase 2 / 3 completion.
+
 Open until Phase 2 cross-review (Tasks 11–12) findings triaged.
 
 **Why pre-registered as skeleton:** mirrors D0-22 + D0-23's pre-registration-before-implementation pattern. Audit-trail discipline: by the time Phase 2 fires, every verdict has a recorded place; the routing is not interpreted-during-execution, and any Pattern-A drift (per design §3.1.A) lands as a D-entry amendment with the pre-fire bands as the comparison baseline.
