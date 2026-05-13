@@ -2397,9 +2397,21 @@ To be foregrounded in integrating-README composition alongside amendment 1: the 
 - [x] Empirical substrate-class smoke verdict (verdict 6; Task 9, commit 773101e — open-driven-dissipative).
 - [x] `MGN_DATASET_SYSTEM_CLASS` + dispatch (verdict 9; Task 11, commit 504e104).
 - [x] `_expect_velocity` key resolution (verdict 8; Task 10, commit 82d7f68 — pinned to "velocity").
-- [x] Pre-flight assertions (verdict 10; Task 12, commit 468de33).
+- [x] Pre-flight assertions (verdict 10; Task 12, commit 468de33; cross-review absorption at 92d315e).
 - [x] Persistent-volume decision (verdict 7 — Y; rollout-dir isolation pattern carries to Phase 2).
-- [ ] Phase 1 boundary cross-review (Tasks 14-15; pending).
+- [x] Phase 1 boundary cross-review (Tasks 14-15; findings doc at c534307; cross-review absorptions at 92d315e + 34256cb).
+
+**Phase 1 boundary cross-review (round-codex-Phase1, c534307) — findings triaged:**
+
+| # | Finding (1-line) | Severity | Cell | Disposition |
+|---|---|---|---|---|
+| 1 | dataset metadata load-bearing for v9 dispatch but not required + SCHEMA.md spelling drift ("vortex-shedding-2d" vs "vortex_shedding_2d") | High | 2 | **Absorbed at 92d315e** — `_assert_loader_contract_mgn` now requires `dataset` in metadata; SCHEMA.md canonicalized to underscored spelling. |
+| 2 | `_assert_loader_contract_mgn` no-ops on velocity-absent — layered-fail-open with `_expect_velocity`'s SKIP | High | 2 | **Absorbed at 92d315e** — velocity-absent now raises AssertionError (MGN contract violation, not optional SKIP). |
+| 3 | `_assert_loader_contract_mgn` not wired into any production path (opt-in helper, no callers outside tests) | Medium | 1 | **Deferred to Phase 2** — design §3.2 + §4.2 already obligate Phase 2's MGN materializer + lint path to wire the helper at the first trusted MGN boundary. Forward-flag added to design successor block (Phase 2 acceptance must include a test that the lint path rejects malformed MGN rollouts). |
+| 4 | `load_mesh_rollout_npz` upcasts node_values to fp64 via `dtype=float`, contradicting SCHEMA.md fp32 contract and Task 12's fp32 assertion | Medium | 2 | **Absorbed at 34256cb** — upcast dropped, on-disk dtype preserved; round-trip dtype test added. |
+| 5 | Rollout-dir isolation declared as Phase 2 obligation (D0-23 v7), not verified by Phase 1 | Low | 1 | **Deferred to Phase 2** — design §4.2 + Phase 2 acceptance already carry this; Phase 1 entrypoints (audit_ngc_sample_reproduction, smoke_substrate_class_vortex_shedding) demonstrate the pattern; Phase 2 inference entrypoint must reproduce it + carry a smoke assertion that two same-sha retries cannot read each other's CWD-relative stats. |
+
+**Totals:** 0 cell-1-only (Findings 3 and 5 are cell-1-shaped Phase 2 forward-flags), 3 cell-2 (Findings 1+2+4 absorbed in-rung), 0 cell-3, 0 cell-4. **No methodology surprises** — every finding was a layered-fail-open shape predicted by design §2.6, just with new concrete cell-2 instances that Phase 1's executor missed during plan execution. Phase 1 is **clean to close**; Phase 2 inherits two forward-flags (helper-wiring + rollout-dir isolation), both already on its acceptance list.
 
 **Phase 1 data provenance pins (Task 5 prerequisite):**
 
