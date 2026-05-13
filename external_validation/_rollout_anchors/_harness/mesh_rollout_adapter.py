@@ -96,6 +96,19 @@ MGN_DATASET_SYSTEM_CLASS: dict[str, str] = {
 }
 
 
+# Explicit rollout-contract identifier (round-codex-Phase2 Finding 4 absorption).
+# The F3 loader-contract dispatch was previously keyed off
+# ``metadata["model"].startswith("modulus_")``, which is brittle to upstream
+# vendor / artifact-name changes (e.g., a future PhysicsNeMo rebrand from
+# ``modulus_ns_meshgraphnet`` to ``nvidia_physicsnemo_ns_meshgraphnet``
+# would bypass all four F3 assertions even though the rollout is the same
+# contract). The explicit-contract approach is forward-compatible: a
+# materializer that intends to satisfy the MGN contract sets this key, and
+# anything else (synthetic / FNO / future stacks) bypasses by default.
+MGN_ROLLOUT_CONTRACT_P0 = "physicsnemo_mgn_vortex_shedding_p0"
+KNOWN_MGN_ROLLOUT_CONTRACTS: set[str] = {MGN_ROLLOUT_CONTRACT_P0}
+
+
 # ---------------------------------------------------------------------------
 # Materialization path
 # ---------------------------------------------------------------------------
@@ -312,17 +325,29 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         metadata=metadata,
         edge_index=edge_index,
     )
-    # Phase-1 cross-review Finding 3 absorption (Phase 2 Task 3): enforce
-    # the MGN loader contract at the first trusted boundary. Scope
-    # detection: `metadata["model"]` starting with "modulus_" identifies
-    # an MGN rollout (vs synthetic / FNO-on-Darcy / future stacks).
-    # Generic mesh rollouts bypass — they do not claim to satisfy the
-    # MGN contract. The narrow scope is P0 vortex_shedding_2d per design
-    # §2.1 + D0-23 v10; Amendment 1 (Ahmed Body / future MGN datasets)
-    # is the multi-instance trigger that would force a dataset-keyed
-    # dispatch over a name-prefix predicate.
+    # Phase-1 cross-review Finding 3 absorption (Phase 2 Task 3) + round-
+    # codex-Phase2 Finding 4 absorption: enforce the MGN loader contract
+    # at the first trusted boundary. Scope detection: an explicit
+    # ``metadata["rollout_contract"]`` value that names a known MGN
+    # contract triggers the helper. The prior name-prefix predicate
+    # (``model.startswith("modulus_")``) was brittle to upstream rebrand
+    # — a renamed ``nvidia_physicsnemo_ns_meshgraphnet`` would bypass
+    # all four F3 assertions on a contract-equivalent rollout. Generic
+    # mesh rollouts (synthetic, FNO-on-Darcy, future stacks) omit the
+    # key and bypass by default. The narrow scope is P0
+    # vortex_shedding_2d per design §2.1 + D0-23 v10; amendment 1
+    # (Ahmed Body) would register a second value in
+    # KNOWN_MGN_ROLLOUT_CONTRACTS.
+    #
+    # Legacy fallback: rollouts produced before the Finding-4 absorption
+    # may carry only ``model.startswith("modulus_")``. Those still
+    # trigger the contract to preserve backward compatibility on
+    # in-repo artifacts (gt.sarif / mgn.sarif at the f22319d-line
+    # commits) — the explicit key is the going-forward production path,
+    # the prefix is a documented fallback.
+    rollout_contract = str(rollout.metadata.get("rollout_contract", ""))
     model_name = str(rollout.metadata.get("model", ""))
-    if model_name.startswith("modulus_"):
+    if rollout_contract in KNOWN_MGN_ROLLOUT_CONTRACTS or model_name.startswith("modulus_"):
         _assert_loader_contract_mgn(rollout)
     return rollout
 

@@ -2670,6 +2670,13 @@ def mgn_rollout_p0_vortex_shedding(
             node_values={"velocity": v_pred, "pressure": p_pred},
             dt=0.01,  # cylinder_flow meta.json
             metadata={
+                # round-codex-Phase2 Finding 4 absorption: explicit
+                # rollout-contract identifier triggers the F3 dispatch
+                # regardless of upstream rename (forward-compatible with a
+                # future PhysicsNeMo rebrand). The legacy "modulus_*"
+                # prefix on `model` stays for backward compatibility with
+                # in-repo artifacts produced before the absorption.
+                "rollout_contract": "physicsnemo_mgn_vortex_shedding_p0",
                 "framework": "pytorch+dgl",  # honored even though v2.0.0 is PyG (KU §5.x)
                 "model": "modulus_ns_meshgraphnet",
                 "dataset": "vortex_shedding_2d",

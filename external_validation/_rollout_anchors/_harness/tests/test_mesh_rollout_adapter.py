@@ -29,6 +29,7 @@ import pytest
 
 from external_validation._rollout_anchors._harness.mesh_rollout_adapter import (
     MGN_DATASET_SYSTEM_CLASS,
+    MGN_ROLLOUT_CONTRACT_P0,
     MeshRollout,
     _assert_loader_contract_mgn,
     _expect_velocity,
@@ -454,6 +455,107 @@ def test_load_mesh_rollout_npz_does_not_apply_mgn_contract_to_synthetic_rollouts
     recovered = load_mesh_rollout_npz(tmp_path / "synthetic.npz")  # must NOT raise
     assert recovered.metadata["framework"] == "synthetic"
     assert recovered.metadata["model"] == "synthetic_unit_square"
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 round-codex-Phase2 Finding 4 absorption — rollout_contract
+# metadata key triggers the F3 loader contract independently of the
+# legacy model-name prefix. Forward-compatible with vendor / artifact-name
+# rebrand (e.g., nvidia_physicsnemo_*).
+# ---------------------------------------------------------------------------
+
+
+def test_load_mesh_rollout_npz_fires_f3_contract_on_explicit_rollout_contract_key(tmp_path) -> None:
+    """round-codex-Phase2 Finding 4: an NPZ that names a known MGN
+    rollout_contract triggers the F3 helper even if the model name does
+    NOT start with the legacy ``"modulus_"`` prefix. This is the
+    forward-compatible path for future PhysicsNeMo / NVIDIA rebrands.
+    """
+    bad_path = tmp_path / "future_rebrand_bad.npz"
+    np.savez(
+        bad_path,
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.zeros(10, dtype=np.int32),
+        node_values=np.array(
+            {"velocity": np.ones((5, 10, 2), dtype=np.float64)},  # fp64 — contract violation
+            dtype=object,
+        ),
+        dt=np.float64(0.01),
+        metadata=np.array(
+            {
+                "framework": "pytorch+dgl",
+                # NOT "modulus_*" — simulates a future PhysicsNeMo rebrand.
+                "model": "nvidia_physicsnemo_ns_meshgraphnet",
+                "dataset": "vortex_shedding_2d",
+                # Explicit contract key — triggers F3 by design.
+                "rollout_contract": MGN_ROLLOUT_CONTRACT_P0,
+            },
+            dtype=object,
+        ),
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    with pytest.raises(AssertionError, match="float32"):
+        load_mesh_rollout_npz(bad_path)
+
+
+def test_load_mesh_rollout_npz_fires_f3_contract_on_legacy_modulus_prefix_fallback(
+    tmp_path,
+) -> None:
+    """round-codex-Phase2 Finding 4: backward-compatibility — rollouts
+    produced before the absorption (those in the repo at f22319d..3380742)
+    have only ``model.startswith("modulus_")`` and no rollout_contract
+    key. The legacy fallback still triggers F3 so the in-repo artifacts
+    don't silently regress on a re-load.
+    """
+    bad_path = tmp_path / "legacy_no_contract_bad.npz"
+    np.savez(
+        bad_path,
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.zeros(10, dtype=np.int32),
+        node_values=np.array(
+            {"velocity": np.ones((5, 10, 2), dtype=np.float64)},
+            dtype=object,
+        ),
+        dt=np.float64(0.01),
+        metadata=np.array(
+            {
+                "framework": "pytorch+dgl",
+                "model": "modulus_ns_meshgraphnet",  # legacy prefix only
+                "dataset": "vortex_shedding_2d",
+                # No rollout_contract key — pre-absorption shape.
+            },
+            dtype=object,
+        ),
+        edge_index=np.zeros((2, 0), dtype=np.int64),
+    )
+    with pytest.raises(AssertionError, match="float32"):
+        load_mesh_rollout_npz(bad_path)
+
+
+def test_load_mesh_rollout_npz_bypasses_f3_when_rollout_contract_unknown(tmp_path) -> None:
+    """round-codex-Phase2 Finding 4: a rollout that names an UNKNOWN
+    rollout_contract value and has a non-modulus model bypasses F3.
+    Future case-study contracts must be explicitly registered in
+    KNOWN_MGN_ROLLOUT_CONTRACTS to opt in — typo / unregistered values
+    fail open (which is correct: the rollout doesn't claim the MGN
+    contract by claiming an unrecognized contract).
+    """
+    rollout = MeshRollout(
+        node_positions=np.zeros((10, 2), dtype=np.float32),
+        node_type=np.zeros(10, dtype=np.int64),
+        node_values={"velocity": np.ones((5, 10, 2), dtype=np.float32)},
+        dt=0.01,
+        metadata={
+            "framework": "fno",
+            "model": "fno_darcy_baseline",  # NOT "modulus_*"
+            "dataset": "darcy_2d",
+            "rollout_contract": "fno_on_darcy_p0",  # unknown contract — bypasses
+        },
+        edge_index=None,
+    )
+    save_mesh_rollout_npz(rollout, tmp_path / "fno_bypass.npz")
+    recovered = load_mesh_rollout_npz(tmp_path / "fno_bypass.npz")  # must NOT raise
+    assert recovered.metadata["rollout_contract"] == "fno_on_darcy_p0"
 
 
 # ---------------------------------------------------------------------------
