@@ -24,9 +24,11 @@ physics-lint's harness emitted the same three-row conservation result-schema (ru
 
 **Provenance (D0-19 three-sha):**
 
-- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=8e49339469
-- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=8e49339469
+- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=96ce8ed0eb
+- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=96ce8ed0eb
 - **modulus_ns_meshgraphnet-vortex_shedding_2d**: pkl_inference=n/a_cs02_no_pkl_stage, npz_conversion=n/a_cs02_no_conversion_stage, sarif_emission=a6fbd14
+
+> **Provenance footnote (PR #11 merge re-render, 2026-05-15).** The LB SARIF emission shas above (`96ce8ed0eb` for the conservation SARIFs) reflect the LB-side state at **publication time** (CS02 Phase 3 merge to master). The Phase 3 plan (`./2026-05-13-case-study-02-physicsnemo-mgn-phase-3-plan.md`) documents these as `8e49339469` at write-time; PR #10 (round-code-1, merged ahead of this work) re-emitted the LB SARIFs at the new sha. The cross-stack table at publication reflects merge-time state — the renderer was re-run against the post-PR-#10 LB SARIFs and the golden fixture regenerated; row content is byte-identical modulo the sha annotations (verified by content-equivalence diff at merge integration). Plan-vs-reality drift #5 in the Phase 3 plan documents the externally-induced sha bump.
 
 **Inference run status (rung-4c §9 review-gate fold-in):**
 
@@ -65,7 +67,7 @@ Rendered at physics-lint `feature/case-study-02-physicsnemo-mgn` (see Phase-3-cl
 ```bash
 python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \
     --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/ \
-    --include-glob '*_tgv2d_8e49339469.sarif' \
+    --include-glob '*_tgv2d_96ce8ed0eb.sarif' \
     --sarif-dir external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/
 ```
 

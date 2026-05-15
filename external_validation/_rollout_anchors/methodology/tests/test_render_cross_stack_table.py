@@ -431,7 +431,7 @@ def test_renderer_ingests_from_multiple_dirs() -> None:
             / "01-lagrangebench"
             / "outputs"
             / "sarif"
-        ).glob("*tgv2d_8e49339469.sarif")
+        ).glob("*tgv2d_96ce8ed0eb.sarif")
     )
     cs02_mgn_sarif = (
         repo_root
@@ -454,7 +454,7 @@ def test_renderer_ingests_from_multiple_dirs() -> None:
 
 def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
     """Phase 3 Task 3 golden test: the unified 3-column rendering (LB
-    tgv2d_8e49339469 SARIFs + CS02 mgn.sarif; gt.sarif filtered by
+    tgv2d_96ce8ed0eb SARIFs + CS02 mgn.sarif; gt.sarif filtered by
     arm) is byte-for-byte identical to the committed golden fixture.
 
     Pins the cross-substrate cross-stack table's shape; any drift
@@ -466,7 +466,7 @@ def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
     Regenerate:
         python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \\
             --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/ \\
-            --include-glob '*_tgv2d_8e49339469.sarif' \\
+            --include-glob '*_tgv2d_96ce8ed0eb.sarif' \\
             --sarif-dir external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/ \\
             > external_validation/_rollout_anchors/methodology/tests/fixtures/cs02_unified_cross_stack_table_golden.md
     """
@@ -479,7 +479,7 @@ def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
             / "01-lagrangebench"
             / "outputs"
             / "sarif"
-        ).glob("*_tgv2d_8e49339469.sarif")
+        ).glob("*_tgv2d_96ce8ed0eb.sarif")
     )
     cs02_dir = (
         repo_root
@@ -548,7 +548,7 @@ def test_renderer_filters_control_arm_sarif_when_present() -> None:
             / "01-lagrangebench"
             / "outputs"
             / "sarif"
-        ).glob("*tgv2d_8e49339469.sarif")
+        ).glob("*tgv2d_96ce8ed0eb.sarif")
     )
 
     # Pass BOTH gt.sarif and mgn.sarif explicitly; renderer must filter gt
@@ -578,7 +578,7 @@ def test_cli_unified_invocation_renders_three_columns(capsys: pytest.CaptureFixt
             "--sarif-dir",
             str(REPO_ROOT_FOR_CLI / LB_SARIF_DIR_REL),
             "--include-glob",
-            "*_tgv2d_8e49339469.sarif",
+            "*_tgv2d_96ce8ed0eb.sarif",
             "--sarif-dir",
             str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
         ]

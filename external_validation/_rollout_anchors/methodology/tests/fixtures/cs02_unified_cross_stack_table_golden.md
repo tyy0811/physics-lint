@@ -6,8 +6,8 @@
 
 **Provenance (D0-19 three-sha):**
 
-- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=8e49339469
-- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=8e49339469
+- **gns-tgv2d**: pkl_inference=f48dd3f376, npz_conversion=f48dd3f376, sarif_emission=96ce8ed0eb
+- **segnn-tgv2d**: pkl_inference=8c3d080397, npz_conversion=5857144, sarif_emission=96ce8ed0eb
 - **modulus_ns_meshgraphnet-vortex_shedding_2d**: pkl_inference=n/a_cs02_no_pkl_stage, npz_conversion=n/a_cs02_no_conversion_stage, sarif_emission=a6fbd14
 
 **Inference run status (rung-4c §9 review-gate fold-in):**
