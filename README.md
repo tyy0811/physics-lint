@@ -152,7 +152,7 @@ Per the plan's three-function labeling (`docs/plans/2026-04-22-physics-lint-exte
 
 The anchor index, full 18-row matrix, and caveats (V1 stubs, narrower-estimator scoping, section-level textbook framing per the §6.4 primary-source verification discipline) are in [`external_validation/README.md`](external_validation/README.md); per-rule provenance is in each rule's `CITATION.md`.
 
-267 rule-anchor tests + 44 harness/infrastructure tests. Full suite runs in under 30 s on CPU with no GPU / Modal / ImageNet / escnn / e3nn / RotMNIST dependency.
+268 rule-anchor tests plus 278 harness, rollout-anchor, and case-study tests (546 in total under `external_validation/`). The whole suite is CPU-only — no GPU / Modal / ImageNet / escnn / e3nn / RotMNIST dependency; the GPU-bound rollout reproductions (LagrangeBench, PhysicsNeMo — see [Cross-stack rollout anchors](#cross-stack-rollout-anchors)) run separately on Modal.
 
 **Honest findings.** External validation during v1.0 development surfaced one real rule-primitive correctness bug in `PH-CON-003` (`np.gradient(edge_order=2)` produced spurious endpoint artifacts on strictly-dissipative eigenmodes at the textbook Evans κ=1 heat case; fixed in `e691dd3` via a forward-difference primitive) and one rule-configuration-dependent norm-equivalence split in `PH-RES-001` (characterized rather than fixed — the rule emits different norms on periodic + spectral vs non-periodic + FD configurations, and the Bachmayr-Dahmen-Oster framework's norm-equivalence claim holds only on the former). See per-rule `CITATION.md` files for details.
 
@@ -163,6 +163,20 @@ source .venv/bin/activate && pytest --import-mode=importlib external_validation/
 ```
 
 **v1.2 roadmap.** Items deferred from v1.0 (3D tetrahedral-mesh extension for `PH-CON-004`, full `PH-NUM-001` MMS h-refinement, `PH-SYM-004` adapter-mode upgrade, live PDEBench / Hansen ProbConserv / RotMNIST / escnn / e3nn / Gruver reproductions, tighter hyperbolic norm-equivalence anchors for `PH-VAR-002`) are tracked in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
+
+## Cross-stack rollout anchors
+
+The dogfood suite checks physics-lint against trained Laplace surrogates; the external-validation suite checks it against classical PDE theory. The **rollout-anchor** track checks the third leg: whether the same SARIF rule schemas run *unmodified* across architecturally- and substrate-distinct third-party neural-physics integrations — take a trained, published model, run its rollout, lint the output through the public `physics-lint` API (with a thin documented harness where the public Field/rule API doesn't natively accept the data, e.g. particle clouds). It lives in [`external_validation/_rollout_anchors/`](external_validation/_rollout_anchors/); the rung-4-series closure synthesis is [`external_validation/_rollout_anchors/methodology/README.md`](external_validation/_rollout_anchors/methodology/README.md), and `external_validation/_rollout_anchors/methodology/DECISIONS.md` is the operational source of truth.
+
+**Case study 01 — LagrangeBench (TUM, NeurIPS 2023): SEGNN + GNS.** Three rungs run the same rule schema across the same two stacks:
+
+- **Rung 4a** ([conservation table](external_validation/_rollout_anchors/methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md)) — the `PH-CON` conservation schema (v1.0) across SEGNN-TGV2D + GNS-TGV2D rollouts. Both stacks emit byte-identical rows (mass = 0.0; `energy_drift` SKIP via the D0-18 dissipative-system gate; `dissipation_sign_violation` = 0.0). The skip-with-reason machinery is exercised end-to-end against real upstream output.
+- **Rung 4b** ([equivariance table](external_validation/_rollout_anchors/methodology/docs/2026-05-07-rung-4b-equivariance-table.md)) — the `PH-SYM` equivariance schema (v1.1) across the same two stacks at single-step inference. SEGNN's E(2)-equivariance is exact-by-construction (error at the float32 noise floor, ~2.3e-7); GNS's is approximate-by-training (bimodal APPROXIMATE + FAIL bands, ~3.6e-4 to ~3.5e-2). Same machinery, different values when the stacks behave differently.
+- **Rung 4c** ([substrate-class table](external_validation/_rollout_anchors/methodology/docs/2026-05-07-rung-4c-substrate-class-extension-table.md)) — extends the harness's substrate-detection layer to a second LagrangeBench substrate class (open-driven-dissipative) via dam-break-2D, routed by D0-22 + amendments 1–2. Both stacks (SEGNN-DAM2D + GNS-DAM2D, N = 12 trajectories) emit byte-identical structural rows. Same machinery, identical values when the substrate determines the verdict.
+
+Together rung-4b and rung-4c bilaterally exercise the schema-uniformity claim — the machinery handles both shapes of cross-stack signature (different-values / uniform-schema and identical-values / uniform-schema) with no consumer-side accommodation beyond two renderer generalizations (multi-schema-version filtering; D-entry extraction). The current plan-amendment view is [`physics-lint-validation-plan-v2.1.md`](external_validation/_rollout_anchors/methodology/docs/physics-lint-validation-plan-v2.1.md), whose central organizing structure is the A + B + C paired-pattern triad for methodology-lesson absorption (smoke-discovered drift → in-rung amendment; implementation-time hidden assumption → in-rung generalization; review-gate finding → triage-vs-novel classification → conditional absorption).
+
+**Case study 02 — NVIDIA PhysicsNeMo MeshGraphNet (in progress).** A mesh-domain integration: a published NGC MeshGraphNet checkpoint (cylinder-wake vortex shedding), linted per-timestep through the public Field/rule API. Phase 1 is a pre-rollout audit; as of this writing its checkpoint-loading and sample-reproduction gates pass — the NGC v0.1.0-format weights load into the v2.0.0 model via a documented name-remap + edge-MLP column-reorder adapter, and the model reproduces NGC's shipped sample to RMSE ≈ 3.2e-3 (≈ 1.36× the Pfaff et al. reference), clearing the design spec's pre-registered reproduction gate (so the planned FNO-on-Darcy substitute case study is *not* triggered). Design and Phase 1 plan: [`2026-05-11-case-study-02-physicsnemo-mgn-design.md`](external_validation/_rollout_anchors/methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-design.md), [`...-phase-1-plan.md`](external_validation/_rollout_anchors/methodology/docs/2026-05-11-case-study-02-physicsnemo-mgn-phase-1-plan.md). Case study 02 is framed as a *falsification surface* for the rung-4 cross-rung generalization claims (do the A/B/C patterns and the schema-uniformity composite hold beyond LagrangeBench?), not an already-completed validation.
 
 ## v1.0 known limitations
 
@@ -178,7 +192,7 @@ source .venv/bin/activate && pytest --import-mode=importlib external_validation/
 
 **`PH-CON-002` evaluates `raw_value` on dissipative systems, producing FAIL on physically-correct dissipative-by-design behavior.** TGV2D, RPF2D, LDC2D, DAM2D and analogous viscous-SPH systems dissipate energy as a property of the physics; PH-CON-002's relative-drift form (`max|E(t) - E(0)| / |E(0)|`) trips the FAIL threshold on rollouts where ~99% of initial KE has correctly dissipated to viscosity. This is the primary use case for ML PDE surrogates (most ML targets are dissipative); a writeup footnote saying "ignore those FAILs" is harder to defend than the right rule semantics.
 
-The harness layer at `external_validation/_rollout_anchors/_harness/` demonstrates a skip-with-reason mechanism that addresses this — a two-half positive-evidence gate (system_class hint AND KE-monotone-non-increasing) avoids masking buggy supposed-conservative surrogates while restoring correct semantics on dissipative-by-design rollouts. The harness layer is the prototype for v1.x graduation; the v1.0 public PH-CON-002 rule is preserved as-shipped here pending that future D-entry. See [`external_validation/_rollout_anchors/methodology/DECISIONS.md`](external_validation/_rollout_anchors/methodology/DECISIONS.md) D0-18 + the rung 4a writeup at [`external_validation/_rollout_anchors/methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md`](external_validation/_rollout_anchors/methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md) for the full discussion.
+The harness layer at `external_validation/_rollout_anchors/_harness/` demonstrates a skip-with-reason mechanism that addresses this — a two-half positive-evidence gate (system_class hint AND KE-monotone-non-increasing) avoids masking buggy supposed-conservative surrogates while restoring correct semantics on dissipative-by-design rollouts. The harness layer is the prototype for v1.x graduation; the v1.0 public PH-CON-002 rule is preserved as-shipped here pending that future D-entry. See [`external_validation/_rollout_anchors/methodology/DECISIONS.md`](external_validation/_rollout_anchors/methodology/DECISIONS.md) — D0-18 (the dissipative-system skip gate) and D0-22 + amendments 1–2 (its extension to the open-driven-dissipative substrate class via dam-break-2D) — plus the rung-4a writeup ([`2026-05-04-rung-4a-cross-stack-conservation-table.md`](external_validation/_rollout_anchors/methodology/docs/2026-05-04-rung-4a-cross-stack-conservation-table.md)) and the rung-4c writeup ([`2026-05-07-rung-4c-substrate-class-extension-table.md`](external_validation/_rollout_anchors/methodology/docs/2026-05-07-rung-4c-substrate-class-extension-table.md)) for the full discussion, summarized in [Cross-stack rollout anchors](#cross-stack-rollout-anchors) above.
 
 ## Rule catalog (v1.0)
 
@@ -245,7 +259,8 @@ where the analytical floor is measured by running the same rule on a known analy
 **3. Reproduce known empirical results.** The test suite demonstrates physics-lint detects:
 - deliberately non-equivariant CNN with positional embeddings violates $C_4$ symmetry by $>2\times$ baseline (see `physics_lint.validation.broken_cnn`);
 - real-model disagreement surfaces in the 3-surrogate laplace-uq-bench dogfood (`dogfood/run_dogfood_real.py`);
-- the broken-model gallery (`examples/broken_model_gallery.ipynb`) exhibits three MSE-vs-physics-lint disagreement cases.
+- the broken-model gallery (`examples/broken_model_gallery.ipynb`) exhibits three MSE-vs-physics-lint disagreement cases;
+- the cross-stack rollout anchors run the same rule schemas unmodified across LagrangeBench SEGNN + GNS rollouts and (in progress) a PhysicsNeMo MeshGraphNet checkpoint (`external_validation/_rollout_anchors/`).
 
 ### Field abstraction
 
@@ -355,7 +370,7 @@ permissions:
 
 ## Development
 
-Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.2 backlog in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md).
+Methodology tradeoffs in [`docs/tradeoffs.md`](docs/tradeoffs.md). v1.2 backlog in [`docs/backlog/v1.2.md`](docs/backlog/v1.2.md). Cross-stack rollout-anchor methodology trail (rungs 4a–4c, case study 02 design + plans, decision log) in [`external_validation/_rollout_anchors/methodology/`](external_validation/_rollout_anchors/methodology/).
 
 **Stack:** Python 3.10+, hatchling, pydantic 2.0+, typer, ruff, pytest + hypothesis, Sphinx + MyST + furo. Apache-2.0 license. Six-job CI matrix (Linux × Python 3.10/3.11/3.12 × NumPy 1.26/2.0 × PyTorch 2.0/2.2/2.5 + macOS arm64). 85% coverage gate.
 

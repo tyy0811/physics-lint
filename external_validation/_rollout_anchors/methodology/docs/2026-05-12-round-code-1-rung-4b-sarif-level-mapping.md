@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-12
 **Predecessor:** rung-4 series closure (`tag:rung-4-closure` at master merge `7e1bd9d`); PR #9 merged.
-**Successor:** rung-4b §6 item 3 forward-flag closed by this absorption (see §10); P2 RPF2D pre-registration (D0-24) proceeds independently.
+**Successor:** rung-4b §6 item 3 forward-flag closed by this absorption (see §10); P2 RPF2D pre-registration (D0-25; originally numbered D0-24 at this commit's authoring; renumbered during PR #11 merge per the Renumber note in DECISIONS.md D0-25) proceeds independently.
 
 **Branch:** `worktree-rung-5-rpf2d-and-rung-4b-security` (isolated worktree, branched from master `7e1bd9d` to avoid colliding with the in-flight CS02 Phase 1 work on `feature/case-study-02-physicsnemo-mgn`).
 

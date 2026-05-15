@@ -190,7 +190,7 @@ Spec §3.2.
         "ckpt_hash":         str,
         "ngc_version":       str,                 # "v0.1" etc.
         "git_sha":           str,
-        "dataset":           str,                 # "vortex-shedding-2d" | "ahmed-body" | "darcy"
+        "dataset":           str,                 # "vortex_shedding_2d" | "ahmed_body" | "darcy"
         "model":             str,
         "framework":         str,                 # "pytorch+dgl" | "pytorch+neuraloperator"
         "framework_version": str,

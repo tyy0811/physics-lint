@@ -1,0 +1,88 @@
+# physics-lint validation plan v2.1.1 — Phase 3 amendment (Case Study 02)
+
+**Date:** 2026-05-13
+**Predecessor:** [`./physics-lint-validation-plan-v2.1.md`](./physics-lint-validation-plan-v2.1.md) (frozen at its commit date; pointers added at §1.3 + §1.4 + §3 changelog forward-flag to mark resolution of v2.1.1's four items).
+**Triggered by:** [Case Study 02 Phase 3 design §5.5](./2026-05-11-case-study-02-physicsnemo-mgn-design.md) trigger condition (*"Phase 3 cross-review of writeup prose completes"*) — fired at Task 9 + Task 10 close.
+**Successor:** `physics-lint-validation-plan-v2.1.2.md` (forthcoming, separate; absorbs execution-emergent discoveries per the v2.1.1 vs v2.1.2 epistemic distinction below).
+
+---
+
+## v2.1.1 vs v2.1.2 — pre-registered vs execution-emergent
+
+v2.1.1 absorbs the **four amendments pre-registered in v2.1 design §5.5** (predicted at design time before Phase 1 fired; landed at Phase 3 close as the design predicted).
+
+v2.1.2 (separate, forthcoming) will absorb **execution-emergent methodology discoveries** — round-code-1 walls 1-2 (level rendering + file-path location), CS02 Phase 2's fourth empirical prose-scope-qualifier instance (floor-bounds-resolution distinction), and the parallel-branch artifact reconciliation pattern observed at PR #11 merge (forward-flagged below). These were discovered DURING execution rather than predicted at design time; they warrant separate v2.1.2 framing.
+
+The epistemic distinction matters for the methodology trail's honesty: v2.1.1 says *"we predicted these would land at Phase 3; here they are, as predicted."* v2.1.2 will say *"execution surfaced these; here's what we learned that we didn't anticipate."* Both are legitimate methodology contributions; the separation lets the writeup honestly track *what was foreseen* vs *what was empirically discovered*.
+
+**Forward-flag for v2.1.2 — parallel-branch artifact reconciliation (added at PR #11 merge integration, 2026-05-15).** PR #11's merge to master surfaced two reconciliation patterns between parallel branches (round-code-1's PR #10 and CS02's PR #11):
+1. **Mechanical identifiers (D-entry numbers):** both branches independently claimed `D0-24`. Reconciliation rule applied at merge: renumber the side with smaller propagation footprint (RPF2D's D0-24 had 7 textual references on master; CS02's D0-24 had 94 references across 11 files on the feature branch). RPF2D was renumbered to `D0-25`; CS02 Phase 2 retains `D0-24`. Per master's own D0-24 prose explicitly inviting this reconciliation, the rename was a pre-registered fallback, not a post-hoc compromise. See [DECISIONS.md D0-25 Renumber note](../DECISIONS.md).
+2. **Generated artifacts (SARIFs, cross-stack tables, golden fixtures):** master re-emitted the LB SARIFs at new shas (`8e49339469` → `96ce8ed0eb`; `255af5de8d` → `aeb4a53e87`) via PR #10 round-code-1 absorption ahead of PR #11. Reconciliation rule applied at merge: re-generate at merge time, document the externally-induced drift in the source plan as plan-vs-reality drift (Phase 3 plan drift #5), preserve the plan's write-time state as honest snapshot rather than mutating it post-hoc. Pre-regeneration content-equivalence check (modulo shas) verified row content was preserved before silencing the golden test. See [Phase 3 plan drift #5 banner](./2026-05-13-case-study-02-physicsnemo-mgn-phase-3-plan.md) + [cross-stack-conservation-table provenance footnote](./2026-05-13-case-study-02-cross-stack-conservation-table.md).
+
+Underlying meta-pattern (v2.1.2 candidate framing): parallel branches accumulate state; merge requires reconciliation; the reconciliation rule differs by artifact type but the discipline (preserve honest write-time provenance + document the drift) is the same. v2.1.2 is the right venue to land this as a methodology principle with worked criteria; v2.1.1 stays scoped to its four pre-registered §5.5 items per the acceptance discipline below.
+
+---
+
+## Two categories — framework-behavior observations + specific-finding flags
+
+v2.1.1's four amendments split into two categories:
+
+- **Framework-behavior observations** — observations about how the methodology framework itself evolved across the design-doc rounds. Items 1 + 2.
+- **Specific-finding flags** — flags about specific findings from CS02 execution that point outward to dated artifacts holding the full evidence. Items 3 + 4.
+
+---
+
+## §1. Framework-behavior observations
+
+### §1.1 Pattern-C 4th instance documentation (resolves v2.1 §1.3)
+
+The pattern-C catalogue at v2.1 §1.3 currently lists three within-rung-4c instances (rung-4c §9 fold-in round 1 + round 2 + round 3). Round-prose-1's absorption already started counting a 4th cell-2 instance (round-prose-1 itself). CS02 Phase 1's D0-23 + Phase 2's D0-24 + Phase 3's prose cross-review supply additional cell-2 instances; v2.1.1 documents the 4th-instance threshold being crossed and elevates pattern-C from "rung-4c-internal observation" to "validated within at least one cross-rung context (CS02)."
+
+**Outward pointer:** see [DECISIONS.md D0-23 + D0-24](../DECISIONS.md) for the per-case-study triage tables; v2.1 §1.3 receives a pointer to this v2.1.1 entry marking the 4th-instance threshold cross.
+
+### §1.2 Per-section convergence-pattern observation (resolves v2.1 §1.3 + §3 changelog)
+
+Across v2.1's review-round sequence (round 1 → round 2 → round 3 → round-prose-1 → round-prose-2 → round-codex-2/-3/-4 → round-code-1), the round-magnitude of findings has decreased per-section (§1 review → §2.1-§2.3 review → §2.4-§2.6 review → §3 review → §4 + §5 review → §6 review). Each round's findings cluster on the most-recently-added section content; older sections converge to "no new findings." This convergence is measured *per-section*, not *per-doc* — adding new sections re-opens the per-section convergence at the new section.
+
+The observation supports v2.1 §1.3's pattern-C "absorbed → fewer findings on this surface" claim and v2.1 §1.4's "cross-review-gate cost-amortizes across rungs" claim. The per-section granularity is the methodology contribution; without it, the convergence claim could be read at the wrong granularity.
+
+**Outward pointer:** v2.1 §1.3 + §1.4 receive pointers to this v2.1.1 entry.
+
+---
+
+## §2. Specific-finding flags
+
+### §2.1 D0-22 strictly-conservative forward-declaration falsification flag
+
+CS02 design §1 (preflight evidence + substrate-class smoke design) falsifies v2.1's D0-22 strictly-conservative anchor assignment: cylinder_flow is NOT strictly conservative; it's open-driven-dissipative under physicsnemo's mesh-side classification. D0-22's anchor assignment named TGV2D as the dissipative-isotropic anchor and (forward-declared) cylinder_flow as the strictly-conservative anchor for a future case study; CS02 Phase 1 + Phase 2 verdicts confirm cylinder_flow as open-driven-dissipative, falsifying the forward declaration.
+
+v2.1.1 records this flag. The corrective amendment (re-assigning the strictly-conservative anchor to a different upstream dataset) defers to case study 03 candidate identification — assigning speculatively before a strictly-conservative substrate is concretely identified would risk the same forward-declaration error a second time.
+
+**Outward pointer:** see [Case Study 02 design §1](./2026-05-11-case-study-02-physicsnemo-mgn-design.md) (preflight + substrate-class smoke design) for where the falsification first surfaced; v2.1 §1.3 receives a pointer to this v2.1.1 entry.
+
+### §2.2 Prose-cross-review vs artifact-cross-review modes flag
+
+Round-prose-2's forward-flag (v2.1 §3 changelog) named the distinction between the two cross-review modes: artifact-cross-review surfaces fail-open paths (round-codex-2/-3/-4 precedent); prose-cross-review surfaces first-impression weaknesses (round-prose-1 + round-prose-2 precedent). Round-code-1 already INSTANTIATED the flag (committed prose + working SARIF upload + Security tab populated); CS02 Phase 3's prose cross-review is the **fourth prose-mode review-event** (counted as review-events, not as individual walls — see counting unit below), bringing further weight to the distinction (ordering / forward-cite hygiene; reader-first cross-reference placement; see [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md) meta-summary).
+
+**Counting unit.** "Instance" / "precedent" in this section means a *single review-event* (one cross-review fire by an external agent against committed prose), NOT an individual wall or finding. A single event may contribute multiple sub-findings (round-code-1's three walls were sub-findings of one round-event; CS02 Phase 3's six findings were sub-findings of one round-event); the four-event count below treats those events as one each.
+
+v2.1.1 names the flag with a one-paragraph summary and points outward. Full instantiation evidence:
+
+- **Prose-cross-review review-events** (first-impression weaknesses; ordering / forward-cite hygiene): **4 events** —
+  1. round-prose-1 (v2.1 round 1 prose review),
+  2. round-prose-2 (v2.1 round 2 prose review; N-asymmetry; Stuttgart/Munich voice),
+  3. round-code-1 prose dimension (rung-4c PR #10; three sub-findings as individual walls: level rendering / file-path location / prose framing),
+  4. CS02 Phase 3 prose cross-review (this Phase; six sub-findings clustered on Headline-ordering and shorthand-before-glossary).
+- **Artifact-cross-review review-events** (fail-open paths; data-level invariants): **4 events** — round-codex-2 + round-codex-3 + round-codex-4 (rung-4c PR #9 reviews; three events), plus CS02 Phase 2 cross-review (one HIGH SARIF-data finding — sentinel field — plus four MEDIUM data-level prose-or-comment findings; one event). The CS02 Phase 3 round-codex-2 artifact-mode review (this Phase's second cross-review fire, six findings absorbed in-rung) is the **fifth artifact-mode review-event**.
+
+The §1.4 review-discipline triple (smoke + source + cross) does not currently distinguish the two cross-review modes; v2.1.2 §1.4 amendment is the right venue for adding the distinction with worked criteria for when each mode applies.
+
+**Outward pointer:** see v2.1 §3 round-prose-2 changelog forward-flag which is now RESOLVED with a pointer to this v2.1.1 entry; full instantiation evidence at [round-code-1 PR #10 merge](../../../../README.md#hero-physics-lint-in-ci) (level rendering / file-path location / prose framing) + [CS02 Phase 3 cross-review](./2026-05-13-case-study-02-phase-3-cross-review.md).
+
+---
+
+## Acceptance
+
+This file lands the four §5.5 items per their pre-registered scope. Light self-check (Task 13) verifies each item lands + two-category grouping preserved + outward references SHA-pinned.
+
+Any v2.1.1+ expansion (a fifth pattern-C instance, a new framework-behavior observation, a CS02-emergent finding warranting framework-level absorption) goes to v2.1.2 or a fresh forward-flag — NOT retrofitted into v2.1.1.

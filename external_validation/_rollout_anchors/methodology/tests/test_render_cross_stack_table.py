@@ -20,6 +20,7 @@ from external_validation._rollout_anchors.methodology.tools.render_cross_stack_t
     ResultRowInvariantError,
     SchemaVersionMismatchError,
     SourceTagMismatchError,
+    main,
     render_cross_stack_table,
 )
 
@@ -406,3 +407,238 @@ def test_renderer_marks_absent_status_as_n_a_in_mixed_set(tmp_path: Path) -> Non
     assert "**Inference run status (rung-4c §9 review-gate fold-in):**" in rendered
     assert "synthetic_segnn-synthetic_dissipative_d**: from_aborted_inference" in rendered
     assert "synthetic_gns-synthetic_dissipative_d**: n/a (pre-salvage-tag-schema)" in rendered
+
+
+# ---------------------------------------------------------------------------
+# 8. Multi-dir ingestion + GT-arm filter (Phase 3 Task 2)
+# ---------------------------------------------------------------------------
+
+
+def test_renderer_ingests_from_multiple_dirs() -> None:
+    """Multi-dir ingestion: the renderer reads SARIFs from BOTH
+    01-lagrangebench/outputs/sarif/ AND 02-physicsnemo-mgn/outputs/sarif/
+    in a single invocation, producing a unified three-column table
+    (gns-tgv2d, segnn-tgv2d, modulus_ns_meshgraphnet-vortex_shedding_2d).
+    GT-arm SARIF (02-physicsnemo-mgn/outputs/sarif/gt.sarif) is filtered
+    out — it is a per-case-study control arm, not a cross-stack column.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*tgv2d_96ce8ed0eb.sarif")
+    )
+    cs02_mgn_sarif = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+        / "mgn.sarif"
+    )
+
+    table = render_cross_stack_table([*lb_sarifs, cs02_mgn_sarif])
+
+    assert "gns-tgv2d" in table
+    assert "segnn-tgv2d" in table
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in table
+    # GT-arm should NOT appear as a column — control arm, not cross-stack
+    assert "deepmind-cylinder-flow-gt" not in table
+
+
+def test_renderer_unified_cs02_table_golden_output_matches_expected() -> None:
+    """Phase 3 Task 3 golden test: the unified 3-column rendering (LB
+    tgv2d_96ce8ed0eb SARIFs + CS02 mgn.sarif; gt.sarif filtered by
+    arm) is byte-for-byte identical to the committed golden fixture.
+
+    Pins the cross-substrate cross-stack table's shape; any drift
+    between production SARIFs and the rendered table is caught at
+    test time. To regenerate after a deliberate SARIF re-emission,
+    re-run the CLI command in this docstring with the new SARIFs in
+    place and replace the fixture.
+
+    Regenerate:
+        python external_validation/_rollout_anchors/methodology/tools/render_cross_stack_table.py \\
+            --sarif-dir external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/ \\
+            --include-glob '*_tgv2d_96ce8ed0eb.sarif' \\
+            --sarif-dir external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/ \\
+            > external_validation/_rollout_anchors/methodology/tests/fixtures/cs02_unified_cross_stack_table_golden.md
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*_tgv2d_96ce8ed0eb.sarif")
+    )
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+
+    actual = render_cross_stack_table([*lb_sarifs, cs02_dir / "gt.sarif", cs02_dir / "mgn.sarif"])
+    expected = (FIXTURES_DIR / "cs02_unified_cross_stack_table_golden.md").read_text()
+    assert actual == expected, (
+        "Unified CS01+CS02 cross-stack table diverged from golden fixture.\n"
+        f"--- expected ---\n{expected}\n"
+        f"--- actual ---\n{actual}\n"
+        "If this divergence is intentional (e.g., deliberate SARIF "
+        "re-emission), regenerate the fixture per the docstring."
+    )
+
+
+def test_renderer_raises_when_only_control_arm_sarif_passed() -> None:
+    """Phase 3 round-codex-2 (artifact-mode review) Finding 1: if every
+    input SARIF is filtered as a control-arm (here: caller passes only
+    gt.sarif), the renderer must fail loud rather than emit a
+    syntactically valid but empty table with only the `Rule` header.
+    The contract is "N upstream-rollout stacks under D0-19/D0-20"; an
+    all-filtered input is the no-input case after filtering.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+
+    with pytest.raises(MissingRunLevelFieldError, match="all input SARIFs were filtered"):
+        render_cross_stack_table([cs02_dir / "gt.sarif"])
+
+
+def test_renderer_filters_control_arm_sarif_when_present() -> None:
+    """If the caller passes CS02's gt.sarif AND mgn.sarif (e.g., via
+    a directory glob that picks up both), the renderer must filter the
+    control-arm SARIF and use only the model-under-test SARIF for the
+    cross-stack column. The filter binds on the run-level `arm` field:
+    `arm == 'gt-control'` → filtered out; `arm == 'mgn-rollout'` (or
+    absent for LB-side legacy SARIFs) → included.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    cs02_dir = (
+        repo_root
+        / "external_validation"
+        / "_rollout_anchors"
+        / "02-physicsnemo-mgn"
+        / "outputs"
+        / "sarif"
+    )
+    lb_sarifs = sorted(
+        (
+            repo_root
+            / "external_validation"
+            / "_rollout_anchors"
+            / "01-lagrangebench"
+            / "outputs"
+            / "sarif"
+        ).glob("*tgv2d_96ce8ed0eb.sarif")
+    )
+
+    # Pass BOTH gt.sarif and mgn.sarif explicitly; renderer must filter gt
+    table = render_cross_stack_table([*lb_sarifs, cs02_dir / "gt.sarif", cs02_dir / "mgn.sarif"])
+
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in table
+    assert "deepmind-cylinder-flow-gt" not in table
+
+
+# ---------------------------------------------------------------------------
+# 9. CLI main() — multi-dir / paired-glob behavior (Phase 3 round-codex-2 Finding 2)
+# ---------------------------------------------------------------------------
+
+
+REPO_ROOT_FOR_CLI = Path(__file__).resolve().parents[4]
+LB_SARIF_DIR_REL = "external_validation/_rollout_anchors/01-lagrangebench/outputs/sarif/"
+CS02_SARIF_DIR_REL = "external_validation/_rollout_anchors/02-physicsnemo-mgn/outputs/sarif/"
+
+
+def test_cli_unified_invocation_renders_three_columns(capsys: pytest.CaptureFixture[str]) -> None:
+    """Phase 3 unified invocation (the docstring example): two --sarif-dir
+    flags + one --include-glob applied positionally to the LB dir. Exits
+    0 and writes the unified table to stdout.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / LB_SARIF_DIR_REL),
+            "--include-glob",
+            "*_tgv2d_96ce8ed0eb.sarif",
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+        ]
+    )
+
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "gns-tgv2d" in out
+    assert "segnn-tgv2d" in out
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in out
+    assert "deepmind-cylinder-flow-gt" not in out
+
+
+def test_cli_zero_globs_defaults_to_star_sarif(capsys: pytest.CaptureFixture[str]) -> None:
+    """When --include-glob is omitted entirely with multiple --sarif-dir
+    values, all positions default to '*.sarif'. The CS02 dir's gt.sarif
+    is then ingested + filtered by the arm filter; mgn.sarif renders. The
+    LB dir with default '*.sarif' would pick up the eps SARIFs and
+    trigger DuplicateStackLabelError, so this test uses only the CS02
+    dir (one model-arm SARIF after filtering).
+    """
+    rc = main(["--sarif-dir", str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "modulus_ns_meshgraphnet-vortex_shedding_2d" in out
+    assert "deepmind-cylinder-flow-gt" not in out
+
+
+def test_cli_more_globs_than_dirs_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    """Strict positional pairing: more --include-glob values than
+    --sarif-dir values returns exit code 2 with a stderr explanation.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+            "--include-glob",
+            "*.sarif",
+            "--include-glob",
+            "extra.sarif",
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "cannot pair globs positionally" in err
+
+
+def test_cli_zero_match_glob_fails(capsys: pytest.CaptureFixture[str]) -> None:
+    """If any --sarif-dir's resolved glob matches zero files, the CLI
+    exits 2 with the no-match message. Pre-existing behavior; pinned
+    now alongside the new multi-dir path.
+    """
+    rc = main(
+        [
+            "--sarif-dir",
+            str(REPO_ROOT_FOR_CLI / CS02_SARIF_DIR_REL),
+            "--include-glob",
+            "no_such_pattern_*.sarif",
+        ]
+    )
+    assert rc == 2
+    err = capsys.readouterr().err
+    assert "No SARIF files matching glob" in err

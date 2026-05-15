@@ -3,6 +3,7 @@
 **Date:** 2026-05-04
 **Predecessor:** rung 3.5 PASS on both stacks (D0-18 amendment 1 implementation at `d03df3e`); npzs frozen on Modal Volume.
 **Successor:** rung 4b — equivariance brainstorm session (separate, no code).
+**Successor (extended table):** [`./2026-05-13-case-study-02-cross-stack-conservation-table.md`](./2026-05-13-case-study-02-cross-stack-conservation-table.md) — unified three-column table (LB-side rung-4a columns preserved + CS02-side MGN-on-vortex-shedding column added). This file remains canonical for the LB-only state at its commit date; the 2026-05-13 file is canonical for the cross-substrate cross-stack table going forward.
 **Design doc:** [`./2026-05-04-rung-4a-cross-stack-conservation-design.md`](./2026-05-04-rung-4a-cross-stack-conservation-design.md)
 **SARIF artifacts:** [`../../01-lagrangebench/outputs/sarif/`](../../01-lagrangebench/outputs/sarif/)
 **Methodology pre-registrations:** [D0-19](../DECISIONS.md#d0-19--2026-05-04--harness-sarif-result-schema-rung-4a-pre-registration), [D0-20](../DECISIONS.md#d0-20--2026-05-04--generator-vs-consumer-separation-architecture-rung-4a-pre-registration)

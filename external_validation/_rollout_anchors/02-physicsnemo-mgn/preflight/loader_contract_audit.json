@@ -1,0 +1,181 @@
+{
+  "physicsnemo_sha": "1ca85d65ac2ce28ea9762910c09a954c08a37140",
+  "data_dir": "/vol/datasets/cylinder_flow",
+  "torch_default_dtype_at_entry": "torch.float32",
+  "meta_json_sha256": "2a3e39429a55a0cf47355717cc07f4b292629daeb48a89abd518ea0402033e96",
+  "test_tfrecord_sha256": "8522932a23da6ccdee996c56158e4b908f7091f0ade11e8acea700be321af8c3",
+  "V1_meta_json_present": true,
+  "V2_test_tfrecord_present": true,
+  "V3_field_names": [
+    "cells",
+    "mesh_pos",
+    "node_type",
+    "velocity",
+    "pressure"
+  ],
+  "V3_field_names_is_list_of_str": true,
+  "V4_V5_per_feature": {
+    "cells": {
+      "dtype": "int32",
+      "in_supported_map": true,
+      "resolvable": true,
+      "type": "static",
+      "shape": [
+        1,
+        -1,
+        3
+      ]
+    },
+    "mesh_pos": {
+      "dtype": "float32",
+      "in_supported_map": true,
+      "resolvable": true,
+      "type": "static",
+      "shape": [
+        1,
+        -1,
+        2
+      ]
+    },
+    "node_type": {
+      "dtype": "int32",
+      "in_supported_map": true,
+      "resolvable": true,
+      "type": "static",
+      "shape": [
+        1,
+        -1,
+        1
+      ]
+    },
+    "velocity": {
+      "dtype": "float32",
+      "in_supported_map": true,
+      "resolvable": true,
+      "type": "dynamic",
+      "shape": [
+        600,
+        -1,
+        2
+      ]
+    },
+    "pressure": {
+      "dtype": "float32",
+      "in_supported_map": true,
+      "resolvable": true,
+      "type": "dynamic",
+      "shape": [
+        600,
+        -1,
+        1
+      ]
+    }
+  },
+  "V4_all_dtypes_resolvable": true,
+  "V5_all_features_have_shape": true,
+  "V6_trajectory_length": 600,
+  "V7_dynamic_varlen_fields": [],
+  "V7_note": "no dynamic_varlen fields in cylinder_flow (cells/mesh_pos/node_type are 'static', velocity/pressure are 'dynamic') \u2014 the length_<k> sibling requirement is vacuous here",
+  "decoded_record_shapes": {
+    "cells": [
+      600,
+      3612,
+      3
+    ],
+    "mesh_pos": [
+      600,
+      1923,
+      2
+    ],
+    "node_type": [
+      600,
+      1923,
+      1
+    ],
+    "velocity": [
+      600,
+      1923,
+      2
+    ],
+    "pressure": [
+      600,
+      1923,
+      1
+    ]
+  },
+  "V8_required_keys_present": true,
+  "V8_record_keys": [
+    "cells",
+    "mesh_pos",
+    "node_type",
+    "pressure",
+    "velocity"
+  ],
+  "V9_cells_frame0_shape": [
+    3612,
+    3
+  ],
+  "V9_cells_is_triangle": true,
+  "V9_n_cells": 3612,
+  "V10_cells_constant_over_t": true,
+  "V10_mesh_pos_constant_over_t": true,
+  "V10_note": "True by construction \u2014 cells/mesh_pos are 'static' fields tiled by _decode_record",
+  "V11_velocity_trajectory_len": 600,
+  "V11_velocity_len_ge_2": true,
+  "V12_first_axis_lengths": {
+    "cells": 600,
+    "mesh_pos": 600,
+    "node_type": 600,
+    "velocity": 600,
+    "pressure": 600
+  },
+  "V12_all_equal_trajectory_length": true,
+  "V16_node_type_unique_frame0": [
+    0,
+    4,
+    5,
+    6
+  ],
+  "V16_node_type_subset_of_0_3_4_5_6": true,
+  "secondary_5_7_node_type_one_hot_bound": "OK \u2014 non-zero node_type values map to {value-3} in [0,3] for one_hot(num_classes=4); observed unique values [0, 4, 5, 6]",
+  "secondary_5_5_num_steps_le_trajectory_length": "audit constructs split='test' with num_steps=5 <= trajectory_length=600",
+  "secondary_5_6_default_dtype": "set to torch.float32 before dataset construction (was torch.float32 at entry)",
+  "V14_edge_stats_on_volume": true,
+  "V14_node_stats_on_volume": true,
+  "V15_stats_value_lengths": {
+    "edge_mean": 3,
+    "edge_std": 3,
+    "velocity_mean": 2,
+    "velocity_diff_mean": 2,
+    "pressure_mean": 1,
+    "velocity_std": 2,
+    "pressure_std": 1,
+    "velocity_diff_std": 2
+  },
+  "V15_dims_match_feature_widths": true,
+  "secondary_5_4_stats_cwd": "/tmp/cf_audit_gac7mh1e",
+  "V13_len": 4,
+  "V13_len_eq_num_samples_times_num_steps_minus_1": true,
+  "dataset_getitem_returns": "(graph, cells, rollout_mask)",
+  "graph_type": "Data",
+  "graph_data_keys": [
+    "edge_attr",
+    "edge_index",
+    "mesh_pos",
+    "x",
+    "y"
+  ],
+  "V18_node_feature_width_x": 6,
+  "V18_target_width_y": 3,
+  "V17_edge_attr_width": 3,
+  "V17_V18_widths_match_config": true,
+  "test_split_cells_shape": [
+    3612,
+    3
+  ],
+  "test_split_cells_is_triangle": true,
+  "V13_out_of_range_raises": true,
+  "verdict_8_velocity_field_key": "velocity",
+  "verdict_8_note": "raw record key 'velocity' (meta['field_names']); the dataset keys it internally as node_features[g]['velocity'] and __getitem__ emits it as the first 2 columns of graph.x (= cat(velocity, one_hot(node_type))) \u2014 it is NOT a named attr on the returned PyG Data. For Task 10's _expect_velocity helper: the key is 'velocity'.",
+  "secondary_5_3_noise_split_conditional": "confirmed \u2014 _add_noise fires only when split=='train' (line 127); this audit constructed split='test' so no noise was applied to the loaded velocities"
+}

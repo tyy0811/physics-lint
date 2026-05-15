@@ -51,7 +51,11 @@ from external_validation._rollout_anchors._harness.particle_rollout_adapter impo
     KE_REST_THRESHOLD,
     HarnessDefect,
 )
-from physics_lint import GridField
+
+# `physics_lint.GridField` is imported lazily inside :func:`materialize_grid_field`
+# so this module remains importable inside Modal containers that don't have the
+# public physics-lint package installed (the Phase 2 lint entrypoints don't call
+# the materialization path; they only need the *_on_mesh rule mirrors).
 
 # Pre-registered FD-noise upper bound on `mass_conservation_defect_on_mesh`
 # for divergence-free input fields. See `physics-lint-validation/DECISIONS.md`
@@ -70,6 +74,41 @@ from physics_lint import GridField
 MESH_FD_NOISE_TOLERANCE: float = 1e-10
 
 
+# Mesh-side substrate-class taxonomy. Parallel to
+# `particle_rollout_adapter.py::LAGRANGEBENCH_DATASET_SYSTEM_CLASS`.
+# Per case study 02 design §2.2 P0-resolvable Pattern-B response
+# (duplicated route, NOT a stack-agnostic refactor): the duplicate-logic-
+# drift risk is *named* per round-codex-4 catalogue, not eliminated.
+# A stack-agnostic refactor triggers only on amendment 1 / case study 03
+# evidence (a second mesh-side substrate that disagrees with its
+# particle-side analog on substrate class).
+#
+# Empirical classification per the "classify when you exercise" rule:
+# entries land only after Phase 1's empirical probe confirms the
+# substrate's behavior. The vortex_shedding_2d entry below is anchored to
+# D0-23 verdict 6 (substrate-class smoke on cylinder_flow GT + 399-step
+# MGN rollout: ∫|∇·v|/∫‖∇v‖_F ≈ 5%, KE oscillates around steady mean
+# with 42 sign-changes, Strouhal St ≈ 0.16 in design band [0.16, 0.21]
+# — boundary-driven sub-class). Findings:
+# 02-physicsnemo-mgn/preflight/substrate_class_smoke.json.
+MGN_DATASET_SYSTEM_CLASS: dict[str, str] = {
+    "vortex_shedding_2d": "open-driven-dissipative",  # D0-23 verdict 6
+}
+
+
+# Explicit rollout-contract identifier (round-codex-Phase2 Finding 4 absorption).
+# The F3 loader-contract dispatch was previously keyed off
+# ``metadata["model"].startswith("modulus_")``, which is brittle to upstream
+# vendor / artifact-name changes (e.g., a future PhysicsNeMo rebrand from
+# ``modulus_ns_meshgraphnet`` to ``nvidia_physicsnemo_ns_meshgraphnet``
+# would bypass all four F3 assertions even though the rollout is the same
+# contract). The explicit-contract approach is forward-compatible: a
+# materializer that intends to satisfy the MGN contract sets this key, and
+# anything else (synthetic / FNO / future stacks) bypasses by default.
+MGN_ROLLOUT_CONTRACT_P0 = "physicsnemo_mgn_vortex_shedding_p0"
+KNOWN_MGN_ROLLOUT_CONTRACTS: set[str] = {MGN_ROLLOUT_CONTRACT_P0}
+
+
 # ---------------------------------------------------------------------------
 # Materialization path
 # ---------------------------------------------------------------------------
@@ -81,8 +120,8 @@ def materialize_grid_field(
     h: float | tuple[float, ...],
     periodic: bool = False,
     backend: str = "fd",
-) -> GridField:
-    """Wrap a numpy array of per-timestep node values as a GridField.
+) -> Any:
+    """Wrap a numpy array of per-timestep node values as a ``GridField``.
 
     Used by the FNO-on-Darcy fallback (Gate D), where the model output
     is already on a regular grid, and by the GridField PARTIAL fallback
@@ -92,7 +131,14 @@ def materialize_grid_field(
     the materialization step explicit in the call graph so a code
     reviewer can see "this is the public-API entry point for the mesh
     case study", not to add behaviour over ``GridField.__init__``.
+
+    ``physics_lint`` is imported lazily here so that this module remains
+    importable inside Modal containers that don't have the public
+    physics-lint package installed (the Phase-2 lint entrypoints invoke
+    only the *_on_mesh rule mirrors below, never materialize_grid_field).
     """
+    from physics_lint import GridField
+
     return GridField(values, h=h, periodic=periodic, backend=backend)  # type: ignore[arg-type]
 
 
@@ -248,11 +294,22 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         missing = required - set(data.files)
         if missing:
             raise KeyError(f"mesh_rollout.npz {p} missing required fields: {sorted(missing)}")
-        node_positions = np.asarray(data["node_positions"], dtype=float)
+        # Preserve on-disk dtype per SCHEMA.md §2 fp32 contract. The
+        # prior `dtype=float` upcast silently promoted fp32 stored
+        # arrays to fp64, contradicting the SCHEMA contract and Task 12's
+        # `_assert_loader_contract_mgn` fp32 assertion — a layered-fail-
+        # open path surfaced by Phase-1 cross-review Finding 4: a
+        # well-formed mesh_rollout.npz saved with fp32 values would fail
+        # the loader-contract helper if Phase 2 wired it in after the
+        # canonical NPZ load. Preserving on-disk dtype keeps the round-
+        # trip honest and lets a buggy materializer that writes fp64 be
+        # caught by `_assert_loader_contract_mgn` rather than masked by
+        # this upcast.
+        node_positions = np.asarray(data["node_positions"])
         node_type = np.asarray(data["node_type"])
         nv_obj = data["node_values"]
         node_values_raw = nv_obj.item() if hasattr(nv_obj, "item") else dict(nv_obj)
-        node_values = {k: np.asarray(v, dtype=float) for k, v in node_values_raw.items()}
+        node_values = {k: np.asarray(v) for k, v in node_values_raw.items()}
         dt_arr = data["dt"]
         dt = float(dt_arr.item() if hasattr(dt_arr, "item") else dt_arr)
         meta_obj = data["metadata"]
@@ -260,7 +317,7 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         edge_index = (
             np.asarray(data["edge_index"], dtype=np.int64) if "edge_index" in data.files else None
         )
-    return MeshRollout(
+    rollout = MeshRollout(
         node_positions=node_positions,
         node_type=node_type,
         node_values=node_values,
@@ -268,6 +325,140 @@ def load_mesh_rollout_npz(path: Path | str) -> MeshRollout:
         metadata=metadata,
         edge_index=edge_index,
     )
+    # Phase-1 cross-review Finding 3 absorption (Phase 2 Task 3) + round-
+    # codex-Phase2 Finding 4 absorption: enforce the MGN loader contract
+    # at the first trusted boundary. Scope detection: an explicit
+    # ``metadata["rollout_contract"]`` value that names a known MGN
+    # contract triggers the helper. The prior name-prefix predicate
+    # (``model.startswith("modulus_")``) was brittle to upstream rebrand
+    # — a renamed ``nvidia_physicsnemo_ns_meshgraphnet`` would bypass
+    # all four F3 assertions on a contract-equivalent rollout. Generic
+    # mesh rollouts (synthetic, FNO-on-Darcy, future stacks) omit the
+    # key and bypass by default. The narrow scope is P0
+    # vortex_shedding_2d per design §2.1 + D0-23 v10; amendment 1
+    # (Ahmed Body) would register a second value in
+    # KNOWN_MGN_ROLLOUT_CONTRACTS.
+    #
+    # Legacy fallback: rollouts produced before the Finding-4 absorption
+    # may carry only ``model.startswith("modulus_")``. Those still
+    # trigger the contract to preserve backward compatibility on
+    # in-repo artifacts (gt.sarif / mgn.sarif at the f22319d-line
+    # commits) — the explicit key is the going-forward production path,
+    # the prefix is a documented fallback.
+    rollout_contract = str(rollout.metadata.get("rollout_contract", ""))
+    model_name = str(rollout.metadata.get("model", ""))
+    if rollout_contract in KNOWN_MGN_ROLLOUT_CONTRACTS or model_name.startswith("modulus_"):
+        _assert_loader_contract_mgn(rollout)
+    return rollout
+
+
+def _assert_loader_contract_mgn(rollout: MeshRollout) -> None:
+    """MGN materializer loader-contract assertions per D0-23 verdict 10.
+
+    Each assertion is grounded in a preflight V-entry or known-unknown
+    (see ``02-physicsnemo-mgn/preflight/mgn_loader_contract.md`` §3.1
+    and §5). Fires defensively on incoming MGN rollouts BEFORE the rule
+    kernels consume them; informative AssertionError if any contract is
+    violated.
+
+    Per case study 02 design §2.1 (source-method-implementing-pattern-A-
+    discipline): written from source review, catches Pattern-A divergence
+    at runtime before P0 inference data flows into the rules.
+
+    Scope: P0 vortex_shedding_2d only — assertions hold for the NGC
+    cylinder_flow record schema (preflight loader_contract_audit.json
+    V3 / V4 / V5). Amendment 1 (Ahmed Body, D0-23 forward-flag) is the
+    multi-instance trigger that would force generalization (e.g., a
+    dataset-keyed assertion dispatch table).
+
+    Phase-1 cross-review absorption (Findings 1 + 2): the helper is
+    MGN-contract-fail-loud, not lax. Absence of the "velocity" key or
+    the "dataset" / "framework" / "model" metadata keys raises
+    AssertionError rather than no-op'ing, closing the layered-fail-open
+    path where _assert_loader_contract_mgn passes silently while the
+    downstream rule SKIPs on a contract violation.
+    """
+    # V8 / V12: the "velocity" key must be present. Absorbed in-rung
+    # per Phase-1 cross-review Finding 2: previously this helper
+    # no-op'd on velocity-absent (delegating SKIP wording to
+    # _expect_velocity), creating a layered-fail-open path —
+    # _assert_loader_contract_mgn passes, then _expect_velocity SKIPs,
+    # then the rule reports a legitimate-looking skip while the
+    # underlying loader-contract violation is invisible. The helper is
+    # MGN-scoped (caller assertion implied by the function name and
+    # docstring); absence of "velocity" is therefore a contract
+    # failure, not an optional rule SKIP. D0-23 verdict 8 pins the key
+    # to literal "velocity".
+    velocity = rollout.node_values.get("velocity")
+    assert velocity is not None, (
+        f"MGN rollout must include node_values['velocity'] per preflight V8 "
+        f"+ D0-23 verdict 8 (NGC cylinder_flow record schema; "
+        f"vortex_shedding_dataset.py:86-124 @ 1ca85d65). Got keys: "
+        f"{sorted(rollout.node_values.keys())}. See "
+        f"docs/2026-05-13-case-study-02-phase-1-cross-review.md Finding 2."
+    )
+
+    velocity_arr = np.asarray(velocity)
+
+    # Known-unknown §5.6: fp32 vs fp64 precision contract. The NGC
+    # checkpoint was trained at default-torch-dtype=float32; if the
+    # materializer image runs at float64, `torch.tensor(..., dtype=
+    # torch.float)` (vortex_shedding_dataset.py:373) promotes silently
+    # and changes numerical behavior. Materializer must
+    # torch.set_default_dtype(torch.float32) before dataset construction.
+    assert velocity_arr.dtype == np.float32, (
+        f"MGN velocity dtype must be float32 per preflight known-unknown §5.6 "
+        f"(materializer must torch.set_default_dtype(torch.float32) before "
+        f"dataset construction; vortex_shedding_dataset.py:373 @ 1ca85d65). "
+        f"Got: {velocity_arr.dtype}. See DECISIONS.md D0-23 verdict 10."
+    )
+
+    # V12 / V18: time-axis-first velocity shape (T, N_nodes, D).
+    assert velocity_arr.ndim == 3, (
+        f"MGN velocity must be 3D (T, N_nodes, D); got shape "
+        f"{velocity_arr.shape}. See preflight V12 + V18."
+    )
+    # V17 + V18: D ∈ {2, 3} (2D vortex shedding uses D=2; 3D Ahmed body
+    # would use D=3). A degenerate D=1 lift would slip past _expect_velocity
+    # (which lifts 2D arrays to (T,N,1)), so explicit-check here.
+    assert velocity_arr.shape[2] in (2, 3), (
+        f"MGN velocity last-dim must be 2 (2D) or 3 (3D); got "
+        f"{velocity_arr.shape[2]}. See preflight V17 + V18."
+    )
+
+    # Known-unknown §5.7 / V16: node_type values must lie in
+    # {0, 3, 4, 5, 6}. The loader's one-hot encoder
+    # (vortex_shedding_dataset.py:363-368 @ 1ca85d65) maps 0→0 and
+    # non-zero→value-3, then F.one_hot(num_classes=4) — any out-of-range
+    # value triggers RuntimeError in production rather than a
+    # diagnostic message at validation time. Pre-flight makes the
+    # implicit contract explicit.
+    node_type = np.asarray(rollout.node_type)
+    valid_node_types = {0, 3, 4, 5, 6}
+    actual_types = set(int(v) for v in np.unique(node_type).tolist())
+    invalid = actual_types - valid_node_types
+    assert not invalid, (
+        f"MGN node_type values must be in {sorted(valid_node_types)} per preflight "
+        f"known-unknown §5.7 / V16 (one_hot num_classes=4 bound after value-3 shift; "
+        f"vortex_shedding_dataset.py:363-368 @ 1ca85d65). Invalid values: "
+        f"{sorted(invalid)}. See DECISIONS.md D0-23 verdict 10."
+    )
+
+    # V-entries on metadata schema: framework + model + dataset must
+    # all be present. Absorbed in-rung per Phase-1 cross-review
+    # Finding 1: `dataset` was missing from the required set even
+    # though MGN_DATASET_SYSTEM_CLASS (D0-23 v9) keys the substrate-
+    # class dispatch off it. Without the dataset key, the dispatch
+    # silently no-ops and the rule emits a misleading raw value on
+    # an open-driven-dissipative substrate. Making dataset required
+    # closes that fail-open path at the contract boundary.
+    for required_meta_key in ("framework", "model", "dataset"):
+        assert required_meta_key in rollout.metadata, (
+            f"MGN rollout metadata must include {required_meta_key!r}; "
+            f"got keys: {sorted(rollout.metadata.keys())}. See preflight "
+            f"V-entries on rollout schema + DECISIONS.md D0-23 verdict 10. "
+            f"`dataset` is load-bearing for the v9 substrate-class dispatch."
+        )
 
 
 def save_mesh_rollout_npz(rollout: MeshRollout, path: Path | str) -> Path:
@@ -326,6 +517,15 @@ def _expect_velocity(rollout: MeshRollout) -> HarnessDefect | np.ndarray:
 
     Returns the velocity array shaped ``(T, N_nodes, D)`` (D inferred
     from the field; scalar (T, N_nodes) velocity is lifted to (T, N_nodes, 1)).
+
+    NGC key pinned per D0-23 verdict 8: the NGC cylinder_flow dataset
+    (vortex_shedding_2d, modulus_ns_meshgraphnet v0.1 checkpoint) emits
+    node-resolved velocity under the literal key ``"velocity"`` (preflight
+    loader_contract_audit.json V3_field_names). Pattern-B P0 single-
+    instance enumeration: legacy LB / synthetic and NGC vortex-shedding
+    both use the same key, so no helper key list / metadata pivot lands
+    here. Amendment 1's Ahmed Body (a second NGC dataset) is the multi-
+    instance trigger that would force a generalization refactor.
     """
     if "velocity" not in rollout.node_values:
         return HarnessDefect(
@@ -365,6 +565,122 @@ def _gridded_velocity_view(rollout: MeshRollout, velocity: np.ndarray) -> np.nda
     return velocity.reshape((t_size, *tuple(grid_shape), d_field))
 
 
+def _can_compute_graph_mesh_fe(rollout: MeshRollout) -> HarnessDefect | None:
+    """Phase 2 Task 4: precondition gate for the graph-mesh scikit-fem path.
+
+    Returns None if the rule mirror can compute on the graph mesh; else a
+    HarnessDefect whose ``skip_reason`` explains the gap. Three checks:
+
+    1. scikit-fem is importable (under the [mesh] optional extra).
+    2. ``metadata["cells_2d"]`` is present — the triangulation. The PyG
+       MGN datapipe carries cells per timestep on its ``Data`` object;
+       materializers must stage one frame's cells under this key (the
+       mesh is static per :class:`MeshRollout` invariants). Without
+       cells, reconstruction would require inferring triangulation from
+       ``edge_index`` alone, which is a separate scope (Gate A PARTIAL).
+    3. Velocity is 2D (``shape[-1] == 2``). The substrate-class smoke
+       and the FE divergence integrand below are 2D-specific; the 3D
+       generalization (Ahmed Body / future amendments) would add ``vz``
+       and the cross-derivative terms.
+    """
+    try:
+        import skfem  # noqa: F401
+    except ImportError as e:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"scikit-fem not available ({e}); install the 'mesh' "
+                f"extra (`pip install physics-lint[mesh]`). The graph-mesh "
+                f"FE path is gated on this dependency."
+            ),
+        )
+    if rollout.metadata.get("cells_2d") is None:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                "graph-mesh FE path needs metadata['cells_2d'] (a "
+                "static (M, 3) triangulation). Materializers must stage "
+                "one frame's cells under this key. See D0-23 verdict 3 "
+                "(Gate A PASS — MeshTri reconstruction)."
+            ),
+        )
+    velocity = rollout.node_values.get("velocity")
+    if velocity is None:
+        return HarnessDefect(
+            value=None,
+            skip_reason="graph-mesh FE path needs 'velocity' in node_values.",
+        )
+    velocity_arr = np.asarray(velocity)
+    if velocity_arr.ndim != 3 or velocity_arr.shape[-1] != 2:
+        return HarnessDefect(
+            value=None,
+            skip_reason=(
+                f"graph-mesh FE path supports 2D velocity only (T, N, 2); "
+                f"got shape {velocity_arr.shape}. The 3D extension (Ahmed "
+                f"Body / future amendments) is out of P0 scope per design "
+                f"§2.1."
+            ),
+        )
+    return None
+
+
+def _build_graph_mesh_basis(rollout: MeshRollout) -> tuple[Any, Any]:
+    """Build a scikit-fem ``MeshTri`` + ``Basis(ElementTriP1())`` from the
+    rollout's static topology. Assumes :func:`_can_compute_graph_mesh_fe`
+    has returned ``None`` (preconditions met). Lifts the substrate-class
+    smoke's coercion pattern (`02-physicsnemo-mgn/modal_app.py`
+    ``smoke_substrate_class_vortex_shedding`` line ≈1713) — the Gate A
+    PASS branch from D0-23 verdict 3.
+    """
+    import skfem
+
+    cells = np.asarray(rollout.metadata["cells_2d"]).astype(np.int64)
+    mesh = skfem.MeshTri(
+        np.ascontiguousarray(rollout.node_positions.astype(np.float64).T),
+        np.ascontiguousarray(cells.T),
+    )
+    basis = skfem.Basis(mesh, skfem.ElementTriP1())
+    return mesh, basis
+
+
+def _fe_divergence_defect_max(basis: Any, velocity: np.ndarray) -> float:
+    """Max over t of the FE-integrated relative divergence defect
+    ``∫|∇·v| / ∫‖∇v‖_F``. Mirrors the substrate-class smoke's
+    ``_field_observables.rel_div`` (modal_app.py lines ≈1718-1737).
+    """
+    n_t = velocity.shape[0]
+    max_rel = 0.0
+    for t_idx in range(n_t):
+        v_t = velocity[t_idx].astype(np.float64)
+        vx_f = basis.interpolate(v_t[:, 0])
+        vy_f = basis.interpolate(v_t[:, 1])
+        gvx = vx_f.grad  # (2, n_elem, n_qp): [dvx/dx, dvx/dy]
+        gvy = vy_f.grad  # [dvy/dx, dvy/dy]
+        div = gvx[0] + gvy[1]
+        frob = np.sqrt(gvx[0] ** 2 + gvx[1] ** 2 + gvy[0] ** 2 + gvy[1] ** 2)
+        int_abs_div = float(np.sum(np.abs(div) * basis.dx))
+        int_frob = float(np.sum(frob * basis.dx))
+        rel = int_abs_div / max(int_frob, 1e-12)
+        if rel > max_rel:
+            max_rel = rel
+    return max_rel
+
+
+def _fe_kinetic_energy_series(basis: Any, velocity: np.ndarray) -> np.ndarray:
+    """``(T,)`` array of ``KE(t) = 0.5 ∫ |v(t)|^2 dV`` via FE basis;
+    unit density (incompressible NS or the synthetic channel-flow
+    fixture). Mirrors the substrate-class smoke's ``_field_observables.ke``.
+    """
+    n_t = velocity.shape[0]
+    ke = np.empty(n_t, dtype=np.float64)
+    for t_idx in range(n_t):
+        v_t = velocity[t_idx].astype(np.float64)
+        vx_f = basis.interpolate(v_t[:, 0])
+        vy_f = basis.interpolate(v_t[:, 1])
+        ke[t_idx] = 0.5 * float(np.sum((vx_f.value**2 + vy_f.value**2) * basis.dx))
+    return ke
+
+
 def mass_conservation_defect_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     """Per-timestep relative L2 of grid-divergence of velocity, max over t.
 
@@ -375,32 +691,28 @@ def mass_conservation_defect_on_mesh(rollout: MeshRollout) -> HarnessDefect:
         defect = max_t  || ∇·v(t) ||_L2 / || v(t) ||_L2
 
     where ``∇·v`` and ``v`` are computed on the regular grid via
-    fourth-order centered FD. This mirrors the v3 plan §4.2 step 4
-    framing ("PH-CON-001 (mass) on vortex shedding: divergence-free
-    check on velocity field") explicitly — note that this is
-    structural-identity reapplication, not a public-API
+    fourth-order centered FD, or via scikit-fem P1 finite elements on
+    a graph mesh (Phase 2 Task 4 — Gate A PASS branch from D0-23 v3,
+    lifted from the substrate-class smoke's incompressibility computation).
+    Structural-identity reapplication, not a public-API
     PH-CON-001 invocation per DECISIONS.md D0-03.
 
     SKIPS with reason when:
 
     - ``node_values`` lacks a ``velocity`` field.
-    - The rollout is on a graph mesh (the divergence operator on
-      irregular DGL topology is gated on the Day 2 hour 1 NGC audit;
-      no speculative graph-divergence machinery is implemented here).
+    - The mesh is graph-topology AND any of the FE preconditions are
+      unmet (scikit-fem missing, ``cells_2d`` absent, or velocity ≠ 2D);
+      :func:`_can_compute_graph_mesh_fe` carries the precise reason.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
     if not rollout.is_regular_grid:
-        return HarnessDefect(
-            value=None,
-            skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-divergence "
-                f"is gated on Day 2 hour 1 NGC audit per DECISIONS.md D0-03 "
-                f"and is not implemented in this Day 0.5 commit"
-            ),
-        )
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
+        _, basis = _build_graph_mesh_basis(rollout)
+        return HarnessDefect(value=_fe_divergence_defect_max(basis, np.asarray(velocity)))
 
     v_grid = _gridded_velocity_view(rollout, velocity)
     spacings = rollout.grid_spacing
@@ -439,23 +751,36 @@ def kinetic_energy_series_on_mesh(rollout: MeshRollout) -> np.ndarray:
     """(T,) array of KE(t) = 0.5 * Σ_node rho_node * |v_node|^2 * cell_volume.
 
     Constant unit density assumed in V1 (incompressible NS or the
-    synthetic channel flow). Cell volume on a regular grid is
-    ``prod(grid_spacing)``. Sum over nodes approximates the volume
-    integral via midpoint quadrature.
+    synthetic channel flow). On a regular grid: cell volume is
+    ``prod(grid_spacing)`` and the sum over nodes approximates the
+    volume integral via midpoint quadrature. On a graph mesh: FE
+    integration via scikit-fem P1 (Phase 2 Task 4 — Gate A PASS branch
+    from D0-23 v3) lifts the prior NaN-on-graph behavior.
 
-    For graph-mesh inputs, this function returns NaN (the caller
-    should consult :func:`energy_drift_on_mesh` or
-    :func:`dissipation_sign_violation_on_mesh`, which surface the
-    skip-with-reason cleanly).
+    Returns NaN for the trajectory length when:
+
+    - ``node_values`` lacks ``velocity``.
+    - The mesh is graph-topology AND any FE precondition is unmet
+      (scikit-fem missing, ``cells_2d`` absent, or velocity ≠ 2D).
+
+    The HarnessDefect-returning rule mirrors
+    (:func:`energy_drift_on_mesh` / :func:`dissipation_sign_violation_on_mesh`)
+    surface the precise SKIP reason; this function returns the array
+    form for callers that integrate KE into a longer pipeline.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return np.full(rollout.n_timesteps, float("nan"))
-    if not rollout.is_regular_grid:
+    if rollout.is_regular_grid:
+        cell_volume = float(np.prod(rollout.grid_spacing))
+        speeds_sq = np.sum(velocity**2, axis=2)  # (T, N_nodes)
+        return 0.5 * cell_volume * np.sum(speeds_sq, axis=1)  # (T,)
+    # Graph-mesh path: FE-integrated KE.
+    precheck = _can_compute_graph_mesh_fe(rollout)
+    if precheck is not None:
         return np.full(rollout.n_timesteps, float("nan"))
-    cell_volume = float(np.prod(rollout.grid_spacing))
-    speeds_sq = np.sum(velocity**2, axis=2)  # (T, N_nodes)
-    return 0.5 * cell_volume * np.sum(speeds_sq, axis=1)  # (T,)
+    _, basis = _build_graph_mesh_basis(rollout)
+    return _fe_kinetic_energy_series(basis, np.asarray(velocity))
 
 
 def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
@@ -463,19 +788,54 @@ def energy_drift_on_mesh(rollout: MeshRollout) -> HarnessDefect:
     KE-rest threshold as the particle side (DECISIONS.md D0-08).
 
     Mirrors :func:`particle_rollout_adapter.energy_drift` for mesh data.
+
+    Substrate-class dispatch added at D0-23 verdict 9 (case study 02
+    Phase 1): mirrors D0-22 amendment 1's particle-side gate. Open-
+    driven-dissipative substrates SKIP with reason — the strictly-
+    dissipative-or-conservative assumption underpinning energy_drift
+    does not apply when boundary-driven inflow continuously supplies KE.
+
+    Phase 2 Task 4 reorder: the substrate-class dispatch fires BEFORE
+    the topology branch, so a graph-mesh ODD rollout SKIPs with the
+    physics-grounded reason rather than the implementation-grounded
+    "graph-topology" reason. The reorder activates D0-23 v9 on real
+    NGC inputs (which were previously preempted by the graph-mesh
+    SKIP). On non-ODD substrates with graph-mesh topology, the FE
+    KE-integration path from :func:`kinetic_energy_series_on_mesh`
+    is used (Gate A PASS branch).
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
-    if not rollout.is_regular_grid:
+
+    # D0-23 verdict 9 substrate-class dispatch — fires FIRST so the
+    # physics-grounded SKIP outranks the topology-grounded one. The
+    # load-bearing assumption (strictly-dissipative-or-conservative) is
+    # violated by substrate class on this rollout; if so, no KE
+    # computation is necessary or appropriate.
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
+    if system_class == "open-driven-dissipative":
         return HarnessDefect(
             value=None,
             skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-mesh KE "
-                f"integration is gated on Day 2 hour 1 NGC audit"
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "boundary-driven inflow continuously supplies KE; the strictly-"
+                "dissipative-or-conservative assumption underpinning "
+                "energy_drift does not apply. See DECISIONS.md D0-22 "
+                "(amendment 1) for the particle-side precedent and D0-23 "
+                "(verdict 9) for the mesh-side extension."
             ),
         )
+
+    # On a graph mesh, the FE KE path requires the same preconditions
+    # as :func:`mass_conservation_defect_on_mesh`. Surface the precise
+    # gap as a HarnessDefect SKIP rather than the prior topology blanket.
+    if not rollout.is_regular_grid:
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
+
     e_series = kinetic_energy_series_on_mesh(rollout)
     e0 = float(e_series[0])
     if abs(e0) < KE_REST_THRESHOLD:
@@ -497,19 +857,43 @@ def dissipation_sign_violation_on_mesh(rollout: MeshRollout) -> HarnessDefect:
 
     Mirrors :func:`particle_rollout_adapter.dissipation_sign_violation`
     for mesh data.
+
+    Substrate-class dispatch added at D0-23 verdict 9 (case study 02
+    Phase 1): mirrors D0-22 base gate's particle-side dispatch. Open-
+    driven-dissipative substrates SKIP with reason — dE/dt > 0 over a
+    stretch by physics (boundary-driven inflow supplies KE); the
+    strictly-dissipative-or-conservative assumption that
+    dissipation_sign_violation encodes does not apply.
+
+    Phase 2 Task 4 reorder: same as :func:`energy_drift_on_mesh` —
+    substrate-class dispatch fires BEFORE the topology branch.
     """
     velocity = _expect_velocity(rollout)
     if isinstance(velocity, HarnessDefect):
         return velocity
-    if not rollout.is_regular_grid:
+
+    # D0-23 verdict 9 substrate-class dispatch — fires first.
+    dataset_name = rollout.metadata.get("dataset", "") if rollout.metadata else ""
+    system_class = MGN_DATASET_SYSTEM_CLASS.get(dataset_name)
+    if system_class == "open-driven-dissipative":
         return HarnessDefect(
             value=None,
             skip_reason=(
-                f"mesh is graph-topology (framework="
-                f"{rollout.metadata.get('framework')!r}); graph-mesh dKE/dt "
-                f"is gated on Day 2 hour 1 NGC audit"
+                f"system_class='open-driven-dissipative' (dataset={dataset_name!r}); "
+                "dE/dt > 0 over a stretch by physics (boundary-driven inflow "
+                "supplies KE); the strictly-dissipative-or-conservative "
+                "assumption underpinning dissipation_sign_violation does not "
+                "apply. See DECISIONS.md D0-22 for the particle-side precedent "
+                "and D0-23 (verdict 9) for the mesh-side extension."
             ),
         )
+
+    # Graph-mesh FE precondition gate (Phase 2 Task 4).
+    if not rollout.is_regular_grid:
+        precheck = _can_compute_graph_mesh_fe(rollout)
+        if precheck is not None:
+            return precheck
+
     if rollout.n_timesteps < 2:
         raise ValueError(
             f"dissipation_sign_violation_on_mesh needs at least 2 timesteps; "
