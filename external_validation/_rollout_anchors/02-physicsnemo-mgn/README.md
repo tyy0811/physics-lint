@@ -15,29 +15,37 @@ fallback (folder renamed to `02-fno-darcy/` if Gate D triggers).*
 
 ## Rule × checkpoint results
 
-P0 results for `modulus_ns_meshgraphnet` on cylinder_flow vortex shedding (Phase 2 fires on canonical trajectory M = 44 — see scope qualifier below). SARIFs at [`outputs/sarif/`](outputs/sarif/) (`gt.sarif` = ground-truth control arm; `mgn.sarif` = MGN model under test). D0-24 verdict bands pre-registered before fires; all 7 verdicts pinned PASS at [DECISIONS.md D0-24](../methodology/DECISIONS.md).
+P0 results for `modulus_ns_meshgraphnet` on cylinder_flow vortex shedding (P2.1 fires across 5 in-band trajectories; trajectory 44 remains the canonical cross-stack member — see scope qualifier below). Per-trajectory SARIFs for the N=5 table are at [`outputs/p2_multi_trajectory/`](outputs/p2_multi_trajectory/) (`traj<T>_gt.sarif` = ground-truth control arm; `traj<T>_mgn.sarif` = MGN model under test); the Phase-2 canonical traj-44 pair is also kept at [`outputs/sarif/`](outputs/sarif/). D0-24 verdict bands pre-registered before fires; all 7 verdicts pinned PASS at [DECISIONS.md D0-24](../methodology/DECISIONS.md).
 
 *Terminology used in the table below:* `open-driven-dissipative` is the [D0-22](../methodology/DECISIONS.md) substrate class whose `PH-CON-002` / `PH-CON-003` assumptions fail by design (kinetic-energy budget is not strictly dissipative and not strictly conservative; cylinder-wake flow imports KE from inflow and dissipates in the wake); `D0-23 v9` is the CS02 mesh-side substrate-class dispatch extension that fires the SKIP-with-reason path on this class; `rung-4a` denotes the LB-only cross-stack-table predecessor (`gns-tgv2d` + `segnn-tgv2d`).
 
-**Read this first — N = 1.** The table below reports PH-CON-001 on a *single* cylinder_flow trajectory (canonical `M = 44`), not a distribution. The `0.41 %` MGN/GT gap is a **coverage** result — physics-lint fired its rule on a real published checkpoint — *not* a statistical or CI-gate-calibration claim. It also sits inside the ~5.8 % harness-FE-on-P1 discretization floor: it shows MGN reproduces GT *at the floor*, not that MGN is physically incompressible to 5 %. Full scope treatment in the "Scope qualifier" and "What physics-lint did NOT catch §1" sections below; this fence is hoisted above the table deliberately, so the number is never read without it.
+**Read this first — N = 5, small-N statistics.** The table below reports PH-CON-001 across **5 cylinder_flow trajectories** spanning the in-band Strouhal range (P2.1 expansion; trajectory selection rule in [DECISIONS.md D0-26](../methodology/DECISIONS.md)). The median MGN/GT mass-conservation gap is `-0.36 %` of GT, range `[-1.07 %, +0.41 %]`. This is a **small-N statistical** result, not an N=1 coverage point — but it is still *not* a CI-gate-calibration claim (threshold derivation from a defect-magnitude distribution would need a far larger N). Every per-trajectory gap sits inside the ~5.8 % harness-FE-on-P1 discretization floor: the result shows MGN reproduces GT *at the floor* across the in-band subset, not that MGN is physically incompressible to 5 %. Full scope treatment in the "Scope qualifier" and "What physics-lint did NOT catch §1" sections below; this fence is hoisted above the table deliberately, so the numbers are never read without it.
 
-| Rule | GT (control arm) | MGN | D0-24 verdict |
-|---|---|---|---|
-| `PH-CON-001` mass / divergence-free | 5.857e-02 (5.857 %) | 5.881e-02 (5.881 %) | v1 PASS (GT ≤ 6 %); v2 PASS (gap = 0.41 % ≤ 20 %) |
-| `PH-CON-002` energy drift | SKIP (open-driven-dissipative, D0-22 + D0-23 v9) | SKIP (same dispatch) | v3 PASS (substrate-class dispatch fires on both arms) |
-| `PH-CON-003` dissipation sign violation | SKIP (same dispatch) | SKIP (same dispatch) | v4 PASS (same dispatch) |
+**PH-CON-001 mass / divergence-free — per trajectory:**
 
-*PASS verdicts for `PH-CON-001` mean MGN is within the GT / harness-FE-on-P1 floor envelope on this trajectory; they are NOT a claim of physical incompressibility to 5 % — see "What physics-lint did NOT catch" §1 for the floor-bounds-resolution distinction.*
+| `traj_idx` | GT (FE-on-P1 floor) | MGN | gap (% of GT) | D0-24 v2 band |
+|---|---|---|---|---|
+| 88 | 5.275e-02 | 5.219e-02 | -1.07 % | PASS |
+| 48 | 5.338e-02 | 5.319e-02 | -0.36 % | PASS |
+| 44 | 5.857e-02 | 5.881e-02 | +0.41 % | PASS |
+| 38 | 6.440e-02 | 6.442e-02 | +0.03 % | PASS |
+| 60 | 5.589e-02 | 5.569e-02 | -0.36 % | PASS |
+
+Median gap = -0.36 % of GT; range [-1.07 %, +0.41 %] across N = 5 trajectories.
+
+**PH-CON-002 / PH-CON-003** SKIP on every trajectory via the `open-driven-dissipative` substrate-class dispatch (D0-22 + D0-23 v9) — this is trajectory-independent, unchanged from the N=1 result; D0-24 v3 / v4 PASS.
+
+*PASS verdicts for `PH-CON-001` mean MGN is within the GT / harness-FE-on-P1 floor envelope on that trajectory; they are NOT a claim of physical incompressibility to 5 % — see "What physics-lint did NOT catch" §1 for the floor-bounds-resolution distinction.*
 
 See [`methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md`](../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md) for the unified three-column cross-stack consistency table including the rung-4a LB-side columns (GNS-TGV2D + SEGNN-TGV2D).
 
-### Scope qualifier — single trajectory, in-band subset
+### Scope qualifier — 5-trajectory in-band subset
 
-Phase 2 results report PH-CON-001 defect on a single cylinder_flow test trajectory (trajectory `M = 44`, Strouhal `St_U_max = 0.192` ∈ design band `[0.16, 0.21]`, cylinder diameter `D = 0.135`, inflow `U_max = 1.502`; Reynolds number not directly captured at Phase 2 — derivable as `Re = U · D / ν` from the cylinder_flow benchmark's `ν` if needed in Phase 3), selected via the Phase 2 pre-fire Strouhal audit (Task 1, 23 / 100 in-band) as the centerline-Strouhal-central member of the in-band subset under the pre-registered selection rule (median-`strouhal_U_max` among the 23 in-band trajectories). Trajectory `44` ranks 80th of 100 by `strouhal_U_max` on the full test set (the in-band subset occupies ranks 69-91; out-of-band trajectories sit at lower `strouhal_U_max` values, where the literature-anchored design band would not hold anyway). Coverage-not-statistics framing: physics-lint's value here is rule-firing on a real-world checkpoint, not a distribution over initial conditions. CI-gate threshold derivation from defect-magnitude distributions would require `N > 1` and is deferred (Phase 2 does NOT claim CI-gate calibration or full-distribution representativeness).
+P2.1 reports PH-CON-001 across 5 cylinder_flow test trajectories selected from the 23 in-band members (Strouhal in `[0.16, 0.21]`) of the Phase-2 pre-fire audit, by an even spread over `strouhal_U_max` with the Phase-2 canonical trajectory 44 as the median anchor (selection rule pre-registered in [DECISIONS.md D0-26](../methodology/DECISIONS.md)). The median MGN/GT gap is `-0.36 %` of GT (median GT floor `5.59 %`, median MGN `5.57 %`). This is a small-N characterization across the in-band subset, not a full-distribution claim: the 5 trajectories are an even-spread sample of the in-band 23, the out-of-band 77 are not exercised, and CI-gate threshold derivation from defect-magnitude distributions would need `N` far larger than 5. Coverage-and-small-N-statistics framing: physics-lint's value here is rule-firing on a real-world checkpoint and showing the result holds across the in-band subset, not a calibrated distribution over initial conditions.
 
 ### Bridge to the cross-stack story
 
-The numbers above land in the unified cross-stack table at [`methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md`](../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md) as the third column (alongside `gns-tgv2d` and `segnn-tgv2d`). The schema-uniformity claim — *the same three-row conservation result-schema (rule-ids: `mass_conservation_defect`, `energy_drift`, `dissipation_sign_violation`) and run-level field set reuse across three upstream rollouts of two substrate classes, NOT public v1 rule-code reuse* (the CS02 PH-CON-001 cell is mesh-harness structural-identity reapplication; see "PH-CON-001 routing — harness, not public rule" below) — is what Case Study 02 supplies to the rung-4 series's methodology trail per [`physics-lint-validation-plan-v2.1.md`](../methodology/docs/physics-lint-validation-plan-v2.1.md) §1.5 (Case Study 02 as a falsification surface). Whether the A + B + C triad generalizes is tested by the Phase 1 + Phase 2 + Phase 3 cross-review findings and triage; see [DECISIONS.md D0-23 + D0-24](../methodology/DECISIONS.md) for the per-pattern verdicts.
+The canonical trajectory-44 value above lands in the unified cross-stack table at [`methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md`](../methodology/docs/2026-05-13-case-study-02-cross-stack-conservation-table.md) as the third column (alongside `gns-tgv2d` and `segnn-tgv2d`) — the table reports the canonical-trajectory cell as a schema-uniformity artifact, not the P2.1 N=5 distribution. The schema-uniformity claim — *the same three-row conservation result-schema (rule-ids: `mass_conservation_defect`, `energy_drift`, `dissipation_sign_violation`) and run-level field set reuse across three upstream rollouts of two substrate classes, NOT public v1 rule-code reuse* (the CS02 PH-CON-001 cell is mesh-harness structural-identity reapplication; see "PH-CON-001 routing — harness, not public rule" below) — is what Case Study 02 supplies to the rung-4 series's methodology trail per [`physics-lint-validation-plan-v2.1.md`](../methodology/docs/physics-lint-validation-plan-v2.1.md) §1.5 (Case Study 02 as a falsification surface). Whether the A + B + C triad generalizes is tested by the Phase 1 + Phase 2 + Phase 3 cross-review findings and triage; see [DECISIONS.md D0-23 + D0-24](../methodology/DECISIONS.md) for the per-pattern verdicts.
 
 ## Reproducibility
 
@@ -50,7 +58,7 @@ The numbers above land in the unified cross-stack table at [`methodology/docs/20
 | `02-physicsnemo-mgn/modal_app.py::smoke_substrate_class_vortex_shedding` | Phase 1 substrate-class smoke (verdicts 6 + 7 — ∫∇·v dV / KE budget / Strouhal) | A10G, ~5 min |
 | `02-physicsnemo-mgn/modal_app.py::audit_strouhal_test_trajectories` | Phase 2 Task 1 — Strouhal pre-check across cylinder_flow test trajectories (refinement 1) | CPU, ~10 min |
 | `02-physicsnemo-mgn/modal_app.py::lint_gt_trajectory` | Phase 2 Task 5 — GT-trajectory CPU lint → `gt.sarif` (control arm) | CPU, ~3 min |
-| `02-physicsnemo-mgn/modal_app.py::mgn_rollout_p0_vortex_shedding` | Phase 2 Task 6 — MGN inference on canonical trajectory 44 (599 rollout steps) | A10G, ~10 min |
+| `02-physicsnemo-mgn/modal_app.py::mgn_rollout_p0_vortex_shedding` | Phase 2 Task 6 / P2.1 — MGN inference on a cylinder_flow trajectory (599 rollout steps); P2.1 fires it across trajectories {88, 48, 44, 38, 60} | A10G, ~10 min |
 | `02-physicsnemo-mgn/modal_app.py::lint_mgn_rollout` | Phase 2 Task 7 — MGN-rollout CPU lint → `mgn.sarif` | CPU, ~3 min |
 
 ### NGC checkpoint provenance
@@ -116,9 +124,9 @@ What this does NOT demonstrate: **"MGN is physically incompressible to 5 %."**
 
 The two claims are distinct. PH-CON-001 at this discretization bounds MGN's deviation from GT-equivalence rather than from physical incompressibility. A tighter discretization would be needed to distinguish whether the `5 %` reflects MGN model error or floor error. Phase 3 holds this distinction explicitly to avoid the over-read; tighter-discretization re-fire is out of Phase 3 scope (would be empirical work, properly scoped to v1.1 backlog or a future case study).
 
-### 2. Substrate-variability — single-trajectory + in-band subset
+### 2. Substrate-variability — in-band subset only
 
-Phase 2's pre-fire Strouhal audit (Task 1) found 23 / 100 test trajectories land in the literature-anchored design band `[0.16, 0.21]` on the either-or convention check; 77 / 100 land out-of-band on the same check (mostly with `St_U_mean > 0.21` while `St_U_max ∈ [0.16, 0.21]` — the U-convention ambiguity). The canonical trajectory selection (median-`strouhal_U_max` among the in-band 23) is deterministic and reproducible. This is a substrate-variability characterization, NOT a methodology failing — physics-lint's value is rule-firing on a real-world checkpoint, not a distribution over initial conditions. CI-gate threshold derivation from defect-magnitude distributions would require `N > 1` and is deferred.
+Phase 2's pre-fire Strouhal audit found 23 / 100 test trajectories in the literature-anchored design band `[0.16, 0.21]`; 77 / 100 land out-of-band (mostly `St_U_mean > 0.21` while `St_U_max` is in band — the U-convention ambiguity). P2.1 exercises 5 of the in-band 23. What is NOT covered: the out-of-band 77, and a sample dense enough to derive a CI-gate threshold from the defect-magnitude distribution. The in-band subset gives a median and a range (all 5 trajectories stay inside the harness-FE-on-P1 floor); it does not give a calibrated full-distribution claim. This is a substrate-variability characterization, NOT a methodology failing — physics-lint's value is rule-firing on a real-world checkpoint and confirming the result holds across the in-band subset.
 
 ### 3. PH-CON-001 routing — harness, not public rule (class-level: V1-rules-with-input-domain-restrictions)
 
