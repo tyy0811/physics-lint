@@ -2,17 +2,19 @@
 
 **Scope separation (read first):** PH-BC-002's external validation
 separates **(i) a harness-level Gauss-Green correctness fixture** from
-**(ii) the production rule's currently supported Laplace-scope verdict
-behavior**. The production rule `src/physics_lint/rules/ph_bc_002.py`
-is Laplace-scope only (Week 1 scope; Poisson arm defers to Week 2);
-the F1 mathematical anchor — the general Gauss-Green / divergence
-theorem — covers arbitrary C¹ vector fields. CITATION.md, README, and
-test docstrings do not imply broader production coverage than V1
-provides.
+**(ii) the production rule's Laplace and Poisson divergence-theorem
+verdict behavior**. The production rule `src/physics_lint/rules/ph_bc_002.py`
+covers the scalar Laplace/Poisson divergence-theorem imbalance —
+narrower than the F1 mathematical anchor (the general Gauss-Green /
+divergence theorem for arbitrary C¹ vector fields). CITATION.md,
+README, and test docstrings do not imply broader production coverage
+than the rule provides.
 
 Boundary flux imbalance check: for a Laplace-harmonic field `u`, the
 rule verifies `∫_Ω Δu dV ≈ 0` (equivalently `∫_{∂Ω} ∂u/∂n dS ≈ 0` by
-Gauss-Green) within a relative threshold of 0.01 against `||u||_{L²}`.
+Gauss-Green); for a Poisson field (`-Δu = f`) it verifies
+`∫_Ω Δu dV + ∫_Ω f dV ≈ 0`. Both compare against relative thresholds
+of 0.01 / 0.1 against `||u||_{L²}`.
 
 Run:
 
@@ -20,10 +22,11 @@ Run:
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-BC-002/ -v
 ```
 
-Expected: 12 passed in < 5 s (6 F2-harness parametrized across
-{tri, quad} × {4, 8, 16} + 1 invariance summary + 5 rule-verdict-
-contract covering PASS/WARN/SKIP paths). Requires `scikit-fem` (already
-pinned as optional `[mesh]` extra in `pyproject.toml`).
+Expected: 14 passed in < 5 s (6 F2-harness parametrized across
+{tri, quad} × {4, 8, 16} + 1 invariance summary + 7 rule-verdict-
+contract covering Laplace and Poisson PASS/WARN/FAIL/SKIP paths).
+Requires `scikit-fem` (already pinned as optional `[mesh]` extra in
+`pyproject.toml`).
 
 ## Citation stack (three-function-labeled)
 
@@ -42,13 +45,14 @@ Summary:
   roundoff (~4e-16) for `F = (x, y)` on unit square, across both
   triangulation (MeshTri + ElementTriP1) and quadrilateralization
   (MeshQuad + ElementQuad1) at N ∈ {4, 8, 16}.
-- **Rule-verdict contract**: exercises the production rule's V1
-  Laplace-scope emitted quantity. `u = x² − y²` (degree-2 harmonic)
-  gives exact `raw_value = 0` at every N ∈ {16, 32, 64} → PASS.
-  `u = x⁵ − 10x³y² + 5xy⁴` (degree-5 harmonic, Re of z⁵) WARNs at
-  N=16 due to boundary-FD4 O(h²) error, PASSes at N ∈ {32, 64} with
-  ~9× decrease per doubling. SKIP paths on Poisson (Week 2 source
-  wiring) and non-laplace/poisson PDEs (scope guard).
+- **Rule-verdict contract**: exercises the production rule's emitted
+  quantity. Laplace: `u = x² − y²` (degree-2 harmonic) gives exact
+  `raw_value = 0` at every N ∈ {16, 32, 64} → PASS; `u = x⁵ − 10x³y²
+  + 5xy⁴` (degree-5 harmonic, Re of z⁵) WARNs at N=16 due to
+  boundary-FD4 O(h²) error, PASSes at N ∈ {32, 64} with ~9× decrease
+  per doubling. Poisson (`-Δu = f`): a PDE-consistent `(u, f)` pair
+  PASSes, an inconsistent pair WARNs/FAILs, and a Poisson spec with
+  no source array SKIPs. Non-laplace/poisson PDEs SKIP (scope guard).
 - **F3 Borrowed-credibility**: absent with justification. Gauss-Green
   reproduction on MMS fixtures is tautological under the theorem's
   stated preconditions — no borrowed-credibility via published

@@ -1,10 +1,11 @@
 """PH-BC-002 external-validation anchor - Gauss-Green / divergence theorem.
 
-Task 5 of the complete-v1.0 plan. Applies the V1-stub CRITICAL-task
-pattern (2026-04-24 `feedback_critical_rule_stub_three_layer_contract.md`):
-the production rule PH-BC-002 is Laplace-scope only (Week 1 scope per
-src/physics_lint/rules/ph_bc_002.py line 8), strictly narrower than the
-general Gauss-Green mathematical anchor. External validation separates:
+Task 5 of the complete-v1.0 plan, extended for the P0 roadmap (PH-BC-002
+Poisson arm). Applies the V1-stub CRITICAL-task pattern (2026-04-24
+`feedback_critical_rule_stub_three_layer_contract.md`): the production
+rule PH-BC-002 implements the scalar Laplace/Poisson divergence-theorem
+imbalance, narrower than the general vector-flux Gauss-Green
+mathematical anchor. External validation separates:
 
     (F1)  Mathematical-legitimacy anchor: Gauss-Green / divergence
           theorem (Evans 2010 App C.2 Thm 1, section-level ⚠;
@@ -22,20 +23,24 @@ general Gauss-Green mathematical anchor. External validation separates:
           borrowed-credibility via published numerical baseline is not
           applicable). LeVeque 2002 FVM §2.1 in Supplementary
           calibration context (pedagogical framing flag).
-    (RVC) Rule-verdict contract: exercises the rule's V1 Laplace-scope
-          emitted quantity (∫Δu dV for a harmonic field). u = x² - y²
-          gives exact 0 (FD4 is exact on polynomials of degree ≤ 4, on
-          both interior and boundary stencils). u = x⁵ - 10x³y² + 5xy⁴
+    (RVC) Rule-verdict contract: exercises the rule's emitted quantity.
+          Laplace arm (∫Δu dV for a harmonic field): u = x² - y² gives
+          exact 0 (FD4 is exact on polynomials of degree ≤ 4, on both
+          interior and boundary stencils). u = x⁵ - 10x³y² + 5xy⁴
           (5th-degree harmonic) exercises the boundary-stencil O(h²)
-          regime — rule WARNs at N=16, PASSes at N ≥ 32. SKIPPED paths
-          on Poisson (Week 2 source wiring) and non-laplace/poisson
-          PDEs (out of V1 rule scope).
+          regime — rule WARNs at N=16, PASSes at N ≥ 32. Poisson arm
+          (∫Δu dV + ∫f dV): a PDE-consistent (u, f) pair PASSes, an
+          inconsistent pair WARNs/FAILs, and a Poisson spec with no
+          source array SKIPs. Non-laplace/poisson PDEs SKIP (out of
+          rule scope).
 
 **Wording discipline.** Do not write "PH-BC-002 validates the
-divergence theorem generally." The production rule does not. Write:
-"PH-BC-002's external validation separates (i) a harness-level Gauss-
-Green correctness fixture from (ii) the production rule's currently
-supported Laplace-scope verdict behavior."
+divergence theorem generally." The production rule does not — it
+covers the scalar Laplace/Poisson divergence-theorem imbalance, not
+arbitrary vector-flux F. Write: "PH-BC-002's external validation
+separates (i) a harness-level Gauss-Green correctness fixture from
+(ii) the production rule's Laplace and Poisson divergence-theorem
+verdict behavior."
 
 Plan-diffs logged with the commit (plan-vs-committed-state drift, plan
 section 7.4):
@@ -52,6 +57,28 @@ section 7.4):
        explicitly.
 
 Plan-diffs 1-5 are from Tasks 2 + 3 (commits 30baf3e, 0cedc7b).
+
+P0 roadmap extension (2026-05-18, plan
+`docs/superpowers/plans/2026-05-18-p0-env-baseline-and-ph-bc-002.md`
+Task 5):
+    7. PH-BC-002's Poisson arm is now implemented (no longer SKIPPED).
+       The RVC layer gains three Poisson tests: consistent-pair PASS,
+       inconsistent-pair WARN/FAIL, and no-source SKIP. The stale
+       `test_rvc_rule_skipped_on_poisson_week1_scope` — which asserted
+       the removed "Week 2" SKIP reason — is deleted; its no-source
+       SKIP coverage is carried by `test_rvc_poisson_no_source_skips`.
+       This deletion parallels Task 4's deletion of the unit suite's
+       stale stub test; the P0 plan specified the unit-suite deletion
+       but not this anchor one, so it is logged here as a plan gap
+       closed unilaterally (a stale test asserting removed behavior;
+       the rule's intent is unchanged).
+    8. Code-review follow-up: the consistent-pair RVC tolerance was
+       tightened from 0.05 to 1e-12 (degree-2 u => FD4-exact => the
+       imbalance is float64 roundoff, not FD truncation), and the
+       external-validation docs that still described PH-BC-002 as
+       Laplace-only / Poisson-deferred — `_harness/divergence.py`,
+       `README.md`, `CITATION.md` — were corrected to the implemented
+       Laplace+Poisson scope.
 """
 
 from __future__ import annotations
@@ -108,6 +135,24 @@ def _run_rule(
     return ph_bc_002.check(field, spec)
 
 
+def _poisson_spec() -> DomainSpec:
+    """Poisson DomainSpec, mirroring tests/rules/test_ph_bc_002.py::_poisson_spec.
+
+    The rule reads ``field.values()`` shape, not ``spec.grid_shape``, so a
+    fixed ``[64, 64]`` grid_shape is reused across refinement levels.
+    """
+    return DomainSpec.model_validate(
+        {
+            "pde": "poisson",
+            "grid_shape": [64, 64],
+            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+            "periodic": False,
+            "boundary_condition": {"kind": "dirichlet_homogeneous"},
+            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
+        }
+    )
+
+
 # =========================================================================
 # Layer 2: F2 harness-level Gauss-Green on F=(x,y), unit square.
 #
@@ -156,8 +201,9 @@ def test_layer2_harness_identity_invariant_under_refinement():
 
 # =========================================================================
 # Rule-verdict contract (RVC): exercises the production rule PH-BC-002's
-# ACTUAL V1 Laplace-scope emitted quantity. Does NOT claim the rule
-# validates general Gauss-Green; that's the harness layer above.
+# actual emitted quantity on Laplace and Poisson fixtures. Does NOT claim
+# the rule validates general vector-flux Gauss-Green; that's the harness
+# layer above.
 # =========================================================================
 
 
@@ -214,17 +260,45 @@ def test_rvc_rule_warns_on_degree5_harmonic_at_coarse_grid():
     )
 
 
-def test_rvc_rule_skipped_on_poisson_week1_scope():
-    """Week 1 rule scope excludes Poisson (source-term integration lands
-    in Week 2 per ph_bc_002.py:8). Rule SKIPs with the documented reason.
-    """
-    result = _run_rule(16, pde="poisson")
-    assert result.status == "SKIPPED", (
-        f"rule status on Poisson expected SKIPPED (Week 2 wiring), got {result.status!r}"
-    )
-    assert result.reason is not None and "Week 2" in result.reason, (
-        f"SKIPPED reason on Poisson expected to mention Week 2 scope, got {result.reason!r}"
-    )
+def test_rvc_poisson_consistent_pair_passes():
+    """RVC: a PDE-consistent (u, f) pair (u = x^2+y^2, f = -4) yields a
+    near-zero divergence-theorem imbalance => PASS."""
+    n = 64
+    g = np.linspace(0.0, 1.0, n)
+    mesh_x, mesh_y = np.meshgrid(g, g, indexing="ij")
+    u = mesh_x**2 + mesh_y**2
+    spec = _poisson_spec()
+    object.__setattr__(spec, "_source_array", np.full((n, n), -4.0))
+    field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "PASS"
+    # Degree-2 u: FD4 Laplacian is exact, so the imbalance is float64
+    # roundoff (~7e-13). Bound it tight enough to catch a real sign or
+    # scaling regression, not at a loose 0.05.
+    assert result.raw_value is not None and abs(result.raw_value) < 1e-12
+
+
+def test_rvc_poisson_inconsistent_pair_warns_or_fails():
+    """RVC: an inconsistent (u, f) pair registers a non-zero imbalance."""
+    n = 64
+    g = np.linspace(0.0, 1.0, n)
+    mesh_x, mesh_y = np.meshgrid(g, g, indexing="ij")
+    u = mesh_x**2 + mesh_y**2
+    spec = _poisson_spec()
+    object.__setattr__(spec, "_source_array", np.zeros((n, n)))
+    field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status in {"WARN", "FAIL"}
+
+
+def test_rvc_poisson_no_source_skips():
+    """RVC: Poisson with no source array SKIPs rather than guessing f."""
+    n = 16
+    spec = _poisson_spec()
+    field = GridField(np.zeros((n, n)), h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "SKIPPED"
+    assert result.reason is not None and "source" in result.reason.lower()
 
 
 def test_rvc_rule_skipped_on_non_laplace_non_poisson():
