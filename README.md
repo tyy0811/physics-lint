@@ -218,6 +218,8 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 
 The harness layer at `external_validation/_rollout_anchors/_harness/` demonstrates a skip-with-reason mechanism that addresses this — a two-half positive-evidence gate (system_class hint AND KE-monotone-non-increasing) avoids masking buggy supposed-conservative surrogates while restoring correct semantics on dissipative-by-design rollouts. The harness layer is the prototype for v1.x graduation; the v1.0 public PH-CON-002 rule is preserved as-shipped. Full discussion in [`external_validation/_rollout_anchors/methodology/`](external_validation/_rollout_anchors/methodology/) and summarized in [Cross-stack rollout anchors](#cross-stack-rollout-anchors) above.
 
+**`PH-SYM-004` and `PH-NUM-001` ship as `SKIPPED`-with-reason in v1.0.0.** Both rule IDs are registered and stable, but each emits `SKIPPED` rather than a verdict. `PH-SYM-004` (translation equivariance) needs an adapter-mode operator contract that the v1.0 public adapter does not carry — a coordinate-function field cannot express the operator the equivariance check requires. `PH-NUM-001` (quadrature convergence) needs a non-degenerate convergence functional — integrating a finite-element field is exact for any sufficient quadrature, so a naive q-vs-2q check cannot fire. Each is scheduled for v1.1 after a design pass; their activation will be a minor-version, additive change. The other 16 rules are active.
+
 ## Supported PDEs and models
 
 **v1.0 PDE coverage:**
