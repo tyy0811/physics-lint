@@ -19,6 +19,8 @@ P0 results for `modulus_ns_meshgraphnet` on cylinder_flow vortex shedding (Phase
 
 *Terminology used in the table below:* `open-driven-dissipative` is the [D0-22](../methodology/DECISIONS.md) substrate class whose `PH-CON-002` / `PH-CON-003` assumptions fail by design (kinetic-energy budget is not strictly dissipative and not strictly conservative; cylinder-wake flow imports KE from inflow and dissipates in the wake); `D0-23 v9` is the CS02 mesh-side substrate-class dispatch extension that fires the SKIP-with-reason path on this class; `rung-4a` denotes the LB-only cross-stack-table predecessor (`gns-tgv2d` + `segnn-tgv2d`).
 
+**Read this first — N = 1.** The table below reports PH-CON-001 on a *single* cylinder_flow trajectory (canonical `M = 44`), not a distribution. The `0.41 %` MGN/GT gap is a **coverage** result — physics-lint fired its rule on a real published checkpoint — *not* a statistical or CI-gate-calibration claim. It also sits inside the ~5.8 % harness-FE-on-P1 discretization floor: it shows MGN reproduces GT *at the floor*, not that MGN is physically incompressible to 5 %. Full scope treatment in the "Scope qualifier" and "What physics-lint did NOT catch §1" sections below; this fence is hoisted above the table deliberately, so the number is never read without it.
+
 | Rule | GT (control arm) | MGN | D0-24 verdict |
 |---|---|---|---|
 | `PH-CON-001` mass / divergence-free | 5.857e-02 (5.857 %) | 5.881e-02 (5.881 %) | v1 PASS (GT ≤ 6 %); v2 PASS (gap = 0.41 % ≤ 20 %) |
