@@ -123,3 +123,39 @@ def test_ph_bc_002_accepts_callable_field_adapter_mode():
 def test_ph_bc_002_metadata():
     assert ph_bc_002.__rule_id__ == "PH-BC-002"
     assert ph_bc_002.__default_severity__ == "warning"
+
+
+def _poisson_spec() -> DomainSpec:
+    return DomainSpec.model_validate(
+        {
+            "pde": "poisson",
+            "grid_shape": [64, 64],
+            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+            "periodic": False,
+            "boundary_condition": {"kind": "dirichlet_homogeneous"},
+            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
+        }
+    )
+
+
+def _grid_xy(n: int) -> tuple[np.ndarray, np.ndarray]:
+    g = np.linspace(0.0, 1.0, n)
+    return np.meshgrid(g, g, indexing="ij")
+
+
+def test_ph_bc_002_poisson_consistent_field_passes():
+    # u = x^2 + y^2  =>  Laplacian(u) = 4.  Poisson convention -Lap(u) = f
+    # => f = -4 (constant). A consistent (u, f) pair has imbalance ~ 0.
+    n = 64
+    mesh_x, mesh_y = _grid_xy(n)
+    u = mesh_x**2 + mesh_y**2
+    spec = _poisson_spec()
+    source = np.full((n, n), -4.0)
+    # The loader injects the source array as spec._source_array via
+    # object.__setattr__; mirror that here for the unit test.
+    object.__setattr__(spec, "_source_array", source)
+    field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "PASS", f"expected PASS, got {result.status} ({result.reason})"
+    assert result.raw_value is not None
+    assert abs(result.raw_value) < 0.05  # consistent pair => near-zero imbalance

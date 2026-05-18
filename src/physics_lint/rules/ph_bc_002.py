@@ -5,13 +5,16 @@ the net outward boundary flux integral. Violation of this identity is a
 sign that the learned field is inconsistent with the PDE at a weak-form
 level even if the pointwise residual is small.
 
-Week 1 scope: Laplace only (expected imbalance is zero). The Poisson arm
-raises ``NotImplementedError`` to surface the unfinished wiring loudly
-instead of silently computing a wrong answer; the source-term integral
-lands in Week 2 when the loader plumbs ``spec.source_term``.
+Both Laplace and Poisson are implemented. Laplace: expected imbalance is
+zero. Poisson (-Delta u = f): the imbalance is integral(Delta u) +
+integral(f); the source array is read from ``spec._source_array``,
+plumbed by the loader. When no source array is present the Poisson arm
+emits SKIPPED with a reason rather than guessing f.
 """
 
 from __future__ import annotations
+
+import numpy as np
 
 from physics_lint.field import Field
 from physics_lint.norms import l2_grid, trapezoidal_integral
@@ -51,22 +54,78 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
     field = ensure_grid_field(field, spec)
 
     if spec.pde == "poisson":
-        # Week 1 scope: source term is not yet plumbed through DomainSpec.
-        # Emit SKIPPED rather than raising — the linter must not crash on a
-        # valid spec. Source integration (and thus a real imbalance) lands
-        # in Week 2.
+        # Poisson convention: -Delta u = f. Hence the expected value of the
+        # domain integral of Delta u is -integral(f), and the divergence-
+        # theorem imbalance is integral(Delta u) + integral(f). The source
+        # array is plumbed onto the spec by the loader (loader._resolve_
+        # source_term / _load_dump) under the private _source_array
+        # attribute; PH-RES-001 reads it the same way.
+        source = getattr(spec, "_source_array", None)
+        if source is None:
+            return RuleResult(
+                rule_id=__rule_id__,
+                rule_name=__rule_name__,
+                severity=__default_severity__,
+                status="SKIPPED",
+                raw_value=None,
+                violation_ratio=None,
+                mode=None,
+                reason=(
+                    "PH-BC-002 for Poisson needs a source array; provide one "
+                    "via an .npz 'source' key or a source_term= config pointer."
+                ),
+                refinement_rate=None,
+                spatial_map=None,
+                recommended_norm="",
+                citation="classical divergence theorem",
+                doc_url=_DOC_URL,
+            )
+        source_arr = np.asarray(source, dtype=float)
+        u_values = field.values()
+        if source_arr.shape != u_values.shape:
+            return RuleResult(
+                rule_id=__rule_id__,
+                rule_name=__rule_name__,
+                severity=__default_severity__,
+                status="SKIPPED",
+                raw_value=None,
+                violation_ratio=None,
+                mode=None,
+                reason=(
+                    f"PH-BC-002 Poisson source shape {source_arr.shape} does "
+                    f"not match field shape {u_values.shape}"
+                ),
+                refinement_rate=None,
+                spatial_map=None,
+                recommended_norm="",
+                citation="classical divergence theorem",
+                doc_url=_DOC_URL,
+            )
+        lap = field.laplacian().values()
+        lap_integral = trapezoidal_integral(lap, field.h)
+        source_integral = trapezoidal_integral(source_arr, field.h)
+        # -Delta u = f  =>  integral(Delta u) = -integral(f)
+        #             =>  imbalance = integral(Delta u) + integral(f).
+        imbalance = float(lap_integral + source_integral)
+        scale = max(l2_grid(u_values, field.h), 1e-12)
+        ratio = abs(imbalance) / scale
+        status = "PASS" if ratio < 0.01 else ("WARN" if ratio < 0.1 else "FAIL")
         return RuleResult(
             rule_id=__rule_id__,
             rule_name=__rule_name__,
             severity=__default_severity__,
-            status="SKIPPED",
-            raw_value=None,
-            violation_ratio=None,
+            status=status,
+            raw_value=imbalance,
+            violation_ratio=ratio,
             mode=None,
-            reason="PH-BC-002 for Poisson requires source integration; lands in Week 2.",
+            reason=(
+                None
+                if status == "PASS"
+                else f"Poisson flux imbalance {imbalance:.2e} (ratio {ratio:.2f}; {status})"
+            ),
             refinement_rate=None,
             spatial_map=None,
-            recommended_norm="",
+            recommended_norm="integral of Laplacian + source (divergence theorem, Poisson)",
             citation="classical divergence theorem",
             doc_url=_DOC_URL,
         )
