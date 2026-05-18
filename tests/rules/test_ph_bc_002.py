@@ -52,27 +52,6 @@ def test_ph_bc_002_non_harmonic_has_nonzero_net_flux():
     assert result.raw_value is not None and abs(result.raw_value) > 0.01
 
 
-def test_ph_bc_002_poisson_is_skipped_until_week_2():
-    # Matching sibling of PH-RES-001: Poisson source integration lands in
-    # Week 2. Until then the rule must emit SKIPPED rather than crash with
-    # NotImplementedError mid-run.
-    spec = DomainSpec.model_validate(
-        {
-            "pde": "poisson",
-            "grid_shape": [16, 16],
-            "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
-            "periodic": False,
-            "boundary_condition": {"kind": "dirichlet_homogeneous"},
-            "field": {"type": "grid", "backend": "fd", "dump_path": "p.npz"},
-        }
-    )
-    field = GridField(np.zeros((16, 16)), h=1.0 / 15, periodic=False, backend="fd")
-    result = ph_bc_002.check(field, spec)
-    assert result.status == "SKIPPED"
-    assert result.reason is not None
-    assert "Week 2" in result.reason
-
-
 def test_ph_bc_002_heat_pde_is_skipped():
     spec = DomainSpec.model_validate(
         {
@@ -175,3 +154,27 @@ def test_ph_bc_002_poisson_inconsistent_field_warns_or_fails():
     assert result.status in {"WARN", "FAIL"}, f"expected WARN/FAIL, got {result.status}"
     assert result.raw_value is not None and abs(result.raw_value) > 0.01
     assert result.reason is not None  # non-PASS verdicts carry a reason
+
+
+def test_ph_bc_002_poisson_no_source_skips_with_reason():
+    # Poisson with no source array plumbed: the rule SKIPs (it must not
+    # guess f), with a reason that names the two ways to provide a source.
+    n = 16
+    spec = _poisson_spec()
+    field = GridField(np.zeros((n, n)), h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "SKIPPED"
+    assert result.reason is not None
+    assert "source" in result.reason.lower()
+
+
+def test_ph_bc_002_poisson_source_shape_mismatch_skips():
+    # A source array whose shape disagrees with the field => SKIP, not crash.
+    n = 32
+    spec = _poisson_spec()
+    object.__setattr__(spec, "_source_array", np.zeros((8, 8)))
+    field = GridField(np.zeros((n, n)), h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "SKIPPED"
+    assert result.reason is not None
+    assert "shape" in result.reason.lower()
