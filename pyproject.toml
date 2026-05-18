@@ -11,7 +11,11 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "Jane Yeung", email = "tyjaneyeung@gmail.com" }]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy>=1.26",
+    # Upper-bounded: torch stopped publishing x86-64 macOS wheels after
+    # 2.2.2, which was built against the NumPy 1.x ABI. Without <2, a
+    # macOS-Intel `pip install` resolves numpy 2.x + torch 2.2.2 and
+    # adapter-mode (CallableField) crashes on the torch->numpy bridge.
+    "numpy>=1.26,<2",
     "scipy>=1.11",
     "torch>=2.0",
     "pydantic>=2.0",
@@ -60,9 +64,6 @@ Issues = "https://github.com/tyy0811/physics-lint/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/physics_lint"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/physics_lint/data" = "physics_lint/data"
 
 [tool.ruff]
 line-length = 100
