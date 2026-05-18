@@ -2,7 +2,7 @@
 
 **A CI linter for trained neural PDE surrogates.** Catches residual, conservation, boundary-condition, positivity, and symmetry violations that MSE misses. Stable rule IDs, SARIF output, GitHub code scanning integration. Think `ruff`, for physics.
 
-by **Jane Yeung** · [github.com/tyy0811/physics-lint](https://github.com/tyy0811/physics-lint) · [physics-lint.readthedocs.io](https://physics-lint.readthedocs.io)
+by **Jane Yeung** · [github.com/tyy0811/physics-lint](https://github.com/tyy0811/physics-lint)
 
 ---
 
@@ -14,7 +14,7 @@ physics-lint mechanically checks these properties against calibrated analytical 
 
 ## Hero: physics-lint in CI
 
-![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](docs/figures/sarif-hero.png)
+![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](https://raw.githubusercontent.com/tyy0811/physics-lint/master/docs/figures/sarif-hero.png)
 
 *Above: the FNO `PH-POS-002` alert surfaced in physics-lint's own repository Security tab. The screenshot is from running physics-lint against three trained surrogates from [`tyy0811/laplace-uq-bench`](https://github.com/tyy0811/laplace-uq-bench) — `unet_regressor`, `fno`, `ddpm`. All three failed at least one physics check on the sample; FNO is the most severely flagged because it **uniquely violates the maximum principle** (interior extremum exceeds boundary extrema by 0.078 in a Dirichlet-homogeneous problem), while UNet and DDPM respect the principle cleanly. `PH-POS-002` catches the violation as a code-scanning alert with a physically interpretable message and rule documentation links.*
 
@@ -217,6 +217,8 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 **`PH-CON-002` evaluates `raw_value` on dissipative systems, producing FAIL on physically-correct dissipative-by-design behavior.** TGV2D, RPF2D, LDC2D, DAM2D and analogous viscous-SPH systems dissipate energy as a property of the physics; PH-CON-002's relative-drift form (`max|E(t) - E(0)| / |E(0)|`) trips the FAIL threshold on rollouts where ~99% of initial KE has correctly dissipated to viscosity. This is the primary use case for ML PDE surrogates (most ML targets are dissipative); a writeup footnote saying "ignore those FAILs" is harder to defend than the right rule semantics.
 
 The harness layer at `external_validation/_rollout_anchors/_harness/` demonstrates a skip-with-reason mechanism that addresses this — a two-half positive-evidence gate (system_class hint AND KE-monotone-non-increasing) avoids masking buggy supposed-conservative surrogates while restoring correct semantics on dissipative-by-design rollouts. The harness layer is the prototype for v1.x graduation; the v1.0 public PH-CON-002 rule is preserved as-shipped. Full discussion in [`external_validation/_rollout_anchors/methodology/`](external_validation/_rollout_anchors/methodology/) and summarized in [Cross-stack rollout anchors](#cross-stack-rollout-anchors) above.
+
+**`PH-SYM-004` and `PH-NUM-001` ship as `SKIPPED`-with-reason in v1.0.0.** Both rule IDs are registered and stable, but each emits `SKIPPED` rather than a verdict. `PH-SYM-004` (translation equivariance) needs an adapter-mode operator contract that the v1.0 public adapter does not carry — a coordinate-function field cannot express the operator the equivariance check requires. `PH-NUM-001` (quadrature convergence) needs a non-degenerate convergence functional — integrating a finite-element field is exact for any sufficient quadrature, so a naive q-vs-2q check cannot fire. Each is scheduled for v1.1 after a design pass; their activation will be a minor-version, additive change. The other 16 rules are active.
 
 ## Supported PDEs and models
 
