@@ -31,7 +31,13 @@ from physics_lint.norms import (
     l2_grid,
 )
 from physics_lint.report import RuleResult
-from physics_lint.rules._helpers import Floor, _load_floor, _tristate, ensure_grid_field
+from physics_lint.rules._helpers import (
+    Floor,
+    _load_floor,
+    _resolve_source,
+    _tristate,
+    ensure_grid_field,
+)
 from physics_lint.spec import DomainSpec
 
 # np.gradient(..., edge_order=2) needs at least 3 samples along the axis.
@@ -129,23 +135,6 @@ def _compute_spatial_norm(
     if spec.periodic and field.backend == "spectral":
         return float(h_minus_one_spectral(residual, field.h)), "H-1"
     return float(l2_grid(residual, field.h)), "L2"
-
-
-def _resolve_source(spec: DomainSpec) -> np.ndarray | None:
-    """Return the Poisson source array from a runtime-injected spec attribute.
-
-    The loader stashes the source array under spec._source_array via
-    object.__setattr__ so pydantic's frozen-model contract stays intact
-    while the rule still has access to it. Returns None if no source
-    was plumbed — the caller then emits SKIPPED with a clear reason.
-    """
-    source = getattr(spec, "_source_array", None)
-    if source is None and hasattr(spec, "__pydantic_extra__"):
-        extras = spec.__pydantic_extra__ or {}
-        source = extras.get("_source_array")
-    if source is None:
-        return None
-    return np.asarray(source)
 
 
 def _check_time_axis_preconditions(field: GridField, spec: DomainSpec) -> RuleResult | None:

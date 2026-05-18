@@ -16,6 +16,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
 
+import numpy as np
+
 if sys.version_info >= (3, 11):
     import tomllib
 else:
@@ -190,3 +192,25 @@ def ensure_grid_field(field: Field, spec: DomainSpec) -> GridField:
             backend=resolved_backend,
         )
     raise TypeError(f"rule requires GridField or CallableField; got {type(field).__name__}")
+
+
+def _resolve_source(spec: DomainSpec) -> np.ndarray | None:
+    """Return the Poisson source array from a runtime-injected spec attribute.
+
+    The loader stashes the source array under ``spec._source_array`` via
+    ``object.__setattr__`` so pydantic's frozen-model contract stays intact
+    while the rule still has access to it. A defensive fallback also checks
+    ``__pydantic_extra__`` for installs where the attribute lands there.
+    Returns ``None`` if no source was plumbed -- the caller then emits
+    SKIPPED with a clear reason.
+
+    Shared by PH-RES-001 and PH-BC-002 so both rules resolve the source
+    identically; previously each rule had its own (divergent) lookup.
+    """
+    source = getattr(spec, "_source_array", None)
+    if source is None and hasattr(spec, "__pydantic_extra__"):
+        extras = spec.__pydantic_extra__ or {}
+        source = extras.get("_source_array")
+    if source is None:
+        return None
+    return np.asarray(source)

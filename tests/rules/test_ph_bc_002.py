@@ -3,6 +3,7 @@
 import numpy as np
 
 from physics_lint import DomainSpec, GridField
+from physics_lint.loader import load_target
 from physics_lint.rules import ph_bc_002
 
 
@@ -137,7 +138,12 @@ def test_ph_bc_002_poisson_consistent_field_passes():
     result = ph_bc_002.check(field, spec)
     assert result.status == "PASS", f"expected PASS, got {result.status} ({result.reason})"
     assert result.raw_value is not None
-    assert abs(result.raw_value) < 0.05  # consistent pair => near-zero imbalance
+    # u = x^2+y^2 is degree-2: the FD4 Laplacian is exact, so Delta u = 4
+    # everywhere and the trapezoidal integral of a constant is exact. The
+    # imbalance is pure float64 roundoff (~7e-13), not FD truncation error
+    # -- a loose bound like 0.05 would not distinguish a correct arm from a
+    # moderately broken one.
+    assert abs(result.raw_value) < 1e-12
 
 
 def test_ph_bc_002_poisson_inconsistent_field_warns_or_fails():
@@ -178,3 +184,46 @@ def test_ph_bc_002_poisson_source_shape_mismatch_skips():
     assert result.status == "SKIPPED"
     assert result.reason is not None
     assert "shape" in result.reason.lower()
+
+
+def test_ph_bc_002_poisson_warn_band():
+    # A source offset just off the consistent value lands the imbalance
+    # ratio in the WARN band [0.01, 0.1). The consistent source is f = -4;
+    # feeding f = -3.96 makes the imbalance ~ 0.04 and the ratio ~ 0.05 =>
+    # WARN (neither PASS nor FAIL). Pins the boundary between the tristate
+    # thresholds so a threshold regression that keeps the case non-PASS
+    # cannot slip through.
+    n = 64
+    mesh_x, mesh_y = _grid_xy(n)
+    u = mesh_x**2 + mesh_y**2
+    spec = _poisson_spec()
+    object.__setattr__(spec, "_source_array", np.full((n, n), -3.96))
+    field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status == "WARN", f"expected WARN, got {result.status}"
+    assert result.violation_ratio is not None
+    assert 0.01 <= result.violation_ratio < 0.1
+
+
+def test_ph_bc_002_poisson_end_to_end_via_loader(tmp_path):
+    # End-to-end: an .npz dump carrying an embedded `source` key is loaded
+    # by load_target, which plumbs spec._source_array. PH-BC-002's Poisson
+    # arm must see that source and emit a real verdict -- this exercises
+    # the advertised .npz-source path, not just a hand-injected attribute.
+    n = 64
+    mesh_x, mesh_y = _grid_xy(n)
+    u = mesh_x**2 + mesh_y**2  # consistent with f = -4
+    metadata = {
+        "pde": "poisson",
+        "grid_shape": [n, n],
+        "domain": {"x": [0.0, 1.0], "y": [0.0, 1.0]},
+        "periodic": False,
+        "boundary_condition": {"kind": "dirichlet_homogeneous"},
+        "field": {"type": "grid", "backend": "fd"},
+    }
+    path = tmp_path / "poisson_pred.npz"
+    np.savez(path, prediction=u, metadata=metadata, source=np.full((n, n), -4.0))
+    target = load_target(path, cli_overrides={}, toml_path=None)
+    result = ph_bc_002.check(target.field, target.spec)
+    assert result.status == "PASS", f"expected PASS, got {result.status} ({result.reason})"
+    assert result.raw_value is not None and abs(result.raw_value) < 1e-12

@@ -1,9 +1,10 @@
 """PH-BC-002: Boundary flux imbalance (divergence theorem).
 
-For Laplace/Poisson: the integral of ``-Delta u`` over the domain equals
-the net outward boundary flux integral. Violation of this identity is a
-sign that the learned field is inconsistent with the PDE at a weak-form
-level even if the pointwise residual is small.
+For Laplace/Poisson: by the divergence theorem applied to ``F = grad u``,
+the integral of ``Delta u`` over the domain equals the net outward flux
+of ``grad u`` through the boundary. Violation of this identity is a sign
+that the learned field is inconsistent with the PDE at a weak-form level
+even if the pointwise residual is small.
 
 Both Laplace and Poisson are implemented. Laplace: expected imbalance is
 zero. Poisson (-Delta u = f): the imbalance is integral(Delta u) +
@@ -19,7 +20,7 @@ import numpy as np
 from physics_lint.field import Field
 from physics_lint.norms import l2_grid, trapezoidal_integral
 from physics_lint.report import RuleResult
-from physics_lint.rules._helpers import ensure_grid_field
+from physics_lint.rules._helpers import _resolve_source, ensure_grid_field
 from physics_lint.spec import DomainSpec
 
 __rule_id__ = "PH-BC-002"
@@ -59,8 +60,8 @@ def check(field: Field, spec: DomainSpec) -> RuleResult:
         # theorem imbalance is integral(Delta u) + integral(f). The source
         # array is plumbed onto the spec by the loader (loader._resolve_
         # source_term / _load_dump) under the private _source_array
-        # attribute; PH-RES-001 reads it the same way.
-        source = getattr(spec, "_source_array", None)
+        # attribute; _resolve_source is the shared lookup PH-RES-001 uses.
+        source = _resolve_source(spec)
         if source is None:
             return RuleResult(
                 rule_id=__rule_id__,
