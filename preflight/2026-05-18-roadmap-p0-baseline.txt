@@ -1,0 +1,17 @@
+physics-lint — P0 baseline (roadmap task 0.0)
+date: 2026-05-18
+command: python -m pytest -q   (after: pip install -e ".[dev]")
+
+collected: 314 tests
+result:    314 passed, 0 failed, 0 skipped, 0 errors
+runtime:   33.96 s
+
+green: yes
+notes: clean baseline. Environment note: the user's shell defines a python()
+       function that routes to conda/system python3, bypassing the venv even
+       after `source .venv/bin/activate`. Invoke `.venv/bin/python` directly
+       (pip resolves to .venv/bin/pip correctly; python does not). hypothesis
+       6.152.1 installed via the dev extra.
+
+This measured count is the reference point for P0. Roadmap/spec/CHANGELOG
+text quotes "the existing test suite" until this file backfills the number.
