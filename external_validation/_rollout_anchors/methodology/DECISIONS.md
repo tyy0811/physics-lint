@@ -2671,8 +2671,11 @@ The conditionality is self-resolving from Phase 2's actual progress; no separate
 
 ## D0-26 - 2026-05-18 - P2.1 CS02 multi-trajectory expansion (pre-registration)
 
-**Status:** pre-registered before any P2.1 Modal fire. The Verdict section
-below is empty until execution; P2.1 Task 6 fills it.
+**Status:** RESOLVED 2026-05-18. The Decision section was pre-registered
+before any P2.1 Modal fire; the Verdict section was filled post-execution
+by P2.1 Task 6. See the Amendment note at the end of this entry for two
+post-execution corrections caught by Codex review (a transcription error
+in Decision 1's index list, and a wording correction in Decision 4).
 
 **Predecessor:** D0-24 (CS02 Phase 2 audit verdicts; the N=1 PH-CON-001
 result on canonical trajectory 44).
@@ -2686,10 +2689,12 @@ so the README can lead with a small-N statistical claim.
 
 1. **Trajectory set: `{88, 48, 44, 38, 60}`.** From the 23 in-band
    trajectories in `preflight/strouhal_test_trajectories.json` sorted by
-   `strouhal_U_max`, the members at sorted indices 0, 6, 11, 17, 22 - an
+   `strouhal_U_max`, the members at sorted indices 0, 6, 11, 16, 22 - an
    even spread across the in-band Strouhal range `[0.1601, 0.2069]`, with
    index 11 = the Phase-2 canonical trajectory 44. Selection is
    deterministic and reproducible from the committed audit JSON.
+   (Index 16, not 17, identifies traj 38 - see the Amendment note below;
+   the pre-registration as first committed read "17".)
 
 2. **N = 5.** Above the roadmap's "3 or more" floor; an odd N gives a clean
    median. If 1-2 trajectories fail irrecoverably, P2.1 still lands at N >= 3
@@ -2705,8 +2710,15 @@ so the README can lead with a small-N statistical claim.
      autoregressive A10G inference carries float nondeterminism). 2-10%
      drift => investigate before continuing; >10% => STOP.
 
-4. **Per-trajectory band (D0-24 v2, reused).** The MGN/GT gap as a
-   percentage of GT: `|gap| <= 20%` PASS, `20-50%` MARGINAL, `>50%` FAIL.
+4. **Per-trajectory band (D0-24 v2 PASS band; MARGINAL/FAIL extended to
+   two-sided).** The MGN/GT gap as a percentage of GT: `|gap| <= 20%`
+   PASS, `20-50%` MARGINAL, `>50%` FAIL. D0-24 v2 (verdict 2) defined
+   PASS two-sided (`±20%`) but MARGINAL/FAIL one-sided (`above GT`),
+   because Phase 2's concern was an MGN defect *exceeding* GT. P2.1
+   compares multiple trajectories where MGN can deviate from GT in
+   either direction, so the MARGINAL/FAIL thresholds here apply to
+   `|gap|` (two-sided). This is an extension of D0-24 v2, not a verbatim
+   reuse - see the Amendment note below.
 
 5. **Expected outcome.** All 5 trajectories PASS the D0-24 v2 band, and the
    per-trajectory gap stays well inside the harness-FE-on-P1 floor (the gap
@@ -2732,4 +2744,24 @@ trajectory: 88 `-1.07 %`, 48 `-0.36 %`, 44 `+0.41 %`, 38 `+0.03 %`,
 GT at the floor" generalizes across the in-band subset, not just traj 44.
 The CS02 README now leads with the small-N statistical framing.
 
-**Realized in:** 8f52f77, a983af6, 537c14f, 4f9a4a5, 405e78f, and this commit.
+**Realized in:** 8f52f77, a983af6, 537c14f, 4f9a4a5, 405e78f, 11e5c91.
+
+**Amendment (2026-05-18, post-execution Codex adversarial review).** Two
+documentation corrections; neither changes any fired trajectory or any
+measured number.
+
+- *Decision 1 index typo.* The pre-registration as first committed
+  (8f52f77) read "sorted indices 0, 6, 11, **17**, 22". Re-deriving the
+  selection from the committed `strouhal_test_trajectories.json` (23 in-band
+  trajectories, sorted ascending by `strouhal_U_max`) shows traj 38 sits at
+  sorted index **16**; index 17 is traj 32. The fired set `{88, 48, 44, 38,
+  60}` is the intended one - the pre-registration's own `strouhal_U_max`
+  column gave `0.2023` for that member, which is traj 38's value (traj 32 is
+  `0.2028`). So the trajectory set, the fires, and every result are correct;
+  only the written index was wrong. Decision 1 is corrected to "16" above.
+- *Decision 4 wording.* The original parenthetical "(D0-24 v2, reused)"
+  implied a verbatim reuse of D0-24 verdict 2's band. D0-24 v2's MARGINAL
+  and FAIL tiers are one-sided ("above GT"); the P2.1 band applies them to
+  `|gap|` (two-sided). Decision 4 is reworded above to state this as an
+  *extension*. No P2.1 verdict changes: every trajectory's `|gap|` is
+  <= 1.07%, well inside the two-sided PASS band.
