@@ -8,18 +8,18 @@ quantity.
 **Scope-separation discipline** (per complete-v1.0 plan §13 and the
 2026-04-24 V1-stub CRITICAL-task pattern): this module is the
 **authoritative** harness-level Function 2 correctness fixture for
-Task 5. The production rule PH-BC-002 is Laplace-scope only
-(`src/physics_lint/rules/ph_bc_002.py:8`: "Week 1 scope: Laplace only
-(expected imbalance is zero). The Poisson arm raises
-`NotImplementedError` ..."), so it does not and cannot validate general
-vector-flux Gauss-Green. Task 5's external validation separates:
+Task 5. The production rule PH-BC-002 covers the scalar Laplace/Poisson
+divergence-theorem imbalance (`∫Δu dV` for Laplace, `∫Δu dV + ∫f dV`
+for Poisson) -- narrower than general vector-flux Gauss-Green, so the
+rule does not and cannot validate arbitrary-`F` Gauss-Green. Task 5's
+external validation separates:
 
 - (F2 harness-level, here) a free-standing Gauss-Green correctness
   fixture for `F=(x,y)` on the unit square where `∫_Ω div F dV = 2`
   and `∫_{∂Ω} F·n dS = 2` analytically.
 - (rule-verdict contract, in `external_validation/PH-BC-002/test_anchor.py`)
-  the production rule's actual V1 emitted quantity (`∫Δu dV` on a
-  Laplace-harmonic fixture) — Laplace scope only.
+  the production rule's actual emitted quantity on Laplace-harmonic and
+  Poisson fixtures.
 
 CITATION.md, README, and docstrings must not imply broader production
 coverage than the rule provides.

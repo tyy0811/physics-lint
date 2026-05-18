@@ -71,11 +71,14 @@ Task 5):
        stale stub test; the P0 plan specified the unit-suite deletion
        but not this anchor one, so it is logged here as a plan gap
        closed unilaterally (a stale test asserting removed behavior;
-       the rule's intent is unchanged). The F2 harness module
-       `external_validation/_harness/divergence.py` still carries a
-       stale "Poisson arm raises NotImplementedError" quote in its
-       docstring; out of this plan's File-Structure scope, flagged
-       for a follow-up.
+       the rule's intent is unchanged).
+    8. Code-review follow-up: the consistent-pair RVC tolerance was
+       tightened from 0.05 to 1e-12 (degree-2 u => FD4-exact => the
+       imbalance is float64 roundoff, not FD truncation), and the
+       external-validation docs that still described PH-BC-002 as
+       Laplace-only / Poisson-deferred — `_harness/divergence.py`,
+       `README.md`, `CITATION.md` — were corrected to the implemented
+       Laplace+Poisson scope.
 """
 
 from __future__ import annotations
@@ -198,8 +201,9 @@ def test_layer2_harness_identity_invariant_under_refinement():
 
 # =========================================================================
 # Rule-verdict contract (RVC): exercises the production rule PH-BC-002's
-# ACTUAL V1 Laplace-scope emitted quantity. Does NOT claim the rule
-# validates general Gauss-Green; that's the harness layer above.
+# actual emitted quantity on Laplace and Poisson fixtures. Does NOT claim
+# the rule validates general vector-flux Gauss-Green; that's the harness
+# layer above.
 # =========================================================================
 
 
@@ -268,7 +272,10 @@ def test_rvc_poisson_consistent_pair_passes():
     field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
     result = ph_bc_002.check(field, spec)
     assert result.status == "PASS"
-    assert result.raw_value is not None and abs(result.raw_value) < 0.05
+    # Degree-2 u: FD4 Laplacian is exact, so the imbalance is float64
+    # roundoff (~7e-13). Bound it tight enough to catch a real sign or
+    # scaling regression, not at a loose 0.05.
+    assert result.raw_value is not None and abs(result.raw_value) < 1e-12
 
 
 def test_rvc_poisson_inconsistent_pair_warns_or_fails():

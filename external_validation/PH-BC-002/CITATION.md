@@ -3,15 +3,16 @@
 ## Scope-separation discipline (read first)
 
 PH-BC-002's external validation separates **(i) a harness-level Gauss-
-Green correctness fixture** from **(ii) the production rule's currently
-supported Laplace-scope verdict behavior**. This separation is applied
-per the 2026-04-24 V1-stub CRITICAL-task pattern
+Green correctness fixture** from **(ii) the production rule's Laplace
+and Poisson divergence-theorem verdict behavior**. This separation is
+applied per the 2026-04-24 V1-stub CRITICAL-task pattern
 (`feedback_critical_rule_stub_three_layer_contract.md`): the production
-rule `src/physics_lint/rules/ph_bc_002.py` is Laplace-scope only (Week
-1 scope; Poisson arm raises `NotImplementedError` until source-term
-plumbing lands in Week 2), while the F1 mathematical anchor — the
-general Gauss-Green / divergence theorem — covers arbitrary C¹ vector
-fields on Lipschitz-boundary domains.
+rule `src/physics_lint/rules/ph_bc_002.py` covers the scalar
+Laplace/Poisson divergence-theorem imbalance, while the F1 mathematical
+anchor — the general Gauss-Green / divergence theorem — covers
+arbitrary C¹ vector fields on Lipschitz-boundary domains. The rule is
+narrower than the anchor (scalar `∇u` flux, not arbitrary vector-flux
+`F`).
 
 This document does not, and must not, claim the production rule
 validates general vector-flux Gauss-Green. It does claim:
@@ -23,9 +24,10 @@ validates general vector-flux Gauss-Green. It does claim:
   correctness fixture for `F = (x, y)` on the unit square verifies the
   identity `∫_Ω div F dV = ∫_{∂Ω} F·n dS = 2` to roundoff on both
   triangulation and quadrilateralization, independent of the rule;
-- (rule-verdict contract) the rule itself emits `∫Δu dV ≈ 0` on
-  Laplace-harmonic fixtures within its V1 emitted scope, with SKIP
-  paths on Poisson (Week 2 wiring) and non-laplace/poisson PDEs.
+- (rule-verdict contract) the rule emits `∫Δu dV ≈ 0` on Laplace-
+  harmonic fixtures and `∫Δu dV + ∫f dV ≈ 0` on Poisson fixtures,
+  with a SKIP path on Poisson specs that carry no source array and
+  on non-laplace/poisson PDEs.
 
 ## Function-labeled citation stack
 
@@ -91,8 +93,8 @@ square via `external_validation/_harness/divergence.py`'s
   sufficient order, independent of refinement.
 
 **Rule-verdict contract (Layer RVC).** Exercises the production
-rule's ACTUAL V1 Laplace-scope emitted quantity (`∫Δu dV` for a Laplace
-field). Does not claim arbitrary-F Gauss-Green coverage.
+rule's actual emitted quantity (`∫Δu dV` for Laplace, `∫Δu dV + ∫f dV`
+for Poisson). Does not claim arbitrary-F Gauss-Green coverage.
 
 - **Degree-2 harmonic `u = x² − y²`.** FD4 `Δu = 0` exactly (stencil
   exact on polynomials of degree ≤ 4, both interior and boundary).
@@ -107,18 +109,24 @@ field). Does not claim arbitrary-F Gauss-Green coverage.
   - N=64: raw = −3.60e-4, ratio = 4.80e-4 → PASS.
   - Ratio ~ 9× decrease per doubling — consistent with boundary
     FD4 O(h²) convergence on a nontrivial 4th derivative.
+- **Poisson arm (`-Δu = f`).** Imbalance `∫Δu dV + ∫f dV`, with the
+  source array read from `spec._source_array`. A PDE-consistent
+  `(u, f)` pair (`u = x²+y²`, `f = -4`) PASSes with the imbalance at
+  float64 roundoff (~7e-13); an inconsistent pair (`f = 0`) WARNs or
+  FAILs.
 - **SKIP paths (Category 8 semantic-compatibility).**
-  - Poisson → SKIP with reason "PH-BC-002 for Poisson requires
-    source integration; lands in Week 2." (Documented V1 scope.)
+  - Poisson with no source array → SKIP with a reason naming the
+    `.npz 'source'` key and the `source_term=` config pointer.
   - Heat / wave / other PDEs → SKIP with reason "PH-BC-002 applies
     to laplace/poisson only; got <pde>." (Scope guard.)
 
-**Rule anchor assertions** (12 tests total in `test_anchor.py`):
+**Rule anchor assertions** (14 tests total in `test_anchor.py`):
 - Layer F2 (harness-level): 6 parametrized + 1 invariance summary test.
-- Layer RVC (rule verdict): 5 tests — degree-2 PASS, degree-5 PASS at
+- Layer RVC (rule verdict): 7 tests — degree-2 PASS, degree-5 PASS at
   N≥32, degree-5 WARN at N=16 (boundary-error-above-threshold
-  documentation), Poisson SKIP with Week-2 reason, non-laplace SKIP
-  with scope guard.
+  documentation), non-laplace SKIP with scope guard, Poisson
+  consistent-pair PASS, Poisson inconsistent-pair WARN/FAIL, Poisson
+  no-source SKIP.
 
 ### Borrowed-credibility (external published reproduction layers)
 
@@ -183,12 +191,12 @@ Per complete-v1.0 plan §6.2 Tier C enumerate-the-splits allocation
   characteristic functions) breaks the Gauss-Green precondition
   (F no longer C¹) and is out of V1 scope.
 - **Rule-scope vs F1-scope split** (V1-stub CRITICAL-task pattern):
-  the production rule PH-BC-002 is Laplace-scope only (Week 1 scope,
-  `ph_bc_002.py:8`), strictly narrower than the general Gauss-Green
-  anchor. The harness-level F2 fixture (arbitrary-F Gauss-Green) and
-  the rule-verdict contract (Laplace-harmonic) are separated so
-  CITATION.md, README, and tests do not imply broader rule coverage
-  than V1 provides.
+  the production rule PH-BC-002 covers the scalar Laplace/Poisson
+  divergence-theorem imbalance, narrower than the general vector-flux
+  Gauss-Green anchor. The harness-level F2 fixture (arbitrary-F
+  Gauss-Green) and the rule-verdict contract (Laplace + Poisson) are
+  separated so CITATION.md, README, and tests do not imply broader
+  rule coverage than the rule provides.
 
 Audit outcome: F2 is harness-level authoritative (plan-diff 6 vs plan
 §13 Step 3); RVC layer added on Laplace-harmonic fixture. No other
@@ -204,25 +212,26 @@ budget.
 - **Refinement levels**: N ∈ {4, 8, 16} for parametrized testing;
   any N would work (F polynomial degree 1 → Gaussian quadrature
   exact).
-- **Rule-verdict fixture (RVC)**: `u = x² − y²` (degree-2 harmonic)
-  for the exact-zero case at all N ∈ {16, 32, 64}; `u = x⁵ − 10x³y²
-  + 5xy⁴` (degree-5 harmonic, Re of z⁵) for the nontrivial boundary-
-  FD4 convergence case at N ∈ {16, 32, 64}.
+- **Rule-verdict fixture (RVC)**: Laplace — `u = x² − y²` (degree-2
+  harmonic) for the exact-zero case at all N ∈ {16, 32, 64}; `u = x⁵
+  − 10x³y² + 5xy⁴` (degree-5 harmonic, Re of z⁵) for the nontrivial
+  boundary-FD4 convergence case at N ∈ {16, 32, 64}. Poisson — `u =
+  x²+y²` with a constant source array (`f = -4` consistent → PASS,
+  `f = 0` inconsistent → WARN/FAIL, no source → SKIP).
 - **DomainSpec**: `pde="laplace"`, `grid_shape=[N, N]`,
   `domain={"x": [0, 1], "y": [0, 1]}`, `periodic=False`,
   `boundary_condition={"kind": "dirichlet_homogeneous"}`,
   `field={"type": "grid", "backend": "fd", "dump_path": "p.npz"}`.
 - **Wall-time budget**: < 5 s (scikit-fem mesh assembly + FD4
   Laplacian on 64×64).
-- **Tests**: 12 total (6 F2 parametrized + 1 F2 invariance + 5 RVC).
+- **Tests**: 14 total (6 F2 parametrized + 1 F2 invariance + 7 RVC).
 
 ## Scope note
 
-PH-BC-002 covers the V1 Laplace-harmonic case at the rule-verdict
-layer. Poisson (source-term integration) lands in Week 2; non-
-laplace/poisson PDEs are out of rule scope (Category 8 SKIP with
-scope guard). The F2 harness-level layer verifies the general
-Gauss-Green identity for polynomial C¹ fields on Lipschitz-boundary
-convex polygons; extensions to non-convex polygons (Task 10
-connection), 3D domains, and C¹ non-polynomial F are out of v1.0
-scope.
+PH-BC-002 covers the Laplace-harmonic and Poisson (`-Δu = f`) cases at
+the rule-verdict layer; non-laplace/poisson PDEs are out of rule scope
+(Category 8 SKIP with scope guard), as is a Poisson spec with no source
+array. The F2 harness-level layer verifies the general Gauss-Green
+identity for polynomial C¹ fields on Lipschitz-boundary convex
+polygons; extensions to non-convex polygons (Task 10 connection), 3D
+domains, and C¹ non-polynomial F are out of v1.0 scope.
