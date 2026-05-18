@@ -159,3 +159,19 @@ def test_ph_bc_002_poisson_consistent_field_passes():
     assert result.status == "PASS", f"expected PASS, got {result.status} ({result.reason})"
     assert result.raw_value is not None
     assert abs(result.raw_value) < 0.05  # consistent pair => near-zero imbalance
+
+
+def test_ph_bc_002_poisson_inconsistent_field_warns_or_fails():
+    # u = x^2 + y^2  =>  Laplacian(u) = 4, so the consistent source is
+    # f = -4. Feed f = 0 instead: imbalance = integral(Lap u) + 0 ~ 4,
+    # which is large relative to ||u||, so the rule must WARN or FAIL.
+    n = 64
+    mesh_x, mesh_y = _grid_xy(n)
+    u = mesh_x**2 + mesh_y**2
+    spec = _poisson_spec()
+    object.__setattr__(spec, "_source_array", np.zeros((n, n)))
+    field = GridField(u, h=(1.0 / (n - 1), 1.0 / (n - 1)), periodic=False)
+    result = ph_bc_002.check(field, spec)
+    assert result.status in {"WARN", "FAIL"}, f"expected WARN/FAIL, got {result.status}"
+    assert result.raw_value is not None and abs(result.raw_value) > 0.01
+    assert result.reason is not None  # non-PASS verdicts carry a reason
