@@ -7,14 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
-- **PH-BC-002**: the Poisson arm is now implemented. The rule previously
-  emitted `SKIPPED` on `pde = "poisson"`; it now computes the divergence-
-  theorem imbalance `∫Δu + ∫f` using the source array plumbed onto the
-  spec, and emits PASS/WARN/FAIL. It still SKIPs (with a reason) when no
-  source array is provided.
+## [1.0.0] - 2026-05-18
 
-## [1.0.0] - 2026-04-29
+Initial public release on PyPI.
+
+### Added
+- 18 physics rules across residual, boundary-condition, conservation,
+  positivity, symmetry, and numerical categories — each with a stable
+  `PH-<CATEGORY>-<NNN>` ID, a calibrated analytical floor, and a doc page.
+  Of the 18, 16 are active; `PH-SYM-004` and `PH-NUM-001` ship as
+  `SKIPPED`-with-reason and are scheduled for v1.1 (see `STABILITY.md`).
+- SARIF output with GitHub code-scanning integration.
+- Hybrid adapter + dump model loading; `GridField` / `CallableField` /
+  `MeshField` field abstractions.
+- External-validation anchors for all 18 rules; cross-stack rollout
+  validation against LagrangeBench and PhysicsNeMo MeshGraphNet.
+- **PH-BC-002**: the Poisson arm — divergence-theorem imbalance
+  `∫Δu + ∫f` using the spec-plumbed source array, emitting PASS/WARN/FAIL;
+  `SKIPPED`-with-reason when no source array is provided.
 
 ### Fixed
 - `PH-CON-003`: `np.gradient(edge_order=2)` produced spurious endpoint
