@@ -2,7 +2,7 @@
 
 **A CI linter for trained neural PDE surrogates.** Catches residual, conservation, boundary-condition, positivity, and symmetry violations that MSE misses. Stable rule IDs, SARIF output, GitHub code scanning integration. Think `ruff`, for physics.
 
-by **Jane Yeung** · [github.com/tyy0811/physics-lint](https://github.com/tyy0811/physics-lint) · [physics-lint.readthedocs.io](https://physics-lint.readthedocs.io)
+by **Jane Yeung** · [github.com/tyy0811/physics-lint](https://github.com/tyy0811/physics-lint)
 
 ---
 
@@ -14,7 +14,7 @@ physics-lint mechanically checks these properties against calibrated analytical 
 
 ## Hero: physics-lint in CI
 
-![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](docs/figures/sarif-hero.png)
+![physics-lint FNO PH-POS-002 alert rendered in the GitHub Security tab](https://raw.githubusercontent.com/tyy0811/physics-lint/master/docs/figures/sarif-hero.png)
 
 *Above: the FNO `PH-POS-002` alert surfaced in physics-lint's own repository Security tab. The screenshot is from running physics-lint against three trained surrogates from [`tyy0811/laplace-uq-bench`](https://github.com/tyy0811/laplace-uq-bench) — `unet_regressor`, `fno`, `ddpm`. All three failed at least one physics check on the sample; FNO is the most severely flagged because it **uniquely violates the maximum principle** (interior extremum exceeds boundary extrema by 0.078 in a Dirichlet-homogeneous problem), while UNet and DDPM respect the principle cleanly. `PH-POS-002` catches the violation as a code-scanning alert with a physically interpretable message and rule documentation links.*
 
