@@ -2721,6 +2721,15 @@ so the README can lead with a small-N statistical claim.
    P2.2 (PH-BC-001 cylinder no-slip) is a capability-build on a separate
    track. P2.3 (vanilla-GNN baseline) is deferred.
 
-**Verdict.** *(empty - filled by P2.1 Task 6 after the fires.)*
+**Verdict.** P2.1 fired the 5-trajectory expansion `{88, 48, 44, 38, 60}`.
+Reproduction gate: trajectory 44 re-fired at `gt=5.857e-02`, `mgn=5.881e-02`
+(within the pre-registered bands of Phase 2's `5.857e-02 / 5.881e-02` - GT
+reproduced exactly, MGN to 1.6e-8 relative). Result: median MGN/GT gap
+`-0.36 %` of GT, range `[-1.07 %, +0.41 %]`; all 5 trajectories inside the
+harness-FE-on-P1 floor; D0-24 v2 band per trajectory = PASS for all 5. Per
+trajectory: 88 `-1.07 %`, 48 `-0.36 %`, 44 `+0.41 %`, 38 `+0.03 %`,
+60 `-0.36 %`. Decision 5's expected outcome is CONFIRMED - "MGN reproduces
+GT at the floor" generalizes across the in-band subset, not just traj 44.
+The CS02 README now leads with the small-N statistical framing.
 
-**Realized in:** *(commit SHAs added by Task 6.)*
+**Realized in:** 8f52f77, a983af6, 537c14f, 4f9a4a5, 405e78f, and this commit.
