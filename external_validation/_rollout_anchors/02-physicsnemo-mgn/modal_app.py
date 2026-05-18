@@ -2561,9 +2561,9 @@ def mgn_rollout_p0_vortex_shedding(
     substrate-class smoke, lifts to ``n_rollout_steps = num_steps - 1``
     (= 599 by default; the full cylinder_flow trajectory horizon).
 
-    Writes:
-      - /vol/rollouts/physicsnemo/vortex_shedding_<sha>/mgn_rollout.npz
-      - /vol/rollouts/physicsnemo/vortex_shedding_<sha>/mgn_rollout_p0_findings.json
+    Writes (under _make_rollout_inference_subdir(rollout_key, run_id)):
+      - /vol/rollouts/physicsnemo/cs02_mgn_inference_<rollout_key>_<run_id>/mgn_rollout.npz
+      - /vol/rollouts/physicsnemo/cs02_mgn_inference_<rollout_key>_<run_id>/mgn_rollout_p0_findings.json
 
     F5 absorption (Phase-1 cross-review Finding 5): rollout-dir isolation
     pattern -- a fresh ``tempfile.mkdtemp`` per fire so parallel/retry runs
