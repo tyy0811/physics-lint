@@ -147,3 +147,34 @@ Ahmed Body + PH-BC-001 (no-slip on car-like geometry) → deferred to amendment 
 ### 7. v2.1.2 §1.4 forward-flag — prose-scope-qualifier walls
 
 The floor-bounds-resolution distinction above is the FOURTH empirical instance of physics-lint's prose-scope-qualifier discipline (after round-code-1's three walls — level rendering, file-path location, prose framing). The cumulative pattern is strong enough to formalize as a v2.1.2 §1.4 methodology entry. Tracked separately at `physics-lint-validation-plan-v2.1.2.md` (forthcoming); does NOT block Phase 3 close.
+
+### 8. PH-BC-001 no-slip is structurally unreachable on a masked-wall MGN rollout
+
+PH-BC-001 checks a boundary-condition violation as a boundary-trace error
+`||u_boundary - g||`; for a no-slip wall the prescribed value `g` is zero
+velocity, so the rule enters its absolute mode and PASSes iff
+`||v_wall|| < abs_tol_fail`. On the CS02 cylinder MGN rollout the wall nodes
+are never predicted: the inference protocol in `mgn_rollout_p0_vortex_shedding`
+(`modal_app.py`) masks boundary nodes -- `v_diff_masked = torch.where(mask2,
+prediction, 0)` then `v_next = v_diff_masked + input` -- so a masked wall node
+stays frozen at its step-0 ground-truth value, which is `0` (no-slip). A
+no-slip check on this rollout computes `||v_wall|| ~ 0` on every trajectory
+and PASSes trivially: it is structurally prevented from detecting a surrogate
+violation, because the surrogate never assigns wall-node velocities.
+
+This is a documented limit of the same class as the resolution / quadrature
+rules whose validity regime is degenerate-only -- the check is well-defined,
+but the data path makes its outcome predetermined. It is why P2.2 retired the
+planned mesh wall-node BC capability-build: a build whose only near-term
+target produces a predetermined PASS adds no detection. P2.2 closes as this
+finding rather than as a number in a cross-stack table cell; see
+[DECISIONS.md D0-27](../methodology/DECISIONS.md).
+
+The Ahmed Body MeshGraphNet checkpoint does not output a body-surface velocity
+field at all -- it predicts surface pressure / wall shear stress for drag
+estimation (verified in `preflight/ahmed_body_protocol_audit.md`). A
+PH-BC-001-style no-slip *velocity* BC check is inapplicable there, degenerate
+for a different structural reason than the cylinder's masking. The velocity-BC
+capability-build has no home among the current targets and is deferred; a
+pressure/force-based surface check would be a different rule, outside P2.2 and
+P4.1 scope.
