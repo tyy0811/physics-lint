@@ -51,6 +51,62 @@ def test_missing_canonical_section_raises(tmp_path: Path) -> None:
         extract_canonical_section(readme, heading="## Rule reference")
 
 
+def test_ignores_h2_inside_code_fence(tmp_path: Path) -> None:
+    """A `## ` line inside a fenced code block must not terminate extraction."""
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "# title\n"
+        "\n"
+        "## Rule reference\n"
+        "\n"
+        "First paragraph.\n"
+        "\n"
+        "Example markdown to author in your README:\n"
+        "\n"
+        "```markdown\n"
+        "## Rule reference\n"
+        "\n"
+        "Body content here.\n"
+        "```\n"
+        "\n"
+        "Closing paragraph after the fence.\n"
+        "\n"
+        "## Validation harness\n"
+        "\n"
+        "Should not appear.\n"
+    )
+    extracted = extract_canonical_section(readme, heading="## Rule reference")
+    assert "First paragraph." in extracted
+    assert "Closing paragraph after the fence." in extracted
+    assert "Should not appear" not in extracted
+
+
+def test_ignores_h2_inside_tilde_fence(tmp_path: Path) -> None:
+    """Same as code-fence test but with tilde-delimited fence."""
+    readme = tmp_path / "README.md"
+    readme.write_text(
+        "# title\n"
+        "\n"
+        "## Rule reference\n"
+        "\n"
+        "Before fence.\n"
+        "\n"
+        "~~~markdown\n"
+        "## Inside fence — must not split\n"
+        "~~~\n"
+        "\n"
+        "After fence.\n"
+        "\n"
+        "## Validation harness\n"
+        "\n"
+        "Not included.\n"
+    )
+    extracted = extract_canonical_section(readme, heading="## Rule reference")
+    assert "Before fence." in extracted
+    assert "After fence." in extracted
+    assert "Not included" not in extracted
+
+
 def test_extracts_case_study_reference(tmp_path: Path) -> None:
     readme = tmp_path / "README.md"
     readme.write_text(

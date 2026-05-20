@@ -51,16 +51,18 @@ raw value, violation ratio, and a one-line reason. See
 
 ## How do I suppress a rule on a known-acceptable case?
 
-Add the rule to the `[tool.physics-lint]` config's exclusion list in
-`pyproject.toml`:
+Pass `--disable RULE_ID` on the CLI to skip the rule entirely on a run.
+The flag is repeatable:
 
-```toml
-[tool.physics-lint]
-exclude = ["PH-NUM-001"]  # SKIP-with-reason expected on FE fields
+```bash
+physics-lint check my_model.py --disable PH-NUM-001 --disable PH-SYM-004
 ```
 
-Or pass `--exclude PH-NUM-001` on the CLI. The rule still runs but its
-output is downgraded to a `note` and does not fail the run.
+Disabled rules are not iterated, so they emit no result and no SARIF
+notification. There is no per-rule "downgrade to note" surface in
+v1.0; the public knobs are run-with or skip-entirely. A future v1.x
+release may add a config-file equivalent under `[tool.physics-lint]`
+for shared suppression policy.
 
 ## How do I add a new rule?
 

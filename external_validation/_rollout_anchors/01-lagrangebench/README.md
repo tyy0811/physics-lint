@@ -76,20 +76,27 @@ remain in the v1.x backlog.
 
 ## Validation harness
 
-**Cross-stack equivariance table.** The rung-4b table contains the full
-20-trajectories-per-(rule, stack) cross-stack signature:
+**Cross-stack equivariance table.** The rung-4b writeup is the canonical
+authored artifact for the 20-trajectories-per-(rule, stack) cross-stack
+signature; it pins SHA-bound paths to the SARIFs, the rendered table,
+and the rollout-depth figure at its commit date:
 
 - **Writeup:** [`../methodology/docs/2026-05-07-rung-4b-equivariance-table.md`](../methodology/docs/2026-05-07-rung-4b-equivariance-table.md).
-- **Rendered SARIF table:** [`outputs/sarif/eps_table_255af5de8d.md`](outputs/sarif/eps_table_255af5de8d.md) (160 per-trajectory rows).
-- **Per-stack SARIFs:** [`outputs/sarif/segnn_tgv2d_eps_255af5de8d.sarif`](outputs/sarif/segnn_tgv2d_eps_255af5de8d.sarif), [`outputs/sarif/gns_tgv2d_eps_255af5de8d.sarif`](outputs/sarif/gns_tgv2d_eps_255af5de8d.sarif).
-- **Figure (rollout-depth attenuation):** [`outputs/figures/eps_t_traces_255af5de8d.png`](outputs/figures/eps_t_traces_255af5de8d.png) ([pdf](outputs/figures/eps_t_traces_255af5de8d.pdf)).
 
-**Modal entrypoint:** `modal_app.py`. **Inference script:** `run_inference.py`.
-**Lint driver:** `lint_rollouts.py` — invokes
-`_rollout_anchors/_harness/particle_rollout_adapter.py`.
+Current per-stack SARIFs and figures live under
+[`outputs/sarif/`](outputs/sarif/) and [`outputs/figures/`](outputs/figures/);
+filenames carry the generating-commit SHA prefix and may have been
+re-emitted since the rung-4b writeup was frozen. Follow the writeup's
+links for the authored snapshot; consult the directory listings for the
+current state.
 
-Checkpoints, hashes, and git SHAs commit to the SARIF metadata per the
-schema in [`../_harness/SCHEMA.md`](../_harness/SCHEMA.md).
+**Modal app.** [`modal_app.py`](modal_app.py) ships the local
+entrypoints used for inference, lint emission, and Strouhal smoke
+checks. Run `modal run modal_app.py::<entrypoint>` for a specific arm
+(see the file for the entrypoint catalogue and image / GPU profiles).
+
+**Checkpoints, hashes, git SHAs.** Committed to the SARIF metadata per
+the schema in [`../_harness/SCHEMA.md`](../_harness/SCHEMA.md).
 
 ## Cross-references
 

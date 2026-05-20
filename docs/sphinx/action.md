@@ -1,5 +1,15 @@
 # GitHub Action
 
+```{note}
+The composite Action described on this page **lands in P3.2** (the
+sibling plan to this docs site). The contract documented here is the
+authored interface — once P3.2 ships and a release tag is cut,
+`uses: tyy0811/physics-lint@v1.X.Y` will resolve. Until then this page
+is the design reference; for current CI integration use the inline
+`pip install physics-lint && physics-lint check` pattern from the
+[README](https://github.com/tyy0811/physics-lint#hero-physics-lint-in-ci).
+```
+
 physics-lint ships a composite GitHub Action at the root of
 [`tyy0811/physics-lint`](https://github.com/tyy0811/physics-lint) for
 drop-in CI integration. Call it as:

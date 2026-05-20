@@ -50,6 +50,11 @@ def extract_canonical_section(readme_path: Path, heading: str) -> str:
     ``## `` heading at the same level (or EOF). The heading match is exact:
     ``heading`` must equal the line, leading/trailing whitespace aside.
 
+    Code fence aware: lines inside ```` ``` ```` or ``` ~~~ ``` blocks do
+    not terminate the section even if they start with ``## ``. This avoids
+    truncating a canonical section that includes a shell / Python / Markdown
+    example showing literal ``## ``-prefixed text inside a code block.
+
     Raises ``RuntimeError`` if the canonical heading is not present in the
     file. This fails the sphinx build by design (inclusion model — missing
     canonical section is a documentation defect, not a silent stub).
@@ -67,7 +72,18 @@ def extract_canonical_section(readme_path: Path, heading: str) -> str:
         raise RuntimeError(f"missing canonical section {heading!r} in {readme_path}")
 
     end_idx = len(lines)
+    in_fence = False
+    fence_marker = ""
     for j in range(start_idx, len(lines)):
+        stripped = lines[j].lstrip()
+        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+            in_fence = True
+            fence_marker = "```" if stripped.startswith("```") else "~~~"
+            continue
+        if in_fence:
+            if stripped.startswith(fence_marker):
+                in_fence = False
+            continue
         if lines[j].startswith("## "):
             end_idx = j
             break
