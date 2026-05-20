@@ -1,9 +1,14 @@
 # PH-RES-001 external-validation anchor
 
-Two-path characterization of the rule's residual norm behavior along
-two dimensions (spatial convergence and norm equivalence). See
-`CITATION.md` for full provenance, external references (Fornberg 1988;
-Bachmayr-Dahmen-Oster / Ernst et al.), and the four-layer structure.
+## Rule reference
+
+PH-RES-001 is a two-path characterization of the rule's residual norm
+behavior along two dimensions: spatial convergence (on a refined
+sequence of grids) and norm equivalence (between physics-lint's emitted
+quantity and a reference norm). The rule is calibrated against
+Fornberg 1988 (finite-difference stencil rates) and the
+Bachmayr-Dahmen-Oster / Ernst et al. variational-correctness framework;
+see `CITATION.md` for the full four-layer structure and provenance.
 
 ## Run
 

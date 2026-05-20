@@ -1,5 +1,36 @@
 # PH-NUM-001 external-validation anchor
 
+## Rule reference
+
+PH-NUM-001 is a **structural stub in v1.0**: on `MeshField` inputs it
+emits `PASS` with a pass-through baseline integral as `raw_value` and
+the reason string `"qorder convergence check is a stub until V1.1"`;
+on any non-MeshField it emits `SKIPPED`. It does **not** compute a
+convergence rate, **not** compare quadrature at orders $q$ vs $2q$,
+and **not** measure any variational crime in v1.0.
+
+The rule ships as a stub because `MeshField.integrate` does not expose
+a `qorder` kwarg in v1.0, so the rule cannot perform the intended
+q-vs-$2q$ comparison. The stub preserves the rule's registry slot,
+the CLI surface, and the SARIF emission shape, so a future v1.1
+implementation can plug in the real check without breaking any
+public API.
+
+The harness-level validation does exercise polynomial-exactness via
+Gauss-Legendre quadrature on a scikit-fem unit-square P2 mesh: known
+monomials of controlled degree are integrated against unit weight,
+and the result is compared to closed-form analytical values. Three
+regimes are measured — exact (degree ≤ intorder, error at float64
+roundoff), under-integrated (degree > intorder with gap ≥ 3, error
+≥ $10^{-6}$), and convergence (fix degree, sweep intorder, errors
+drop ~12 orders of magnitude).
+
+Per the v1.0 stability policy, the rule's verdict surface is stable;
+only the implementation (the v1.1 q-vs-$2q$ check) will change in a
+minor release.
+
+## Validation harness
+
 **Scope separation (read first):** PH-NUM-001 validates **the mathematical
 and harness-level quadrature-error contract for controlled weak-form
 fixtures**. The v1.0 production rule validates only its implemented

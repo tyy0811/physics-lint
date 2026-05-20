@@ -1,11 +1,18 @@
 # PH-RES-003 external-validation anchor
 
-Spectral-backend Laplacian vs 4th-order central FD Laplacian on periodic
-grids: max relative discrepancy on an analytic periodic MMS fixture,
-asserted to exhibit the published rates (exponential spectral collapse +
-polynomial FD) and to PASS the 0.01 rule threshold.
+## Rule reference
 
-Run:
+PH-RES-003 compares the spectral-backend Laplacian against a
+4th-order central FD Laplacian on periodic grids. The emitted quantity
+is the maximum relative discrepancy on an analytic periodic MMS
+fixture; under refinement, the spectral term collapses exponentially
+while the FD term decays polynomially at $O(h^4)$. The rule passes
+when the residual is within the calibrated 0.01 relative threshold and
+fires when the residual exceeds the band, signalling a spectral-path
+bug or a non-analytic fixture. PH-RES-003 is the FFT-based companion
+to PH-RES-002 and requires no torch dependency (pure numpy FFT).
+
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-RES-003/ -v

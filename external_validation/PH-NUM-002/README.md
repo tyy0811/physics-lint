@@ -1,5 +1,35 @@
 # PH-NUM-002 external-validation anchor
 
+## Rule reference
+
+PH-NUM-002 detects observed convergence-order on explicitly declared
+method-of-manufactured-solutions (MMS) cases for the Laplace equation.
+The rule extracts the residual at increasing grid refinements,
+computes $\log_2(e_h / e_{h/2})$ using the classical Roy 2005 formula,
+and reports `refinement_rate` as the asymptotic observed order. The
+expected rate is **case-specific** and depends on PDE, backend, and
+boundary treatment — it must be declared up front per case.
+
+Three regimes the rule recognizes:
+
+- **Boundary-dominated FD4 (non-periodic).** The $4N$-cell 2nd-order
+  boundary band dominates the $N^2$-cell 4th-order interior at
+  $O(h^{2.5})$ on 2D problems. Rule expects rate ≈ 2.5; PASSes within
+  $\pm 0.25$.
+- **Saturation floor.** Harmonic fixtures on periodic grids (Liouville
+  forces constants) or harmonic polynomials on non-periodic FD grids
+  (2nd-order FD exact). Both produce residuals below the rule's
+  `_SATURATION_FLOOR = 1e-11` and report `rate = inf PASS`.
+- **All other cases.** `SKIPPED` (Poisson and heat are not in v1.0
+  scope per `ph_num_002.py:92`).
+
+The rule is Laplace-only by v1.0 scope and uses pure numpy — no mesh
+assembly, no torch, no scikit-fem. It does not certify convergence
+for arbitrary PDE/backend/BC triples; the expected rate must be
+declared up front per case.
+
+## Validation harness
+
 **Scope separation (read first):** PH-NUM-002 validates the production
 rule's ability to **detect observed convergence-order on explicitly
 declared manufactured-solution cases**. The expected rate is **case-

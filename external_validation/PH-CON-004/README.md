@@ -1,5 +1,38 @@
 # PH-CON-004 external-validation anchor
 
+## Rule reference
+
+PH-CON-004 is a 2D mesh-based residual indicator for conservation-defect
+localization. The rule operates on `MeshField` inputs from
+`physics_lint[mesh]` adapters (scikit-fem 12.0.1+). For each interior
+element $K$ of a triangulation, it computes
+$\int_K (\Delta_{L^2\text{-proj zero-trace}} u)^2\, dx$ using a P1
+finite-element basis and the zero-trace $L^2$-projection of the
+Laplacian. The raw value is the ratio
+$\max_K / \mathrm{mean}_K$ — a unitless localization indicator.
+
+The rule fires (`APPROXIMATE` or `FAIL`) when the conservation-defect
+concentrates on a small number of elements relative to the mesh
+average; typical fired ratios exceed 10. It passes on smooth fixtures
+where the ratio stays in the 2–5 range, reflecting a well-distributed
+residual.
+
+**Scope — localization, not error bounds.** PH-CON-004 is **not** a
+Verfürth residual estimator. It omits the $\|hf\|^2$ source term and
+the $\|h^{1/2}[\nabla u \cdot n_e]\|^2$ facet-jump terms, and it does
+not h-weight per element. Consequently the rule provides neither a
+reliability estimate (upper bound on $\|u - u_h\|_{H^1}$) nor an
+efficiency estimate (lower bound). It does provide
+conservation-defect localization: on fixtures where the zero-trace
+projection is clean, hotspots co-locate with regions of large
+second-derivative concentration.
+
+The rule emits `SKIPPED` on non-MeshField inputs (no mesh means no
+per-element integration) and on PDEs outside its scope. Requires
+`physics-lint[mesh]`.
+
+## Validation harness
+
 **Scope separation (read first):** PH-CON-004 validates a **v1.0 2D
 mesh-based residual-indicator contract**. It does not claim full
 adaptive finite-element solver validation or 3D tetrahedral coverage.

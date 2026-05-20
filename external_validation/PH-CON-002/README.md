@@ -1,5 +1,7 @@
 # PH-CON-002 external-validation anchor
 
+## Rule reference
+
 **Scope separation (read first):** PH-CON-002 validates the production
 rule's ability to measure **wave-energy drift on analytically
 controlled conservative snapshots**. It does not certify the accuracy
@@ -19,7 +21,9 @@ leapfrog stepper (it uses central-FD on supplied `u` snapshots), and
 any numerically-evolved fixture would be supplementary with its own
 tolerance per user's revised Task 9 contract.
 
-Run:
+Pure numpy — no mesh assembly, no torch / scikit-fem.
+
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-CON-002/ -v
@@ -28,8 +32,6 @@ source .venv/bin/activate && pytest --import-mode=importlib external_validation/
 Expected: 17 passed in < 10 s (11 F2-harness incl. parametrized
 sweep `{16,32,64} × {11,21,51}` and E(0) scaling checks + 3 rule-
 verdict method-dependent + 3 SKIP-path contracts).
-
-Pure numpy — no mesh assembly, no torch / scikit-fem.
 
 ## Citation stack (three-function-labeled)
 

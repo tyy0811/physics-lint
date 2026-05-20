@@ -1,5 +1,7 @@
 # PH-BC-002 external-validation anchor
 
+## Rule reference
+
 **Scope separation (read first):** PH-BC-002's external validation
 separates **(i) a harness-level Gauss-Green correctness fixture** from
 **(ii) the production rule's Laplace and Poisson divergence-theorem
@@ -16,7 +18,7 @@ Gauss-Green); for a Poisson field (`-Δu = f`) it verifies
 `∫_Ω Δu dV + ∫_Ω f dV ≈ 0`. Both compare against relative thresholds
 of 0.01 / 0.1 against `||u||_{L²}`.
 
-Run:
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-BC-002/ -v

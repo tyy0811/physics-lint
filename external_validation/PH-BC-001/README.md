@@ -1,5 +1,7 @@
 # PH-BC-001 external-validation anchor
 
+## Rule reference
+
 **Scope separation (read first):** PH-BC-001 validates **Dirichlet-
 type boundary trace behavior in the production rule; Neumann/flux
 semantics are outside the production validation scope for v1.0**. The
@@ -14,7 +16,7 @@ Dirichlet-trace violation metric: discrete-L² norm of
 (absolute for near-zero Dirichlet, relative otherwise). Threshold
 0.01 relative (tri-state) / 1e-3 absolute (binary).
 
-Run:
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-BC-001/ -v
