@@ -163,6 +163,8 @@ These are textbook validations of the §5.1 pattern: forward-flag predicted, sou
 
 7. **Not a refinement of the design's threshold bands.** Bands are inherited from the design (PASS ≤ 1e-5, APPROXIMATE ≤ 1e-2, FAIL otherwise). The §3.2 stack-coupled interpretation distinguishes verdict-meaning by architectural class without changing the thresholds themselves; future cases that need a different threshold band (e.g., a stack with a different precision regime) require a new D-entry.
 
+8. **Not a bilateral test of the equivariance gap on a second non-equivariant architecture.** A model with no equivariant inductive bias has no architectural mechanism to force `f(g x) = g f(x)` to noise-floor precision, so under typical training the rule fires on it - GNS-as-shipped is one realization of that structural-empirical link, and a second self-trained non-equivariant model would manifest the same link on a different instance in the project's weakest evidence class (a self-trained baseline rather than a published checkpoint). Full rationale at [DECISIONS.md D0-28](../DECISIONS.md).
+
 ---
 
 ## 7. Rederivability + provenance
