@@ -2765,3 +2765,53 @@ measured number.
   `|gap|` (two-sided). Decision 4 is reworded above to state this as an
   *extension*. No P2.1 verdict changes: every trajectory's `|gap|` is
   <= 1.07%, well inside the two-sided PASS band.
+
+---
+
+## D0-27 - 2026-05-19 - P2.2 closes as a structural-degeneracy finding (PH-BC-001 no-slip on masked-wall MGN)
+
+**Predecessor:** roadmap P2.2 + Amendment 3 (the audit closed on the
+capability-build branch); D0-26 (P2.1).
+
+**Trigger:** the P2.2 design pass found that a no-slip check, even with the
+mesh wall-node capability built, would be degenerate on its only near-term
+target. The CS02 cylinder MGN rollout masks boundary nodes during inference
+(`mgn_rollout_p0_vortex_shedding`: `v_diff_masked = torch.where(mask2,
+pred_i_velo, zeros)` then `v_next = v_diff_masked + invar[:, 0:2]`, where
+`invar[:, 0:2]` is the current rollout velocity state), freezing wall nodes at
+their step-0 ground-truth value `0`. A no-slip check computes `||v_wall|| ~ 0`
+and PASSes by construction, detecting nothing about the surrogate.
+
+**Decision.**
+
+1. **P2.2 closes as a documented structural-degeneracy finding, not a
+   capability-build.** PH-BC-001's no-slip check is structurally unreachable
+   on a masked-wall MGN rollout - well-defined but predetermined. The planned
+   mesh wall-node BC capability-build is retired (Amendment 3 had recorded it
+   as the audit's branch; this entry supersedes that with the deeper finding).
+2. **The finding is recorded in the CS02 README** ("What physics-lint did NOT
+   catch") and **here**; it is deliberately NOT added to the conservation
+   cross-stack table, which stays conservation-scoped and golden-tested.
+3. **Ahmed Body verification** (`preflight/ahmed_body_protocol_audit.md`):
+   the Ahmed Body MeshGraphNet checkpoint, instantiated as plain
+   `physicsnemo.models.meshgraphnet.MeshGraphNet` with `output_dim: 4`
+   (`conf/model/mgn.yaml:17, :22`; selected by `conf/experiment/ahmed/mgn.yaml`
+   via `/model: mgn`), outputs surface pressure and wall shear stress - not a
+   body-surface velocity field. `inference.py:149-154` assigns only `p_pred`
+   and `wallShearStress_pred`; the experiment's drag coefficient is computed
+   downstream from those plus mesh geometry, not predicted by the model. The
+   example's separate `AeroGraphNet` variant (`models.py:43-94`, with a
+   `c_d_decoder` head) is *not* the model wired by `+experiment=ahmed/mgn` and
+   does not affect the verdict (NVIDIA/physicsnemo @
+   1ca85d65ac2ce28ea9762910c09a954c08a37140, v2.0.0).
+4. **Capability-build disposition:** see the cross-checkpoint scope below.
+
+**Cross-checkpoint scope.** The Ahmed Body MGN outputs surface pressure / wall
+shear stress, not a body-surface velocity field, so a no-slip *velocity* BC
+check is inapplicable there - degenerate for a different structural reason
+than masking. The velocity-BC capability-build has no home among current
+targets and is retired from P2.2; any future velocity-BC work requires a new
+target and a fresh decision entry. A pressure/force-based surface check would
+be a different rule, outside P2.2 and P4.1 scope.
+
+**Realized in:** a2c1bb2, c7c1c95, and this commit.
