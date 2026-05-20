@@ -1,0 +1,202 @@
+============================================================
+preflight — P3.2 GitHub Action
+============================================================
+date:      2026-05-20
+branch:    feat/p3-2-github-action  (from master @ 82e0ecd)
+scope:     Verify CLI surface, action input schemas, fixture paths,
+           and fixture exit codes against current physics-lint==1.0.0
+           before writing action.yml + self-test workflow.
+
+============================================================
+STEP 1 — physics-lint CLI surface (verbatim from --help)
+============================================================
+
+physics-lint --version          ⇒ NOT SUPPORTED ("No such option: --version")
+physics-lint --help             ⇒ top-level
+
+   Usage: physics-lint [OPTIONS] COMMAND [ARGS]...
+   Options:
+     --help          Show this message and exit.
+   Commands:
+     check       Run physics-lint rules against a target model artifact.
+     self-test   Run the analytical battery against the full rule set.
+     rules       Browse the rule catalog.
+     config      Scaffold and inspect configuration.
+
+physics-lint check --help
+
+   Usage: physics-lint check [OPTIONS] TARGET
+   Arguments:
+     * target      PATH  Adapter .py or dump .npz/.npy [required]
+   Options:
+     --config          PATH  Path to pyproject.toml
+     --format          TEXT  text | json | sarif         [default: text]
+     --category        TEXT  SARIF automationDetails.id  [default: physics-lint]
+     --output          PATH  Write output to file
+     --disable         TEXT  Disable a rule by ID
+     --verbose
+     --help
+
+physics-lint self-test --help
+
+   Usage: physics-lint self-test [OPTIONS]
+   Options:
+     --verbose
+     --write-report   PATH
+     --help
+
+physics-lint config --help    ⇒ subcommands: init, show
+physics-lint rules --help     ⇒ subcommands: list, show
+
+----- gate (per [[feedback_in_project_path_invention]]) -----
+
+Flags the Action wraps (action.yml inputs → CLI):
+  --config       ✓ EXISTS verbatim
+  --format       ✓ EXISTS verbatim (values: text|json|sarif)
+  --category     ✓ EXISTS verbatim
+  --output       ✓ EXISTS verbatim
+
+Flags NOT on the CLI (do NOT introduce into any P3.2 artifact):
+  --exclude            ✗ does not exist (real suppression flag is --disable)
+  --include            ✗
+  --severity           ✗
+  --max-warnings       ✗
+  --rule               ✗ (single-rule selftest documented as v1.2 backlog)
+  --version            ✗ (top-level flag not present)
+
+The 4 flags in action.yml's Run step (--config, --format, --category,
+--output) are the only CLI flags that may appear in any P3.2 artifact
+without re-running --help. If a new flag is introduced mid-plan, widen
+the verification: re-capture --help, confirm, then record here.
+
+============================================================
+STEP 1.5 — SARIF schema reference determination
+============================================================
+
+P3.2 produces:
+  - action.yml                              → no SARIF schema prose.
+  - .github/workflows/action-self-test.yml  → asserts file presence
+                                              and JSON parseability,
+                                              NOT field-level content.
+  - README.md touch-up                      → workflow-level snippet
+                                              only; no field references.
+
+Determination: no SARIF schema field references in P3.2 artifacts.
+Step is a recorded no-op.
+
+Sanity reference from src/physics_lint/sarif.py (line 87):
+  "automationDetails": {"id": category}
+  ⇒ confirms --category → run.automationDetails.id mapping.
+  ⇒ category default "physics-lint" matches CLI default.
+
+If the executor later introduces SARIF prose anywhere, verify against
+src/physics_lint/sarif.py before committing.
+
+============================================================
+STEP 2 — GitHub Actions input schemas (pinned versions)
+============================================================
+
+actions/setup-python@v5
+  inputs:      python-version, cache (pip|pipenv|poetry),
+               python-version-file, check-latest, token, update-environment,
+               cache-dependency-path, architecture, allow-prereleases,
+               freethreaded
+  permissions: none required
+
+actions/checkout@v4
+  inputs:      ref, fetch-depth, submodules, path, persist-credentials,
+               clean, lfs, sparse-checkout, ssh-key, token, repository
+  permissions: contents:read default suffices for public repos
+
+github/codeql-action/upload-sarif@v4
+  inputs:      sarif_file, category, wait-for-processing, token,
+               checkout_path, ref, sha
+  permissions: security-events: write (REQUIRED)
+
+Note on cache: pip with no lockfile — actions/setup-python emits a
+warning but does not fail. Acceptable for v1 of the Action since the
+install is a single `pip install physics-lint==<v>` (no resolver work
+to cache). If the warning is noisy in self-test logs, drop cache: pip
+post-empirical-check.
+
+============================================================
+STEP 3 — Self-test fixtures (existence + size)
+============================================================
+
+tests/fixtures/good_adapter.py                       738 bytes  ✓
+dogfood/laplace_uq_bench/unet_regressor_pred_v1.npz  16989 bytes ✓
+dogfood/laplace_uq_bench/fno_pred_v1.npz             16892 bytes ✓
+dogfood/laplace_uq_bench/ddpm_pred_v1.npz            16898 bytes ✓
+
+All paths exist at HEAD.
+
+============================================================
+STEP 4 — Empirical fixture exit codes (CRITICAL pre-flight)
+============================================================
+
+Command:  .venv/bin/physics-lint check <fixture> --format text
+Version:  physics-lint==1.0.0 (from .venv)
+
+  good_adapter.py            exit 0   overall WARN
+                             0 fail · 1 warn · 2 pass · 15 skip
+                             (PH-RES-002 warn; severity does not gate exit)
+
+  unet_regressor_pred_v1.npz exit 1   overall FAIL
+                             3 fail · 0 warn · 1 pass · 14 skip
+                             (PH-BC-001, PH-BC-002, PH-RES-001 fire)
+
+  fno_pred_v1.npz            exit 1   overall FAIL
+                             4 fail · 0 warn · 0 pass · 14 skip
+                             (PH-BC-001, PH-BC-002, PH-POS-002, PH-RES-001 fire)
+
+  ddpm_pred_v1.npz           exit 1   overall FAIL
+                             3 fail · 0 warn · 1 pass · 14 skip
+                             (PH-BC-001, PH-BC-002, PH-RES-001 fire)
+
+----- DEVIATION from plan-as-written -----
+
+Plan Task 3's matrix hardcoded:
+    good_adapter: expect_exit: 0
+    unet:         expect_exit: 0
+    fno:          expect_exit: 1
+    ddpm:         expect_exit: 0
+
+Empirical reality:
+    good_adapter: 0      ✓ matches
+    unet:         1      ✗ mismatch — actually fails
+    fno:          1      ✓ matches
+    ddpm:         1      ✗ mismatch — actually fails
+
+This is the exact category Task 1 Step 4 was designed to catch
+("the self-test will assert against what's observed here, not against
+an assumed value"). The README hero narrative remains accurate:
+all three NPZ fixtures fail at least one rule; FNO is the only one
+that uniquely fires PH-POS-002 (the README's hero rule).
+
+Task 3 matrix will be updated to:
+    good_adapter: expect_exit: 0
+    unet:         expect_exit: 1
+    fno:          expect_exit: 1
+    ddpm:         expect_exit: 1
+
+Consequence: the `fail-on-error: false` re-run path (gated on
+expect_exit == 1) now exercises 3 rows × 2 version-pin = 6 jobs
+instead of 1 × 2 = 2. This is wider coverage, not breakage.
+
+The canonical Security-tab upload condition
+  (matrix.mode.name == 'fno' && matrix.version-pin.name == 'explicit')
+is unchanged — single canonical upload preserved.
+
+============================================================
+SUMMARY
+============================================================
+
+  Step 1   CLI surface          ✓ verified verbatim
+  Step 1.5 SARIF references     ✓ none in P3.2; recorded no-op
+  Step 2   Action input schemas ✓ recorded
+  Step 3   Fixture paths        ✓ all 4 exist
+  Step 4   Exit codes           ✓ recorded; PLAN DEVIATION on unet/ddpm
+                                  (will be fixed in Task 3 commit with
+                                   Provenance note)
+
+Pre-flight gate: PASS — ready to proceed to Task 2.

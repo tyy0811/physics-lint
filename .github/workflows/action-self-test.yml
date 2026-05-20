@@ -1,0 +1,101 @@
+name: action-self-test
+
+on:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - '.github/workflows/action-self-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  self-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode:
+          - { name: good_adapter, path: tests/fixtures/good_adapter.py, expect_exit: 0 }
+          - { name: unet, path: dogfood/laplace_uq_bench/unet_regressor_pred_v1.npz, expect_exit: 1 }
+          - { name: fno, path: dogfood/laplace_uq_bench/fno_pred_v1.npz, expect_exit: 1 }
+          - { name: ddpm, path: dogfood/laplace_uq_bench/ddpm_pred_v1.npz, expect_exit: 1 }
+        version-pin:
+          - { name: explicit, version: "1.0.0" }
+          - { name: default, version: "" }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run physics-lint Action (fail-on-error true)
+        id: lint-strict
+        continue-on-error: true
+        uses: ./
+        with:
+          model: ${{ matrix.mode.path }}
+          category: physics-lint-self-test-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}
+          output: physics-lint-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}.sarif
+          version: ${{ matrix.version-pin.version }}
+          fail-on-error: true
+          upload-sarif: false   # upload via separate step below for self-test predictability
+
+      - name: Verify exit code
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${{ matrix.mode.expect_exit }}"
+          got="${{ steps.lint-strict.outcome }}"
+          # The Action sets outcome to "success" if all steps succeeded (exit 0)
+          # and "failure" if any step exited non-zero.
+          if [ "$expected" = "0" ] && [ "$got" != "success" ]; then
+            echo "FAIL: expected success (exit 0) for ${{ matrix.mode.name }}, got $got"
+            exit 1
+          fi
+          if [ "$expected" = "1" ] && [ "$got" != "failure" ]; then
+            echo "FAIL: expected failure (exit 1) for ${{ matrix.mode.name }}, got $got"
+            exit 1
+          fi
+          echo "PASS: ${{ matrix.mode.name }} exit code as expected ($got)"
+
+      - name: Verify SARIF file exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          sarif="physics-lint-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}.sarif"
+          if [ ! -f "$sarif" ]; then
+            echo "FAIL: SARIF file $sarif not produced"
+            exit 1
+          fi
+          # Sanity check: file is valid JSON with at least one run.
+          python -c "import json; d = json.load(open('$sarif')); assert len(d['runs']) >= 1, 'no runs in SARIF'; print(f'SARIF parses; runs: {len(d[\"runs\"])}; results in first run: {len(d[\"runs\"][0].get(\"results\", []))}')"
+
+      - name: Re-run with fail-on-error false to exercise that path
+        if: ${{ matrix.mode.expect_exit == 1 }}
+        uses: ./
+        with:
+          model: ${{ matrix.mode.path }}
+          category: physics-lint-self-test-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}-soft
+          output: physics-lint-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}-soft.sarif
+          version: ${{ matrix.version-pin.version }}
+          fail-on-error: false
+          upload-sarif: false
+
+      - name: Verify SARIF still produced when fail-on-error is false
+        if: ${{ matrix.mode.expect_exit == 1 }}
+        shell: bash
+        run: |
+          sarif="physics-lint-${{ matrix.mode.name }}-${{ matrix.version-pin.name }}-soft.sarif"
+          if [ ! -f "$sarif" ]; then
+            echo "FAIL: SARIF $sarif not produced with fail-on-error false"
+            exit 1
+          fi
+          echo "PASS: SARIF produced even with non-zero CLI exit (fail-on-error: false)"
+
+      - name: Upload SARIF to Security tab (one canonical job, not matrix)
+        # Gate on same-repo origin: forked PRs cannot receive security-events: write.
+        if: ${{ matrix.mode.name == 'fno' && matrix.version-pin.name == 'explicit' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: physics-lint-fno-explicit.sarif
+          category: physics-lint-action-self-test

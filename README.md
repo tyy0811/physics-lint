@@ -61,9 +61,37 @@ jobs:
 
 Every model PR populates the GitHub Security tab with rule violations, complete with documentation links and persistent state. `if: always()` on the SARIF upload step means alerts land even when the check step exits non-zero. Configure `[tool.physics-lint.sarif]` to surface violations in PR checks too.
 
-*See also the [GitHub Action docs](https://tyy0811.github.io/physics-lint/action.html)
-for a drop-in `uses: tyy0811/physics-lint@v1.X.Y` replacement for the inline
-`pip install` + `physics-lint check` steps above (Action ships in P3.2).*
+**Equivalent, using the GitHub Action:**
+
+```yaml
+# .github/workflows/physics-lint.yml
+name: physics-lint
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        model:
+          - { name: unet, path: models/unet_adapter.py }
+          - { name: fno,  path: models/fno_adapter.py }
+          - { name: ddpm, path: models/ddpm_pred.npz }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: tyy0811/physics-lint@v1.1.0
+        with:
+          model: ${{ matrix.model.path }}
+          category: physics-lint-${{ matrix.model.name }}
+          output: physics-lint-${{ matrix.model.name }}.sarif
+```
+
+The Action handles `pip install`, `physics-lint check`, and the SARIF upload in one step. See [the Action docs](https://tyy0811.github.io/physics-lint/action.html) for the full input reference.
 
 ## Installation
 

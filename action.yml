@@ -1,0 +1,142 @@
+name: physics-lint
+description: |
+  Run physics-lint against a neural-PDE surrogate model artifact and
+  upload the SARIF report to GitHub code scanning.
+
+  The version input defaults to the action's tag ref so
+  `uses: tyy0811/physics-lint@v1.1.0` installs `physics-lint==1.1.0`
+  deterministically. Override `with: version:` to pin differently.
+
+  See https://tyy0811.github.io/physics-lint/action.html for full
+  documentation including matrix examples and permissions guidance.
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  model:
+    description: Path to adapter `.py` or `.npz` dump
+    required: true
+  config:
+    description: Path to config TOML
+    required: false
+    default: pyproject.toml
+  category:
+    description: SARIF category for code-scanning distinction
+    required: false
+    default: physics-lint
+  output:
+    description: SARIF output path
+    required: false
+    default: physics-lint.sarif
+  version:
+    description: |
+      physics-lint PyPI version. Defaults to the action ref (with leading
+      `v` stripped if a tag); falls back to installing latest if the ref
+      is not a semver tag.
+    required: false
+    default: ""
+  python-version:
+    description: Python version passed to actions/setup-python
+    required: false
+    default: "3.11"
+  mesh:
+    description: When 'true', installs physics-lint[mesh] for unstructured-mesh adapters
+    required: false
+    default: "false"
+  fail-on-error:
+    description: When 'false', the CLI's non-zero exit on error-severity rules is suppressed so subsequent steps run
+    required: false
+    default: "true"
+  upload-sarif:
+    description: When 'false', skips the codeql-action/upload-sarif step
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+
+    - name: Resolve physics-lint version
+      id: resolve-version
+      shell: bash
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
+        ACTION_REF: ${{ github.action_ref }}
+      run: |
+        # Spec §5.D: derive from github.action_ref unless explicit input given.
+        # Context values are passed via env to avoid script-injection and
+        # to match GitHub's composite-action guidance for github.* contexts.
+        if [ -n "$INPUT_VERSION" ]; then
+          resolved="$INPUT_VERSION"
+        else
+          ref="$ACTION_REF"
+          # Strict semver only: vMAJOR.MINOR.PATCH (with optional leading v).
+          # Pre-release/build-metadata tags fall through to latest.
+          if echo "$ref" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
+            resolved="${ref#v}"
+          else
+            # Branch, SHA, or non-strict-semver tag — install latest.
+            resolved=""
+          fi
+        fi
+        echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+        if [ -z "$resolved" ]; then
+          echo "physics-lint version: latest (from PyPI)"
+        else
+          echo "physics-lint version: $resolved"
+        fi
+
+    - name: Install physics-lint
+      shell: bash
+      env:
+        INPUT_MESH: ${{ inputs.mesh }}
+        RESOLVED_VERSION: ${{ steps.resolve-version.outputs.resolved }}
+      run: |
+        set -euo pipefail
+        if [ "$INPUT_MESH" = "true" ]; then
+          spec="physics-lint[mesh]"
+        else
+          spec="physics-lint"
+        fi
+        if [ -n "$RESOLVED_VERSION" ]; then
+          pip install "${spec}==${RESOLVED_VERSION}"
+        else
+          pip install "${spec}"
+        fi
+
+    - name: Run physics-lint check
+      shell: bash
+      env:
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_CATEGORY: ${{ inputs.category }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_FAIL_ON_ERROR: ${{ inputs.fail-on-error }}
+      run: |
+        set -uo pipefail
+        if [ "$INPUT_FAIL_ON_ERROR" = "true" ]; then
+          physics-lint check "$INPUT_MODEL" \
+            --config "$INPUT_CONFIG" \
+            --format sarif \
+            --category "$INPUT_CATEGORY" \
+            --output "$INPUT_OUTPUT"
+        else
+          physics-lint check "$INPUT_MODEL" \
+            --config "$INPUT_CONFIG" \
+            --format sarif \
+            --category "$INPUT_CATEGORY" \
+            --output "$INPUT_OUTPUT" || true
+        fi
+
+    - name: Upload SARIF
+      if: ${{ inputs.upload-sarif == 'true' && always() }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: ${{ inputs.output }}
+        category: ${{ inputs.category }}
