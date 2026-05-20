@@ -10,8 +10,12 @@ cylinder checkpoint.
 ## What the Ahmed Body MGN predicts
 
 The Ahmed Body MeshGraphNet predicts **surface pressure and wall shear stress**
-on the body-surface mesh, plus a scalar drag coefficient - it does not predict
-a velocity field of any kind.
+on the body-surface mesh - it does not predict a velocity field of any kind.
+The drag coefficient that the experiment reports is computed downstream from
+the predicted pressure / WSS together with mesh normals and areas in the test
+data pipeline (`inference.py:134` unpacks `normals, areas, coeff` from the
+batch, and `conf/experiment/ahmed/mgn.yaml:41` enables `compute_drag: true` on
+the test split); it is not a model output.
 
 Evidence from `inference.py` (the inference entrypoint, run with
 `+experiment=ahmed/mgn`):
@@ -28,17 +32,24 @@ Evidence from `inference.py` (the inference entrypoint, run with
 - `inference.py:70-73` - the saved `.vtp` carries exactly
   `p_pred`, `p`, `wallShearStress_pred`, `wallShearStress`; no velocity field.
 
-The model class confirms this. `models.py:43-48` defines `AeroGraphNet`, "A
-variant of MeshGraphNet model that also predicts a drag coefficient", and its
-`forward` (`models.py:82-94`) returns `{"graph": x, "c_d": c_d}` - per-node
-decoder output `x` (the pressure / WSS channels) and a scalar drag coefficient
-`c_d` from `c_d_decoder` (`models.py:72-80`, `output_dim=1`).
+The model wired by `+experiment=ahmed/mgn` confirms this. The Hydra defaults
+in `conf/experiment/ahmed/mgn.yaml:23` select `/model: mgn`, which resolves to
+`conf/model/mgn.yaml`; that config sets
+`_target_: physicsnemo.models.meshgraphnet.MeshGraphNet`
+(`conf/model/mgn.yaml:17`) and `output_dim: 4` (`conf/model/mgn.yaml:22`). The
+runtime model is plain `MeshGraphNet` producing four channels - one pressure +
+three wall-shear-stress components, exactly what `inference.py:149-154`
+unpacks. The same example also defines a separate `AeroGraphNet` variant in
+`models.py` that adds a drag-coefficient head, but it is not the model
+instantiated by `+experiment=ahmed/mgn`; this distinction does not affect the
+no-velocity verdict.
 
 The Ahmed experiment config agrees. `conf/experiment/ahmed/mgn.yaml:46-68`
 declares exactly two visualizers - `mesh_p` (`scalar: p`) and `mesh_wss`
-(`scalar: wallShearStress`) - and the test split sets `compute_drag: true`
-(`conf/experiment/ahmed/mgn.yaml:41`). The predicted quantities are surface
-pressure, wall shear stress, and drag. There is no velocity output.
+(`scalar: wallShearStress`); the test split's `compute_drag: true`
+(`conf/experiment/ahmed/mgn.yaml:41`) is what wires the downstream drag
+computation from those two predicted fields. The predicted quantities are
+surface pressure and wall shear stress. There is no velocity output.
 
 ## No-slip body-surface nodes: predicted, masked, or not velocity
 
@@ -59,13 +70,14 @@ aerodynamic drag surrogate needs. A no-slip velocity boundary condition
 
 ## Verdict
 
-Outcome N: the Ahmed Body MGN outputs surface pressure and wall shear stress
-(plus a drag coefficient), not a body-surface velocity field, so a
-PH-BC-001-style no-slip *velocity* BC check is inapplicable to it - degenerate
-for a different structural reason than the cylinder checkpoint's masking.
+Outcome N: the Ahmed Body MGN outputs surface pressure and wall shear stress,
+not a body-surface velocity field, so a PH-BC-001-style no-slip *velocity* BC
+check is inapplicable to it - degenerate for a different structural reason
+than the cylinder checkpoint's masking.
 
-Consequence for P2.2: the mesh wall-node velocity-BC capability-build has no
-home among the current PhysicsNeMo MGN targets - the cylinder checkpoint masks
-its wall velocity, the Ahmed Body checkpoint predicts no velocity at all - and
-is deferred. A pressure / wall-shear-stress surface check would be a different
-rule, outside P2.2 and P4.1 scope.
+Consequence for P2.2: the mesh wall-node velocity-BC capability-build is
+**retired from P2.2** - it has no home among the current PhysicsNeMo MGN
+targets (the cylinder checkpoint masks its wall velocity, the Ahmed Body
+checkpoint predicts no velocity at all). Any future velocity-BC work requires
+a new target and a fresh decision entry. A pressure / wall-shear-stress
+surface check would be a different rule, outside P2.2 and P4.1 scope.

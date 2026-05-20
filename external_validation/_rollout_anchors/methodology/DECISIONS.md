@@ -2776,10 +2776,11 @@ capability-build branch); D0-26 (P2.1).
 **Trigger:** the P2.2 design pass found that a no-slip check, even with the
 mesh wall-node capability built, would be degenerate on its only near-term
 target. The CS02 cylinder MGN rollout masks boundary nodes during inference
-(`mgn_rollout_p0_vortex_shedding`: `v_next = torch.where(mask, prediction, 0)
-+ input`), freezing wall nodes at their step-0 ground-truth value `0`. A
-no-slip check computes `||v_wall|| ~ 0` and PASSes by construction,
-detecting nothing about the surrogate.
+(`mgn_rollout_p0_vortex_shedding`: `v_diff_masked = torch.where(mask2,
+pred_i_velo, zeros)` then `v_next = v_diff_masked + invar[:, 0:2]`, where
+`invar[:, 0:2]` is the current rollout velocity state), freezing wall nodes at
+their step-0 ground-truth value `0`. A no-slip check computes `||v_wall|| ~ 0`
+and PASSes by construction, detecting nothing about the surrogate.
 
 **Decision.**
 
@@ -2792,11 +2793,16 @@ detecting nothing about the surrogate.
    catch") and **here**; it is deliberately NOT added to the conservation
    cross-stack table, which stays conservation-scoped and golden-tested.
 3. **Ahmed Body verification** (`preflight/ahmed_body_protocol_audit.md`):
-   the Ahmed Body MeshGraphNet checkpoint outputs surface pressure and wall
-   shear stress (plus a scalar drag coefficient), not a body-surface velocity
-   field - `inference.py:149-154` assigns only `p_pred` / `wallShearStress_pred`,
-   and `models.py:43-94` confirms an `AeroGraphNet` whose decoders emit
-   pressure/WSS channels and a drag coefficient (NVIDIA/physicsnemo @
+   the Ahmed Body MeshGraphNet checkpoint, instantiated as plain
+   `physicsnemo.models.meshgraphnet.MeshGraphNet` with `output_dim: 4`
+   (`conf/model/mgn.yaml:17, :22`; selected by `conf/experiment/ahmed/mgn.yaml`
+   via `/model: mgn`), outputs surface pressure and wall shear stress - not a
+   body-surface velocity field. `inference.py:149-154` assigns only `p_pred`
+   and `wallShearStress_pred`; the experiment's drag coefficient is computed
+   downstream from those plus mesh geometry, not predicted by the model. The
+   example's separate `AeroGraphNet` variant (`models.py:43-94`, with a
+   `c_d_decoder` head) is *not* the model wired by `+experiment=ahmed/mgn` and
+   does not affect the verdict (NVIDIA/physicsnemo @
    1ca85d65ac2ce28ea9762910c09a954c08a37140, v2.0.0).
 4. **Capability-build disposition:** see the cross-checkpoint scope below.
 
@@ -2804,7 +2810,8 @@ detecting nothing about the surrogate.
 shear stress, not a body-surface velocity field, so a no-slip *velocity* BC
 check is inapplicable there - degenerate for a different structural reason
 than masking. The velocity-BC capability-build has no home among current
-targets and is deferred; a pressure/force-based surface check would be a
-different rule, outside P2.2 and P4.1 scope.
+targets and is retired from P2.2; any future velocity-BC work requires a new
+target and a fresh decision entry. A pressure/force-based surface check would
+be a different rule, outside P2.2 and P4.1 scope.
 
 **Realized in:** a2c1bb2, c7c1c95, and this commit.

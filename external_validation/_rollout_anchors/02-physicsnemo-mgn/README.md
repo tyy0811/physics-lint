@@ -8,7 +8,7 @@ fallback (folder renamed to `02-fno-darcy/` if Gate D triggers).*
 | Priority | Checkpoint | Domain | Headline rule |
 |---|---|---|---|
 | P0 | `modulus_ns_meshgraphnet` (vortex shedding 2D) | Incompressible NS, cylinder wake | `PH-CON-001` (mass / divergence-free) + `PH-CON-002`/`003` |
-| P1 | `modulus_ahmed_body_meshgraphnet` | Steady RANS, car-like geometry | `PH-BC-001` (no-slip) |
+| P1 | `modulus_ahmed_body_meshgraphnet` | Steady RANS, car-like geometry | `PH-BC-001` (no-slip) — *retired from P2.2: Outcome N, no body-surface velocity output; see §8 below + [DECISIONS.md D0-27](../methodology/DECISIONS.md)* |
 | P2 stretch | `modulus_ns_meshgraphnet` | Same as P0 | `PH-RES-001` (BDO momentum residual) — only if Day 2 hour 4 leaves ≥3h buffer |
 
 `PH-NUM-002` resolution sweep is deferred to v1.1 backlog (spec §1.2).
@@ -156,8 +156,9 @@ velocity, so the rule enters its absolute mode and PASSes iff
 `||v_wall|| < abs_tol_fail`. On the CS02 cylinder MGN rollout the wall nodes
 are never predicted: the inference protocol in `mgn_rollout_p0_vortex_shedding`
 (`modal_app.py`) masks boundary nodes -- `v_diff_masked = torch.where(mask2,
-prediction, 0)` then `v_next = v_diff_masked + input` -- so a masked wall node
-stays frozen at its step-0 ground-truth value, which is `0` (no-slip). A
+pred_i_velo, zeros)` then `v_next = v_diff_masked + invar[:, 0:2]` (where
+`invar[:, 0:2]` is the current rollout velocity state) -- so a masked wall
+node stays frozen at its step-0 ground-truth value, which is `0` (no-slip). A
 no-slip check on this rollout computes `||v_wall|| ~ 0` on every trajectory
 and PASSes trivially: it is structurally prevented from detecting a surrogate
 violation, because the surrogate never assigns wall-node velocities.
@@ -171,10 +172,11 @@ finding rather than as a number in a cross-stack table cell; see
 [DECISIONS.md D0-27](../methodology/DECISIONS.md).
 
 The Ahmed Body MeshGraphNet checkpoint does not output a body-surface velocity
-field at all -- it predicts surface pressure / wall shear stress for drag
-estimation (verified in `preflight/ahmed_body_protocol_audit.md`). A
-PH-BC-001-style no-slip *velocity* BC check is inapplicable there, degenerate
-for a different structural reason than the cylinder's masking. The velocity-BC
-capability-build has no home among the current targets and is deferred; a
-pressure/force-based surface check would be a different rule, outside P2.2 and
-P4.1 scope.
+field at all -- it predicts surface pressure and wall shear stress, from which
+the experiment computes drag downstream (verified in
+`preflight/ahmed_body_protocol_audit.md`). A PH-BC-001-style no-slip *velocity*
+BC check is inapplicable there, degenerate for a different structural reason
+than the cylinder's masking. The velocity-BC capability-build has no home
+among the current targets and is retired from P2.2; any future velocity-BC
+work requires a new target and a fresh decision entry. A pressure/force-based
+surface check would be a different rule, outside P2.2 and P4.1 scope.
