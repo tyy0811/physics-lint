@@ -44,20 +44,35 @@ jobs:
       - name: Verify fail-loudly contract
         run: |
           # Temporarily delete one canonical section; expect build to fail.
+          # Note: bash's default `set -e` is fine here, but we want to
+          # KEEP RUNNING on the probe sphinx-build's non-zero exit so we
+          # can inspect the log and restore the file. We turn `-e` off
+          # for the probe call only, capture the exit code explicitly,
+          # then turn `-e` back on.
           cp external_validation/PH-CON-003/README.md /tmp/PH-CON-003-README.md.bak
           sed -i '/^## Rule reference$/d' external_validation/PH-CON-003/README.md
-          if sphinx-build docs/sphinx docs/sphinx/_build/probe-html 2>&1 | tee /tmp/probe.log; then
+
+          set +e
+          sphinx-build docs/sphinx docs/sphinx/_build/probe-html > /tmp/probe.log 2>&1
+          BUILD_EXIT=$?
+          set -e
+
+          # Always restore the file, even if downstream assertions fail.
+          cp /tmp/PH-CON-003-README.md.bak external_validation/PH-CON-003/README.md
+
+          if [ "$BUILD_EXIT" -eq 0 ]; then
             echo "FAIL: docs build did not fail when canonical section was missing"
-            cp /tmp/PH-CON-003-README.md.bak external_validation/PH-CON-003/README.md
+            tail -40 /tmp/probe.log
             exit 1
           fi
-          grep -q "missing canonical section" /tmp/probe.log || {
+
+          if ! grep -q "missing canonical section" /tmp/probe.log; then
             echo "FAIL: build failed for a different reason than missing canonical section"
-            cp /tmp/PH-CON-003-README.md.bak external_validation/PH-CON-003/README.md
+            tail -40 /tmp/probe.log
             exit 1
-          }
-          cp /tmp/PH-CON-003-README.md.bak external_validation/PH-CON-003/README.md
-          echo "PASS: fail-loudly contract verified"
+          fi
+
+          echo "PASS: fail-loudly contract verified (sphinx-build exited $BUILD_EXIT with the expected error)"
 
       - uses: actions/configure-pages@v5
 
