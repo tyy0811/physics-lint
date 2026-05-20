@@ -2815,3 +2815,39 @@ target and a fresh decision entry. A pressure/force-based surface check would
 be a different rule, outside P2.2 and P4.1 scope.
 
 **Realized in:** a2c1bb2, c7c1c95, and this commit.
+
+---
+
+## D0-28 - 2026-05-20 - P2.3 closes as a documented methodology choice (equivariance gap second-architecture question)
+
+**Predecessor:** roadmap P2.3; D0-27 (P2.2 close); D0-21 (rung-4b equivariance pre-registration).
+
+**Trigger:** roadmap §2.3 proposed training a vanilla non-equivariant GNN on TGV2D and running PH-SYM-001 / PH-SYM-002 against it, to "confirm the equivariance gap is not GNS-architecture-specific." The P2.3 design pass surfaced two findings (below) and a structural-empirical-link argument that together make the proposed empirical second data point a poor trade.
+
+**Finding 1 - no published non-equivariant alternative to GNS exists.** Per LagrangeBench's published model zoo (https://github.com/tumaer/lagrangebench, accessed 2026-05-20), the project ships pretrained checkpoints only for GNS (GNS-10-128, across 7 datasets) and SEGNN (SEGNN-10-64, across the same 7 datasets); EGNN, PaiNN, and the linear baseline have model definitions in `lagrangebench/models/` but no published weights. SEGNN, EGNN, and PaiNN are equivariant by design, so GNS is the only non-equivariant model with a downloadable checkpoint. A second non-equivariant architecture would have to be trained.
+
+**Finding 2 - a self-trained model is a structurally weaker evidence class.** The CS01 / CS02 methodology rests on published checkpoints (the F3 borrowed-credibility / published-baseline-reproduction framing from `methodology/docs/2026-05-01-rollout-anchor-extension-design.md` §1.1): the value claim is that physics-lint fires its rule on a real artifact-as-shipped. A vanilla GNN trained by us cannot borrow credibility by construction; the result is in a different and weaker class than the rest of the validation portfolio, and importing it dilutes the published-checkpoint discipline.
+
+**The structural-empirical-link argument.** PH-SYM-001 / PH-SYM-002 measure empirical equivariance: they check `f(g x) ~ g f(x)` on sampled inputs against the model's noise floor (rung-4b found SEGNN monomodally at the float32 floor, ~2.3e-7 to 3.4e-7; GNS bimodally split between APPROXIMATE band ~3.6e-4 to 4.2e-4 and FAIL band quantized at ~0.02). A model with no equivariant inductive bias has no architectural mechanism to force `f(g x) = g f(x)` to noise-floor precision, so under typical training the empirical reading sits well above the noise floor and the rule fires. GNS-as-shipped is one realization of that link; a second non-equivariant trained model would manifest the same link on a different instance.
+
+**Training-regime caveat.** A non-equivariant-by-architecture model trained with full SO(2) data augmentation could in principle approximate equivariance to near-noise-floor accuracy. This is not fatal to the choice: GNS-as-shipped was not trained that way, and the rule fires on it. The argument's scope is "non-equivariant architecture under typical training," not "non-equivariant architecture" in isolation.
+
+**Falsifiability.** A non-equivariant-by-architecture model that, after typical training on TGV2D-like data, produced an equivariance gap at the float32 noise floor would falsify the structural-empirical link. The project knows of no such documented case. The claim is a defeasible empirical generalization grounded in the architectural reason, not an a priori certainty ruled true by definition.
+
+**Decision.** P2.3 closes as a documented methodology choice, not a training run. GNS represents the non-equivariant architecture-plus-training-regime class on a published checkpoint; this entry is the standalone closure document. The rung-4b writeup (`docs/2026-05-07-rung-4b-equivariance-table.md`) is sha-bound by the methodology/README.md `### Adding a new rung writeup` convention and is not edited — the integrating `methodology/README.md` carries the discoverability pointer to this entry for a reader who lands on the rung-4b section first. No training, no model definition, no GPU, no code.
+
+**Out of scope (deliberately not done):** any training run; any new model definition; any new row or column in the rung-4b equivariance table or any cross-stack table; the CS01 LagrangeBench README's stub state (a separate concern, belongs to P3 docs work); anything in CS02 (the equivariance gap is rung-4b / CS01-side, not CS02; CS02 explicitly scopes PH-SYM-* out by design).
+
+**Realized in:** 63e69fe, 4777ad0, and this commit.
+
+**Amendment (2026-05-20, post-execution code review).** Three corrections; none change the decision.
+
+- *Finding 1 catalog citation.* Added the upstream LagrangeBench reference (`github.com/tumaer/lagrangebench`) so the "GNS and SEGNN are the only LagrangeBench checkpoints with downloadable weights" claim is web-verifiable rather than implicit; also noted the linear baseline alongside the four GNN models. The load-bearing claim (a second non-equivariant LagrangeBench model would have to be trained) is unchanged.
+- *Finding 2 attribution.* The "borrowed credibility" phrasing was attributed to the CS02 README; the actual source is the F1 / F2 / F3 anchor-class framing at `methodology/docs/2026-05-01-rollout-anchor-extension-design.md` §1.1. Attribution corrected above; the load-bearing claim (the rollout-anchor portfolio rests on published checkpoints, not self-trained baselines) is unchanged.
+- *Structural-empirical-link magnitudes.* The original said "rung-4b found SEGNN at ~1e-6, GNS at ~1e-2"; the cited table reports SEGNN monomodally at ~2.3e-7 to 3.4e-7 (well below the PASS band at 1e-5) and GNS bimodally split between APPROXIMATE (~3.6e-4 to 4.2e-4) and FAIL (~0.02) bands. Magnitudes corrected above; the load-bearing point (architectural-equivariance gap between the float32 floor and approximate-by-training reading) is unchanged.
+
+**Amendment (2026-05-20, post-execution Codex adversarial review).** Three corrections; none change the decision.
+
+- *Frozen-writeup convention restored.* The plan as-written inserted a scope note as item 8 of `## 6. What rung 4b is NOT` in `methodology/docs/2026-05-07-rung-4b-equivariance-table.md`. That violates the `methodology/README.md` `### Adding a new rung writeup` rule: "individual writeups stay sha-bound to their snapshot views and are not edited after their rung closes." The precedent (v2.1 §2.5 walking back rung-4c §6 item 8; round-code-1 closing rung-4b §6 item 3) routes all post-closure walk-backs through D-entries plus a `methodology/README.md` pointer, never the frozen writeup itself. The item-8 edit is reverted; this D-entry is the standalone closure document; the integrating README carries the discoverability pointer.
+- *Decision-paragraph pointer updated.* Decision paragraph no longer references item 8 (now reverted); it instead names the frozen-writeup convention and the integrating-README pointer route. The load-bearing claim is unchanged.
+- *LagrangeBench citation pinned by access date.* Finding 1's URL now reads `https://github.com/tumaer/lagrangebench, accessed 2026-05-20` so a future upstream catalog change does not retroactively make D0-28 look false (mutable-`main`-cite hazard surfaced by Codex; the current content of `main` was independently verified against the same claim by both Claude and Codex).

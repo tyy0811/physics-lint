@@ -37,7 +37,16 @@ consumer-side accommodation beyond two renderer generalizations
   equivariance is exact-by-construction (ε at the float32 noise floor
   ~2.3e-7); GNS's is approximate-by-training (bimodal APPROXIMATE +
   FAIL bands ~3.6e-4 to 3.5e-2). The same machinery emits different
-  values when the stacks behave differently.
+  values when the stacks behave differently. **Post-closure
+  forward-flag (2026-05-20): D0-28** closes the "second non-equivariant
+  architecture" question as a documented methodology choice — GNS
+  represents the non-equivariant architecture-plus-training-regime
+  class on a published checkpoint; structural-empirical-link rationale,
+  Finding 1 (LagrangeBench catalog), Finding 2 (self-trained ≠
+  borrowed-credibility class), training-regime caveat, and named
+  falsifier all in [DECISIONS.md D0-28](DECISIONS.md). The rung-4b
+  writeup itself is unedited per the `### Adding a new rung writeup`
+  convention below.
 - **Rung 4c** ([writeup](docs/2026-05-07-rung-4c-substrate-class-extension-table.md))
   extended the harness's substrate-detection layer to a second
   LagrangeBench substrate class (open-driven-dissipative) via
