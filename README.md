@@ -4,6 +4,10 @@
 
 by **Jane Yeung** · [github.com/tyy0811/physics-lint](https://github.com/tyy0811/physics-lint)
 
+**Documentation:** Full reference at [tyy0811.github.io/physics-lint](https://tyy0811.github.io/physics-lint/) —
+installation, quickstart, rule catalog, case studies, GitHub Action, SARIF
+schema, stability policy.
+
 ---
 
 ## Why physics-lint
@@ -56,6 +60,10 @@ jobs:
 ```
 
 Every model PR populates the GitHub Security tab with rule violations, complete with documentation links and persistent state. `if: always()` on the SARIF upload step means alerts land even when the check step exits non-zero. Configure `[tool.physics-lint.sarif]` to surface violations in PR checks too.
+
+*See also the [GitHub Action docs](https://tyy0811.github.io/physics-lint/action.html)
+for a drop-in `uses: tyy0811/physics-lint@v1.X.Y` replacement for the inline
+`pip install` + `physics-lint check` steps above (Action ships in P3.2).*
 
 ## Installation
 
