@@ -32,7 +32,7 @@ the in-band subset, not a full-distribution claim or a CI-gate-threshold
 derivation.
 
 **Scope qualifier — PH-BC-001 no-slip is structurally inapplicable.**
-[D0-27](../methodology/DECISIONS.md): the CS02 inference protocol masks
+[D0-27][D0-27-cs02-link]: the CS02 inference protocol masks
 boundary nodes during rollout (`v_diff_masked = torch.where(mask2,
 pred_i_velo, zeros)`), freezing wall-node velocities at their step-0
 ground-truth value of zero. A no-slip check on this rollout computes
@@ -53,6 +53,8 @@ the load-bearing methodology claim of CS02.
 The detailed validation harness, the per-trajectory table, the cross-stack
 table integrating with rung-4a/4b, and the full "what physics-lint did NOT
 catch" enumeration are below.
+
+[D0-27-cs02-link]: https://github.com/tyy0811/physics-lint/blob/master/external_validation/_rollout_anchors/methodology/DECISIONS.md
 
 ## Targets
 

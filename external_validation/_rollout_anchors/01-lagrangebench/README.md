@@ -23,25 +23,29 @@ exact-by-construction; GNS's is approximate-by-training, consistent with
 Helwig et al.'s data-augmentation characterization. The full table and
 SARIF artifacts are linked under "Validation harness" below.
 
-**P2.1 multi-trajectory expansion.** Per
-[DECISIONS.md D0-26](../methodology/DECISIONS.md), the rung-4b table reports
-20 trajectories per (rule, stack) on TGV2D for both GNS and SEGNN. The
-trajectory set is deterministic and reproducible from the committed
-audit JSON; selection was pre-registered before any Modal fire.
+**P2.1 multi-trajectory expansion.** Per [DECISIONS.md D0-26][D0-26-link],
+the rung-4b table reports 20 trajectories per (rule, stack) on TGV2D for
+both GNS and SEGNN. The trajectory set is deterministic and reproducible
+from the committed audit JSON; selection was pre-registered before any
+Modal fire.
 
-**P2.3 scope qualifier (structural-empirical link).** Per
-[DECISIONS.md D0-28](../methodology/DECISIONS.md), the equivariance gap
-above is reported on the GNS-as-shipped checkpoint — a single realization
-of the "non-equivariant architecture under typical training" class. The
-project deliberately does **not** extend rung-4b with a self-trained
-non-equivariant GNN as a second architectural data point; the rollout-anchor
-portfolio rests on published checkpoints (F3 borrowed-credibility framing,
-see `methodology/docs/2026-05-01-rollout-anchor-extension-design.md` §1.1),
-and a self-trained baseline would be in a structurally weaker evidence class.
-The structural-empirical-link argument is defeasible — a non-equivariant
-architecture trained with full SO(2) augmentation could in principle
-approximate equivariance to near-noise-floor accuracy — but the rung-4b
-reading on GNS-as-shipped is consistent with the architectural reason.
+**P2.3 scope qualifier (structural-empirical link).** Per [DECISIONS.md
+D0-28][D0-28-link], the equivariance gap above is reported on the
+GNS-as-shipped checkpoint — a single realization of the "non-equivariant
+architecture under typical training" class. The project deliberately does
+**not** extend rung-4b with a self-trained non-equivariant GNN as a
+second architectural data point; the rollout-anchor portfolio rests on
+published checkpoints (F3 borrowed-credibility framing, see
+`methodology/docs/2026-05-01-rollout-anchor-extension-design.md` §1.1),
+and a self-trained baseline would be in a structurally weaker evidence
+class. The structural-empirical-link argument is defeasible — a
+non-equivariant architecture trained with full SO(2) augmentation could
+in principle approximate equivariance to near-noise-floor accuracy — but
+the rung-4b reading on GNS-as-shipped is consistent with the
+architectural reason.
+
+[D0-26-link]: https://github.com/tyy0811/physics-lint/blob/master/external_validation/_rollout_anchors/methodology/DECISIONS.md
+[D0-28-link]: https://github.com/tyy0811/physics-lint/blob/master/external_validation/_rollout_anchors/methodology/DECISIONS.md
 
 **What this case study does NOT cover.** PH-BC-001 no-slip on a body-surface
 velocity field is structurally inapplicable to LagrangeBench's particle
