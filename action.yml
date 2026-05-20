@@ -1,0 +1,128 @@
+name: physics-lint
+description: |
+  Run physics-lint against a neural-PDE surrogate model artifact and
+  upload the SARIF report to GitHub code scanning.
+
+  The version input defaults to the action's tag ref so
+  `uses: tyy0811/physics-lint@v1.0.0` installs `physics-lint==1.0.0`
+  deterministically. Override `with: version:` to pin differently.
+
+  See https://tyy0811.github.io/physics-lint/action.html for full
+  documentation including matrix examples and permissions guidance.
+branding:
+  icon: check-circle
+  color: blue
+
+inputs:
+  model:
+    description: Path to adapter `.py` or `.npz` dump
+    required: true
+  config:
+    description: Path to config TOML
+    required: false
+    default: pyproject.toml
+  category:
+    description: SARIF category for code-scanning distinction
+    required: false
+    default: physics-lint
+  output:
+    description: SARIF output path
+    required: false
+    default: physics-lint.sarif
+  version:
+    description: |
+      physics-lint PyPI version. Defaults to the action ref (with leading
+      `v` stripped if a tag); falls back to installing latest if the ref
+      is not a semver tag.
+    required: false
+    default: ""
+  python-version:
+    description: Python version passed to actions/setup-python
+    required: false
+    default: "3.11"
+  mesh:
+    description: When 'true', installs physics-lint[mesh] for unstructured-mesh adapters
+    required: false
+    default: "false"
+  fail-on-error:
+    description: When 'false', the CLI's non-zero exit on error-severity rules is suppressed so subsequent steps run
+    required: false
+    default: "true"
+  upload-sarif:
+    description: When 'false', skips the codeql-action/upload-sarif step
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+
+    - name: Resolve physics-lint version
+      id: resolve-version
+      shell: bash
+      run: |
+        # Spec §5.D: derive from github.action_ref unless explicit input given.
+        if [ -n "${{ inputs.version }}" ]; then
+          resolved="${{ inputs.version }}"
+        else
+          ref="${{ github.action_ref }}"
+          # Tag refs look like "v1.0.0", "v1.2.3"; strip leading v if it parses as semver.
+          if echo "$ref" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(\..*)?$'; then
+            resolved="${ref#v}"
+          else
+            # Branch or SHA — install latest.
+            resolved=""
+          fi
+        fi
+        echo "resolved=$resolved" >> "$GITHUB_OUTPUT"
+        if [ -z "$resolved" ]; then
+          echo "physics-lint version: latest (from PyPI)"
+        else
+          echo "physics-lint version: $resolved"
+        fi
+
+    - name: Install physics-lint
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ "${{ inputs.mesh }}" = "true" ]; then
+          spec="physics-lint[mesh]"
+        else
+          spec="physics-lint"
+        fi
+        version="${{ steps.resolve-version.outputs.resolved }}"
+        if [ -n "$version" ]; then
+          pip install "${spec}==${version}"
+        else
+          pip install "${spec}"
+        fi
+
+    - name: Run physics-lint check
+      shell: bash
+      run: |
+        set -uo pipefail
+        if [ "${{ inputs.fail-on-error }}" = "true" ]; then
+          physics-lint check "${{ inputs.model }}" \
+            --config "${{ inputs.config }}" \
+            --format sarif \
+            --category "${{ inputs.category }}" \
+            --output "${{ inputs.output }}"
+        else
+          physics-lint check "${{ inputs.model }}" \
+            --config "${{ inputs.config }}" \
+            --format sarif \
+            --category "${{ inputs.category }}" \
+            --output "${{ inputs.output }}" || true
+        fi
+
+    - name: Upload SARIF
+      if: ${{ inputs.upload-sarif == 'true' && always() }}
+      uses: github/codeql-action/upload-sarif@v4
+      with:
+        sarif_file: ${{ inputs.output }}
+        category: ${{ inputs.category }}
