@@ -2815,3 +2815,27 @@ target and a fresh decision entry. A pressure/force-based surface check would
 be a different rule, outside P2.2 and P4.1 scope.
 
 **Realized in:** a2c1bb2, c7c1c95, and this commit.
+
+---
+
+## D0-28 - 2026-05-20 - P2.3 closes as a documented methodology choice (equivariance gap second-architecture question)
+
+**Predecessor:** roadmap P2.3; D0-27 (P2.2 close); D0-21 (rung-4b equivariance pre-registration).
+
+**Trigger:** roadmap §2.3 proposed training a vanilla non-equivariant GNN on TGV2D and running PH-SYM-001 / PH-SYM-002 against it, to "confirm the equivariance gap is not GNS-architecture-specific." The P2.3 design pass surfaced two findings (below) and a structural-empirical-link argument that together make the proposed empirical second data point a poor trade.
+
+**Finding 1 - no published non-equivariant alternative to GNS exists.** LagrangeBench has four model definitions (GNS, SEGNN, EGNN, PaiNN) but ships pretrained checkpoints only for GNS and SEGNN; EGNN and PaiNN are equivariant by design and have no published weights anyway. GNS is the only non-equivariant model with a downloadable checkpoint. A second non-equivariant architecture would have to be trained.
+
+**Finding 2 - a self-trained model is a structurally weaker evidence class.** The CS01 / CS02 methodology rests on published checkpoints (the explicit "borrowed credibility" framing in the CS02 README): the value claim is that physics-lint fires its rule on a real artifact-as-shipped. A vanilla GNN trained by us cannot borrow credibility by construction; the result is in a different and weaker class than the rest of the validation portfolio, and importing it dilutes the published-checkpoint discipline.
+
+**The structural-empirical-link argument.** PH-SYM-001 / PH-SYM-002 measure empirical equivariance: they check `f(g x) ~ g f(x)` on sampled inputs against the model's noise floor (rung-4b found SEGNN at ~1e-6, GNS at ~1e-2). A model with no equivariant inductive bias has no architectural mechanism to force `f(g x) = g f(x)` to noise-floor precision, so under typical training the empirical reading sits well above the noise floor and the rule fires. GNS-as-shipped is one realization of that link; a second non-equivariant trained model would manifest the same link on a different instance.
+
+**Training-regime caveat.** A non-equivariant-by-architecture model trained with full SO(2) data augmentation could in principle approximate equivariance to near-noise-floor accuracy. This is not fatal to the choice: GNS-as-shipped was not trained that way, and the rule fires on it. The argument's scope is "non-equivariant architecture under typical training," not "non-equivariant architecture" in isolation.
+
+**Falsifiability.** A non-equivariant-by-architecture model that, after typical training on TGV2D-like data, produced an equivariance gap at the float32 noise floor would falsify the structural-empirical link. The project knows of no such documented case. The claim is a defeasible empirical generalization grounded in the architectural reason, not an a priori certainty ruled true by definition.
+
+**Decision.** P2.3 closes as a documented methodology choice, not a training run. GNS represents the non-equivariant architecture-plus-training-regime class on a published checkpoint; the rung-4b equivariance table's scope note (item 8 of `## 6. What rung 4b is NOT`) names the structural-empirical link briefly and points to this entry for the full rationale. No training, no model definition, no GPU, no code.
+
+**Out of scope (deliberately not done):** any training run; any new model definition; any new row or column in the rung-4b equivariance table or any cross-stack table; the CS01 LagrangeBench README's stub state (a separate concern, belongs to P3 docs work); anything in CS02 (the equivariance gap is rung-4b / CS01-side, not CS02; CS02 explicitly scopes PH-SYM-* out by design).
+
+**Realized in:** 63e69fe and this commit.
