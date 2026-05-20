@@ -3,6 +3,14 @@ name: docs
 on:
   push:
     branches: [master]
+  pull_request:
+    paths:
+      - 'docs/sphinx/**'
+      - '.github/workflows/docs.yml'
+      - 'external_validation/**/README.md'
+      - 'STABILITY.md'
+      - 'README.md'
+      - 'pyproject.toml'
   workflow_dispatch:
 
 permissions:
