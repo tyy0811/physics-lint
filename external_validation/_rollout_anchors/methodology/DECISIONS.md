@@ -2834,7 +2834,7 @@ be a different rule, outside P2.2 and P4.1 scope.
 
 **Falsifiability.** A non-equivariant-by-architecture model that, after typical training on TGV2D-like data, produced an equivariance gap at the float32 noise floor would falsify the structural-empirical link. The project knows of no such documented case. The claim is a defeasible empirical generalization grounded in the architectural reason, not an a priori certainty ruled true by definition.
 
-**Decision.** P2.3 closes as a documented methodology choice, not a training run. GNS represents the non-equivariant architecture-plus-training-regime class on a published checkpoint; the rung-4b equivariance table's scope note (item 8 of `## 6. What rung 4b is NOT`) names the structural-empirical link briefly and points to this entry for the full rationale. No training, no model definition, no GPU, no code.
+**Decision.** P2.3 closes as a documented methodology choice, not a training run. GNS represents the non-equivariant architecture-plus-training-regime class on a published checkpoint; the rung-4b equivariance table's scope note ([item 8 of §6](docs/2026-05-07-rung-4b-equivariance-table.md#6-what-rung-4b-is-not)) names the structural-empirical link briefly and points to this entry for the full rationale. No training, no model definition, no GPU, no code.
 
 **Out of scope (deliberately not done):** any training run; any new model definition; any new row or column in the rung-4b equivariance table or any cross-stack table; the CS01 LagrangeBench README's stub state (a separate concern, belongs to P3 docs work); anything in CS02 (the equivariance gap is rung-4b / CS01-side, not CS02; CS02 explicitly scopes PH-SYM-* out by design).
 
