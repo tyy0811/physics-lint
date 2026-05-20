@@ -25,8 +25,13 @@ env/
 # Docs
 docs/_build/
 docs/sphinx/_build/
-# Auto-generated rule pages (created by conf.py builder-inited hook)
+# Auto-generated rule + case-study pages (created by conf.py builder-inited hooks).
+# The case-studies/index.md is hand-written and stays tracked; the two slug
+# files are emitted by generate_case_study_pages from canonical sections in
+# external_validation/_rollout_anchors/{01,02}-*/README.md.
 docs/sphinx/rules/
+docs/sphinx/case-studies/01-lagrangebench.md
+docs/sphinx/case-studies/02-physicsnemo-mgn.md
 
 # Local-only design and planning notes (kept out of the public repo)
 docs/design/
