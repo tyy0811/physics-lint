@@ -1,5 +1,37 @@
 # PH-SYM-004 external-validation anchor
 
+## Rule reference
+
+PH-SYM-004 is a **structural stub in v1.0**: once past its
+declared-symmetry + periodicity gates, it always emits `SKIPPED`. True
+translation equivariance is a **model property**
+($f(\mathrm{roll}(x)) = \mathrm{roll}(f(x))$ on a live callable) and
+requires adapter-mode plumbing deferred to v1.1.
+
+An earlier v1 offline metric
+$\|\mathrm{roll}(u) - u\| / \|\mathrm{roll}(u)\|$ was **removed**
+before release: `np.roll` preserves norm, so the triangle inequality
+caps the offline quantity at 2.0, and a PASS-if-$<2.0$ threshold
+would rubber-stamp random noise, smooth ramps, and most structured
+fields. Rather than ship a false-pass metric, v1.0 ships the stub
+with `SKIPPED` reasons documenting the deferral.
+
+The harness-level validation exercises the underlying mathematical
+primitive: `shift_commutation_error` on four controlled operators —
+identity, circular convolution, Fourier multiplier, and coordinate-
+dependent multiplication. The first three are translation-equivariant
+at float64 roundoff (max $3.75 \times 10^{-16}$ over 100 random 2D
+trials); the fourth is non-equivariant by construction (error
+$0.09$–$0.87$) and serves as the negative-control. v1.1 will replace
+the stub with an adapter-mode implementation that compares
+$f(\mathrm{roll}(x))$ against $\mathrm{roll}(f(x))$ on a live callable,
+using the same `shift_commutation_error` primitive.
+
+Per the v1.0 stability policy, the rule's verdict surface is stable;
+only the implementation will change in a minor release.
+
+## Validation harness
+
 **Scope separation (read first):** PH-SYM-004 validates **the
 mathematical and harness-level translation-equivariance contract for
 controlled operators**. The v1.0 production rule validates only its

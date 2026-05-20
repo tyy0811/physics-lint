@@ -1,9 +1,16 @@
 # PH-SYM-002 external-validation anchor
 
-Discrete reflection equivariance (Z₂ action on each of two independent axes
-of a 2D periodic square grid).
+## Rule reference
 
-Run:
+Discrete reflection equivariance (Z₂ action on each of two independent
+axes of a 2D periodic square grid). The rule reflects the input across
+each axis independently, queries the model on the reflected input,
+applies the inverse reflection to the output, and compares against the
+original output. The raw value is the relative discrepancy on a
+calibrated noise-floor band; the rule fires when the model breaks
+discrete reflection symmetry on a square-domain problem.
+
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-SYM-002/ -v

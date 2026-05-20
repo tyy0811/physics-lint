@@ -1,5 +1,46 @@
 # PH-SYM-003 external-validation anchor
 
+## Rule reference
+
+PH-SYM-003 validates infinitesimal Lie-derivative equivariance for
+scalar models under SO(2). The rule is **adapter-mode-only**: dump-mode
+inputs emit `SKIPPED` because the diagnostic requires forward-mode
+automatic differentiation on a live callable, which a frozen tensor
+cannot supply. In adapter mode, the rule computes
+$(L_A f)(x) = \frac{d}{d\theta}\big|_{\theta=0} f(R_\theta x)$ via
+`torch.autograd.functional.jvp` and reports the per-point $L^2$ norm
+against a calibrated roundoff floor.
+
+The rule applies under five gates:
+
+1. The adapter declares `SO(2)` symmetry on the domain spec.
+2. The input is an adapter-mode `CallableField` (not a dumped tensor).
+3. The grid is 2D.
+4. The grid is centered on the origin.
+5. The domain is square (so the rotation $R_\theta$ stays inside the
+   domain).
+
+Failing any gate emits `SKIPPED`. When all gates pass, the rule emits
+`PASS` (per-point $L^2$ norm at machine roundoff) or `FAIL` (per-point
+$L^2$ norm above the calibrated floor; the closed-form magnitude is
+reported on common toy fixtures).
+
+**Scope — infinitesimal, not global finite.** PH-SYM-003 validates the
+rule's **single-generator, pointwise-$L^2$, scalar-invariant** subset
+of the finite identity. It does **not** prove global finite
+equivariance for arbitrary models. The finite-vs-infinitesimal
+direction is subtle: finite ⇒ infinitesimal is trivial by
+differentiation, but infinitesimal ⇒ finite requires smoothness +
+connected group + generator coverage + exact constraint. The rule's
+empirical grid-sampled diagnostic does not establish all four
+conditions; it does, however, detect the most common failure mode
+(a model that breaks SO(2) at first order).
+
+Higher-dimensional Lie groups (SO(3), SE(3)), disconnected groups
+(O(2), E(2)), and vector-output equivariance are out of v1.0 scope.
+
+## Validation harness
+
 **Scope separation (read first):** PH-SYM-003 validates **an
 infinitesimal Lie-derivative equivariance diagnostic under explicit
 SO(2) / smoothness / generator assumptions. It does not prove global

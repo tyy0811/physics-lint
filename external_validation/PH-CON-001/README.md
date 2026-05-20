@@ -1,5 +1,7 @@
 # PH-CON-001 external-validation anchor
 
+## Rule reference
+
 **Scope separation (read first):** PH-CON-001 validates the production
 rule's ability to measure **integral conservation drift on
 analytically controlled source-free snapshots**. It does not certify
@@ -13,7 +15,7 @@ total mass `∫_Ω u dV` is invariant in `t`. Rule emits
 `max_t |M(t) − M(0)| / max(|M(0)|, ‖u_0‖_{L¹})`; shipped-default
 relative threshold 1e-4.
 
-Run:
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-CON-001/ -v

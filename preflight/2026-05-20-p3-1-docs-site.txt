@@ -1,0 +1,59 @@
+# P3.1 Docs Site — Pre-flight Verification
+
+Date: 2026-05-20
+Branch: feat/p3-1-docs-site
+Master HEAD at pre-flight: f73a4a3
+Plan: docs/superpowers/plans/2026-05-20-p3-1-docs-site.md
+Spec: docs/superpowers/specs/2026-05-20-p3-adoption-tooling-design.md (§4 + §7)
+
+---
+
+## Step 1 — sphinx-stack versions (installed in .venv)
+
+Command: `.venv/bin/pip show sphinx myst-parser furo`
+
+- Sphinx          9.0.4   (plan's expected "7.x.y" is outdated; 9.x is API-compatible for builder-inited hook and the markdown/myst pipeline used here)
+- myst-parser     5.0.0   (plan's expected "2.x.y or later"; 5.0.0 supports the {include} directive used in stability.md)
+- furo            2025.12.19 (plan's expected "2024.x.y"; works as a sphinx theme regardless)
+- sphinx-autodoc-typehints: NOT INSTALLED — not used by docs/sphinx/conf.py (extensions list = myst_parser, autodoc, napoleon, mathjax, viewcode). Plan's Step 1 listed it speculatively; no action.
+
+Python interpreter: `.venv/bin/python` — Python 3.11.4 (matches docs.yml workflow's python-version: '3.11').
+
+## Step 2 — baseline docs build works
+
+Command: `.venv/bin/sphinx-build docs/sphinx docs/sphinx/_build/html`
+
+Result: `build succeeded.` Output written to `docs/sphinx/_build/html`. No warnings of concern at baseline.
+
+Auto-gen rule pages emitted: 18 (count via `ls docs/sphinx/_build/html/rules/ | grep -c '^PH-'`)
+Rules covered: PH-BC-001, PH-BC-002, PH-CON-001, PH-CON-002, PH-CON-003, PH-CON-004,
+                PH-NUM-001, PH-NUM-002, PH-POS-001, PH-POS-002,
+                PH-RES-001, PH-RES-002, PH-RES-003,
+                PH-SYM-001, PH-SYM-002, PH-SYM-003, PH-SYM-004,
+                PH-VAR-002
+
+(18 matches `ls external_validation/ | grep '^PH-' | wc -l`.)
+
+## Step 3 — GitHub Actions input schemas at pinned versions
+
+Recording the input set + permission requirements for each action used in `.github/workflows/docs.yml` (Task 9). Schemas verified against upstream `action.yml` at the pinned tag.
+
+- `actions/checkout@v4`           — inputs include `ref`, `fetch-depth`, `submodules`. No special permissions.
+- `actions/setup-python@v5`       — inputs include `python-version`, `cache`. No special permissions.
+- `actions/configure-pages@v5`    — inputs include `token`, `enablement`. Required permission: `pages: write`.
+- `actions/upload-pages-artifact@v3` — inputs include `path` (default `_site`), `name` (default `github-pages`). No special permissions.
+- `actions/deploy-pages@v4`       — inputs include `token`, `artifact_name`. Required permissions: `pages: write` + `id-token: write`.
+
+These are stable across the v4/v5 generations; the docs.yml workflow pins exact major tags.
+
+## Step 4 — myst-parser supports `{include}` directive
+
+Command: `.venv/bin/python -c "from myst_parser import __version__; print(__version__)"`
+
+Result: `5.0.0`. The `{include}` directive has been supported since myst-parser >= 0.13, so 5.0.0 is well past the requirement. This enables the zero-copy `docs/sphinx/stability.md` page (3-line file pulling `STABILITY.md` from repo root, per spec §4.E).
+
+---
+
+## Outcome
+
+All four pre-flight categories verified. Baseline docs build is green at f73a4a3 + venv install. Ready to start Task 2 (canonical-section migration).

@@ -1,10 +1,19 @@
 # PH-RES-002 external-validation anchor
 
-AD-computed Laplacian vs 4th-order central FD Laplacian: max interior
-relative discrepancy ratio on a smooth MMS fixture, asserted to shrink at
-O(h⁴) rate on log-log refinement.
+## Rule reference
 
-Run:
+PH-RES-002 compares the AD-computed Laplacian against a 4th-order
+central FD Laplacian. The emitted quantity is the maximum interior
+relative discrepancy on a smooth method-of-manufactured-solutions
+(MMS) fixture. Under refinement on a smooth field, the discrepancy
+shrinks at $O(h^4)$ (the FD truncation rate); the AD path is
+machine-precision exact, so the FD term dominates. The rule fires when
+the measured slope departs from the expected $O(h^4)$ band, signalling
+either an MMS-fixture error or an AD-path bug in the surrogate. The
+rule emits `SKIPPED` on dump-mode fields (no callable model is
+available for AD).
+
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-RES-002/ -v

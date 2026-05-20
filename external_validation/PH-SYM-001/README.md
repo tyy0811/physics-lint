@@ -1,8 +1,16 @@
 # PH-SYM-001 external-validation anchor
 
-Discrete rotation equivariance (C₄ action on a 2D periodic square grid).
+## Rule reference
 
-Run:
+Discrete rotation equivariance (C₄ action on a 2D periodic square grid).
+The rule applies a discrete 90° rotation to the input field, queries
+the model on the rotated input, applies the inverse rotation to the
+output, and compares against the original output. The raw value is the
+relative discrepancy on a calibrated noise-floor band; the rule fires
+when the model breaks discrete rotation symmetry on a square-domain
+problem with rotational structure.
+
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-SYM-001/ -v

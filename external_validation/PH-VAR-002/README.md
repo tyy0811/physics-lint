@@ -1,5 +1,7 @@
 # PH-VAR-002 external-validation anchor
 
+## Rule reference
+
 **Scope separation (read first):** PH-VAR-002 validates **a
 diagnostic info-flag contract for the hyperbolic (wave-equation)
 path of physics-lint**. The production rule (`ph_var_002.py`) does
@@ -44,7 +46,7 @@ to DPG hyperbolic norm-equivalence literature; it does not certify
 hyperbolic norm-equivalence and does not compute against the
 field."
 
-Run:
+## Run
 
 ```bash
 source .venv/bin/activate && pytest --import-mode=importlib external_validation/PH-VAR-002/ -v

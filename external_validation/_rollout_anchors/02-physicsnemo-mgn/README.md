@@ -3,6 +3,59 @@
 *Day 2 deliverable; substituted by FNO-on-Darcy under spec §6 Gate D
 fallback (folder renamed to `02-fno-darcy/` if Gate D triggers).*
 
+## Case study reference
+
+CS02 validates physics-lint against NVIDIA's PhysicsNeMo MeshGraphNet (MGN)
+checkpoint for 2D cylinder vortex shedding. The substrate is incompressible
+Navier-Stokes on a mesh; the rule set fired is PH-CON-001 (mass conservation),
+with PH-CON-002 and PH-CON-003 correctly emitting `SKIP` via the
+`open-driven-dissipative` substrate-class dispatch (D0-22 + D0-23 v9 — KE is
+neither strictly dissipative nor strictly conservative on a cylinder-wake
+flow that imports KE from inflow and dissipates in the wake).
+
+**Headline result.** PH-CON-001 fires across 5 in-band trajectories sampled
+from the 23 in-band members (Strouhal in [0.16, 0.21]) of the Phase-2
+pre-fire audit. The median MGN/GT mass-conservation gap is `-0.36%` of GT,
+range `[-1.07%, +0.41%]`; every per-trajectory gap sits inside the ~5.8%
+harness-FE-on-P1 discretization floor. The canonical trajectory-44 pair
+lands at 5.857% (GT) / 5.881% (MGN). All 7 D0-24 verdicts PASS.
+
+**What the result demonstrates and does NOT demonstrate.** PASS verdicts
+for PH-CON-001 mean MGN is within the GT / harness-FE-on-P1 floor envelope
+on that trajectory; they are **NOT** a claim of physical incompressibility
+to 5%. PH-CON-001 at this discretization bounds MGN's deviation from
+GT-equivalence rather than from physical incompressibility — distinguishing
+the two would require a tighter discretization (deferred to v1.x; see
+"What physics-lint did NOT catch §1" below for the floor-bounds-resolution
+distinction). The result is a small-N statistical characterization across
+the in-band subset, not a full-distribution claim or a CI-gate-threshold
+derivation.
+
+**Scope qualifier — PH-BC-001 no-slip is structurally inapplicable.**
+[D0-27][D0-27-cs02-link]: the CS02 inference protocol masks
+boundary nodes during rollout (`v_diff_masked = torch.where(mask2,
+pred_i_velo, zeros)`), freezing wall-node velocities at their step-0
+ground-truth value of zero. A no-slip check on this rollout computes
+`||v_wall|| ~ 0` and PASSes by construction, detecting nothing about the
+surrogate. P2.2 retired the planned mesh wall-node BC capability-build
+on this finding. PH-SYM-001/002/003/004 are scoped particle-side only per
+spec §1.2 and are not exercised on the mesh side.
+
+**PH-CON-001 routing — harness, not public rule.** PH-CON-001 as shipped
+in physics-lint v1.0 returns `SKIPPED` on `pde != "heat"`. CS02 routes
+PH-CON-001 through the mesh harness as **structural-identity reapplication**:
+the mass-conservation identity (∫ρ over the domain, ∇·v on incompressible
+NS) is reapplied by the harness, validated against the analytical mass-
+conservation fixture. This is NOT "rule ran without modification" — it is
+the class-level pattern for V1 rules with input-domain restrictions, and
+the load-bearing methodology claim of CS02.
+
+The detailed validation harness, the per-trajectory table, the cross-stack
+table integrating with rung-4a/4b, and the full "what physics-lint did NOT
+catch" enumeration are below.
+
+[D0-27-cs02-link]: https://github.com/tyy0811/physics-lint/blob/master/external_validation/_rollout_anchors/methodology/DECISIONS.md
+
 ## Targets
 
 | Priority | Checkpoint | Domain | Headline rule |
