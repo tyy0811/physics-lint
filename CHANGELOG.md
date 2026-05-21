@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-05-21
+
+### Fixed
+- `physics_lint.__version__` was a hand-maintained literal in
+  `__init__.py` that silently drifted from `pyproject.toml`: the v1.0.0
+  wheel shipped `__version__ == "0.0.0.dev0"`. The stale value also
+  propagated into every SARIF report's `tool.driver.version` field and
+  the documentation-site title. `__version__` now derives from the
+  installed package metadata via `importlib.metadata`, making
+  `pyproject.toml` the single source of truth.
+
 ## [1.0.0] - 2026-05-18
 
 Initial public release on PyPI.
