@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-22
+
+No rule-code changes. This release bundles the P3 adoption-tooling work so
+the GitHub Action's tag and the PyPI install pin align by construction.
+
+### Added
+- Documentation site at https://tyy0811.github.io/physics-lint/ — Sphinx-based,
+  with per-rule and case-study pages plus hand-written installation,
+  quickstart, SARIF schema, Action, stability, security, FAQ, and
+  contributing pages.
+- Composite GitHub Action at the repository root, callable as
+  `uses: tyy0811/physics-lint@v1.1.0`. Wraps `physics-lint check`, installs
+  the version-matched release, and uploads SARIF to the GitHub Security tab.
+
 ## [1.0.1] - 2026-05-21
 
 ### Fixed
