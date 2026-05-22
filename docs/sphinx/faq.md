@@ -83,7 +83,7 @@ See [Contributing](contributing.md) for the full development workflow.
 
 `physics-lint[mesh]` adds the `scikit-fem` dependency for unstructured-
 mesh field support (used by PhysicsNeMo MGN-style adapters and FE
-adapters). Most particle / grid adapters work without it.
+adapters). Most grid adapters work without it.
 
 ## Why "physics-lint" and not "physics-check" or "physics-test"?
 

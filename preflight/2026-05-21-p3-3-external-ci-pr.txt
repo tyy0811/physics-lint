@@ -152,6 +152,56 @@ deviation only; acceptance criteria unchanged. Recorded in roadmap Amendment 6
 (Task 7).
 
 ================================================================================
-TASK 2 — DOGFOOD   (results appended during execution)
+TASK 2 — DOGFOOD   ::   BLOCKER FOUND
 ================================================================================
-(see below)
+
+VERDICT: Task 2 cannot proceed as planned. The SHIPPED physics-lint package
+(CLI + composite Action) CANNOT lint LagrangeBench models. The plan's premise
+-- "run the physics-lint Action against LagrangeBench's published checkpoints"
+(spec section 6.A / 6.C step 1) -- has no working implementation path.
+
+FOUR VERIFIED FACTS (read from source at master HEAD + the v1.1.0 wheel):
+
+1. physics-lint's equivariance rules are GRID-ONLY.
+   src/physics_lint/rules/ph_sym_001.py docstring: "V1 scope: square grids
+   only." check() calls ensure_grid_field(field, spec) and uses np.rot90.
+   PH-SYM-002 (reflection) is its sibling. No particle code path exists.
+
+2. physics-lint core has exactly three field types -- GridField, MeshField,
+   CallableField (src/physics_lint/field/). No particle field type.
+   CallableField is resampled onto a grid by ensure_grid_field, so it does
+   not bridge to a particle model either (a particle model maps N particles
+   -> N accelerations; it cannot be sampled on a fixed grid).
+
+3. The Action / CLI cannot ingest LagrangeBench data. `physics-lint check
+   TARGET` takes an adapter .py (grid/mesh/callable domain spec) or a
+   .npz/.npy dump (loaded as a GridField -- src/physics_lint/loader.py).
+   LagrangeBench rollouts are particle data; loading them as a grid is
+   meaningless.
+
+4. CS01's LagrangeBench equivariance results came from a BESPOKE RESEARCH
+   HARNESS, not the physics-lint package.
+   external_validation/_rollout_anchors/_harness/{lint_eps_dir,lint_npz_dir,
+   symmetry_rollout_adapter,particle_rollout_adapter}.py import only numpy +
+   each other -- NOT physics_lint core. They reimplement the equivariance
+   band logic (EPS_PASS_THRESHOLD=1e-5, EPS_APPROXIMATE_THRESHOLD=1e-2) for
+   particle data. The JAX forward pass that produces the eps(t) npz pairs
+   lives in 01-lagrangebench/modal_app.py and ran on Modal A100.
+   external_validation/ is NOT in the v1.1.0 wheel (verified: 0 of 55 wheel
+   entries reference external_validation or harness).
+
+ROOT CAUSE: a spec-level inherited-label gap. Spec section 6.A treats CS01 as
+"physics-lint [the Action] detected the equivariance gap on LagrangeBench."
+What actually happened: physics-lint's METHODOLOGY, applied via Modal-coupled
+research-harness code, detected it. The productized Action cannot reproduce
+it. The brainstorm/spec never verified package<->substrate compatibility.
+(feedback_verify_inherited_labels_before_critical_path +
+feedback_in_project_path_invention, applied at spec level.)
+
+CONSEQUENCE: Tasks 2-7 are blocked on a user decision (pivot target / build
+particle support / reframe the engagement). Escalated -- see session.
+
+NOTE: this does NOT invalidate the v1.1.0 release. v1.1.0 = P3.1 docs site +
+P3.2 Action; the Action works correctly for grid/mesh models (P3.2 self-test
+is green). Only P3.3's *target* (LagrangeBench) is affected.
+
