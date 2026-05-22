@@ -1,0 +1,157 @@
+================================================================================
+P3.3 PRE-FLIGHT — External CI-Integration PR (LagrangeBench)
+================================================================================
+Plan:        docs/superpowers/plans/2026-05-20-p3-3-external-ci-pr.md (revised 2026-05-21)
+Spec:        docs/superpowers/specs/2026-05-20-p3-adoption-tooling-design.md §6 + §7
+Plan dated:  2026-05-21
+Executed:    2026-05-22  (1-day shift from plan date; preflight filename kept per
+             plan's literal git-add reference in Task 1 Step 12)
+Branch:      feat/p3-3-external-ci-pr
+
+================================================================================
+PHASE A — VERIFICATION
+================================================================================
+
+--- Step 1: Four P3.3 preconditions -------------------------------------------
+master HEAD:    33e2125  "fix: derive __version__ from package metadata (v1.0.1) (#20)"
+P3.1 merged:    PR #18  "P3.1: docs site (sphinx + GitHub Pages)"  -> master 82e0ecd
+P3.2 merged:    PR #19  "P3.2: GitHub Action at repo root"        -> master 15990c9
+action.yml:     present at master HEAD (blob 0bff4ebb3e5052950a870a27da8ba91b044e0603)
+docs site:      https://tyy0811.github.io/physics-lint/  ->  HTTP/2 200
+VERDICT: all 4 preconditions PASS.
+
+--- Step 2: P3.1 + P3.2 Codex reviews absorbed --------------------------------
+PR #18 (P3.1): Codex returned 5 Important + 2 Minor. 5 Important + 1 Minor fixed
+               in commit dbc913f; 1 Minor deferred + 1 partial-misread accepted
+               with reasoning. Triage comment present on the PR.
+PR #19 (P3.2): Codex returned 1 Critical + 3 Important. All 4 absorbed in commit
+               10cc074; nothing pushed back. Triage comment present on the PR.
+VERDICT: both Codex reviews absorbed -> spec §7.D tag-hold condition satisfied.
+
+--- Step 3: P3.3 working branch -----------------------------------------------
+git checkout -b feat/p3-3-external-ci-pr  -> created from master 33e2125.
+
+--- Step 4: LagrangeBench pinned SHA ------------------------------------------
+Repo:           tumaer/lagrangebench
+Default branch: main
+Pinned SHA:     b880a6c84a93792d2499d2a9b8ba3a077ddf44e2
+SHA date:       2025-01-01T22:49:30Z
+SHA message:    "Merge pull request #33 from tumaer/logo_fix / Logo fix"
+Everything downstream references this SHA.
+
+--- Step 5: LagrangeBench CI dir + paths + identifiers (at pinned SHA) ---------
+CI directory:   .github/workflows/   (contains: publish.yml, ruff.yml, tests.yml)
+Source dir:     lagrangebench/       (top-level — NOT src/lagrangebench/)
+Top-level dirs: .github, configs, data_gen, docs, lagrangebench, notebooks, tests
+Top-level files:main.py, download_data.sh, pyproject.toml, poetry.lock,
+                requirements_cuda.txt, README.md, LICENSE,
+                .pre-commit-config.yaml, .readthedocs.yaml, .codecov.yml
+TGV2D dataset:  identifier `tgv_2d` (exact, lowercase). Zip 2D_TGV_2500_10kevery100.zip.
+                Zenodo DOI 10.5281/zenodo.10491868 (records/10491868).
+Model configs:  configs/tgv_2d/{base,gns,segnn}.yaml
+PRETRAINED CHECKPOINTS (README §"Pretrained Models" — load-bearing claim VERIFIED):
+   LagrangeBench DOES publish pretrained GNS + SEGNN weights for all 7 datasets.
+   Checkpoints are hosted on GOOGLE DRIVE — they are NOT committed in the repo.
+   2D TGV:
+     GNS-10-128   gdown file ID 19TO4PaFGcryXOFFKs93IniuPZKEcaJ37
+                  (README MSE_20 = 5.9e-6) -> unzips to dir gns_tgv2d/
+     SEGNN-10-64  gdown file ID 1llGtakiDmLfarxk6MUAtqj6sLleMQ7RL
+                  (README MSE_20 = 4.4e-6) -> unzips to dir segnn_tgv2d/
+   Load + run:  python main.py mode=infer eval.test=True load_ckp=<dir>/best
+                -> writes rollout trajectories + metricsYYYY_MM_DD_HH_MM_SS.pkl
+PyPI package:   lagrangebench  (current PyPI version 0.2.0)
+Python:         >=3.9,<=3.11
+Install:        pip install lagrangebench --extra-index-url=https://download.pytorch.org/whl/cpu
+JAX backend:    jax 0.4.29 (cpu extra by default); GPU is opt-in.
+                Key deps: dm-haiku, e3nn-jax, jraph, optax, jax-sph, torch 2.3.1+cpu, wget.
+IMPLICATION FOR THE PROPOSED WORKFLOW: a CI job must `gdown` the checkpoint zip,
+unpack it, and run `main.py mode=infer` to produce rollouts before physics-lint
+can read them. The plan's Task 4 draft workflow is a placeholder sketch; the
+real invocation shape is settled by the Task 2 dogfood and recorded there.
+
+--- Step 6: Maintainer contact (web-verified) ---------------------------------
+Corresponding author: Artur P. Toshev  <artur.toshev@tum.de>
+  - Email verified LIVE on his personal homepage arturtoshev.github.io (fetched
+    2026-05-22) AND in tumaer/lagrangebench pyproject.toml [tool.poetry] authors.
+  - AFFILIATION CHANGE (spec §6.F role-change risk REALIZED): still a TUM PhD
+    candidate (since 2021, supervised by Prof. N. Adams) but interning from
+    May 2025 at Meta FAIR Chemistry, then Los Alamos National Lab CCS-2;
+    "presently in San Francisco". TUM email still listed as his contact ->
+    likely still valid, but response latency expected to be high.
+Co-maintainer: Gianluca Galletti — GitHub `gerkone`, 164 commits (2nd-most after
+  Toshev's 295). Co-author of the LagrangeBench paper. No separate public email
+  found; the LB pyproject.toml lists both authors under the single
+  artur.toshev@tum.de address.
+No CONTRIBUTING.md file; README §"Contributing" explicitly welcomes GitHub
+  issues + PRs and links a Discord (discord.gg/Ds8jRZ78hU).
+HEADS-UP CHANNEL (Task 3): email artur.toshev@tum.de (corresponding author,
+  verified listed contact). Note in the heads-up plan that Toshev is on
+  internships -> slow response is expected and is NOT a decline (spec §6.E).
+
+--- Step 7: Issue tracker activity --------------------------------------------
+has_issues:        true
+open_issues_count: 2
+default-branch last commit: 2025-01-01  (>1 year stale as of 2026-05-22)
+pushed_at:         2026-04-21  (recent — but on non-default research branches:
+                   acdm_style, diffusion, flax, modern, pde_refiner_*)
+updated_at:        2026-03-06
+stars:             72
+ASSESSMENT: the core benchmark (main branch) is stable/dormant since the
+NeurIPS 2023 paper; active development continues on research branches. Repo is
+NOT abandoned (2 open issues, recent branch pushes, contributors present) but
+main-branch merge cadence is slow. Review-wait expectation: a PR may sit for
+weeks. Consistent with spec §6.A (asymmetric-risk insurance) and §6.D
+(acceptance = PR open, not merged).
+
+================================================================================
+PHASE B — v1.1.0 RELEASE
+================================================================================
+
+--- Step 8: cut + push v1.1.0 tag ---------------------------------------------
+pyproject.toml was STALE at version = "1.0.1" (Step 9 note path taken):
+  - bumped pyproject.toml  version 1.0.1 -> 1.1.0
+  - added CHANGELOG.md  "## [1.1.0] - 2026-05-22"  entry (P3.1 docs site +
+    P3.2 Action; no rule-code changes)
+  - committed to master:  00d26d0  "chore(release): bump version to 1.1.0"
+  - pushed master:        33e2125..00d26d0
+v1.1.0 annotated tag created on commit 00d26d0 and pushed to origin.
+  Tag message records P3.1+P3.2 content, the spec §7.B alignment rationale,
+  and Codex-reviews-absorbed for PR #18 + PR #19.
+
+--- Step 9: build v1.1.0 distribution -----------------------------------------
+.venv/bin/python -m build  ->  Successfully built:
+  dist/physics_lint-1.1.0-py3-none-any.whl   (107123 bytes)
+  dist/physics_lint-1.1.0.tar.gz             (1732212 bytes)
+twine check:  BOTH PASSED.
+Version in built artifacts = 1.1.0 (matches pyproject.toml). OK.
+
+--- Step 10: USER GATE — PyPI publish -----------------------------------------
+STATUS: PENDING THE USER.  No automated release workflow exists; the upload
+needs the user's PyPI token. Command flagged to the user:
+  .venv/bin/twine upload dist/physics_lint-1.1.0-py3-none-any.whl \
+                         dist/physics_lint-1.1.0.tar.gz
+Executor does NOT block on this — Tasks 2, 3, 4 do not depend on PyPI having
+1.1.0. Task 5 (open LagrangeBench PR) HARD-GATES on it (Task 5 Step 0).
+
+--- Step 11: verify v1.1.0 release --------------------------------------------
+STATUS: DEFERRED — re-run once the user confirms the twine upload, and in any
+case before Task 5 starts. Checks:
+  pip index versions physics-lint        # must list 1.1.0
+  gh api .../git/refs/tags/v1.1.0        # tag must resolve  (DONE: tag pushed)
+
+--- Step 12: commit pre-flight notes ------------------------------------------
+Committed on branch feat/p3-3-external-ci-pr (see git log).
+
+--- Documented deviation (spec §7.B) ------------------------------------------
+v1.1.0 tag cut at the START of P3.3 (Task 1), not after all three P3 plans
+land. Reason: the LagrangeBench PR (Task 5) adds a pull_request-triggered
+workflow that runs on PR-open and must resolve `uses: tyy0811/physics-lint@
+v1.1.0` immediately. v1.1.0's package content is fully determined by
+P3.1 + P3.2 (P3.3 adds no src/ code), so the early cut is correct. Sequencing
+deviation only; acceptance criteria unchanged. Recorded in roadmap Amendment 6
+(Task 7).
+
+================================================================================
+TASK 2 — DOGFOOD   (results appended during execution)
+================================================================================
+(see below)
