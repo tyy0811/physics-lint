@@ -119,15 +119,15 @@ threat model around adapter execution in CI.
 
 ## Advanced usage
 
-For CLI flags not exposed as Action inputs (e.g., rule include / exclude,
-custom severity overrides), install and run physics-lint directly
-instead of using the Action:
+For options not exposed as Action inputs (e.g., disabling specific
+rules), install and run physics-lint directly instead of using the
+Action:
 
 ```yaml
 - run: |
     pip install 'physics-lint==1.*'
     physics-lint check models/fno.py \
-      --rules PH-POS-*,PH-SYM-* \
+      --disable PH-VAR-002 \
       --format sarif \
       --output physics-lint.sarif
 
