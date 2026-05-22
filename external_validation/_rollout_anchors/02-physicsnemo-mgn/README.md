@@ -7,7 +7,7 @@ fallback (folder renamed to `02-fno-darcy/` if Gate D triggers).*
 
 CS02 validates physics-lint against NVIDIA's PhysicsNeMo MeshGraphNet (MGN)
 checkpoint for 2D cylinder vortex shedding. The substrate is incompressible
-Navier-Stokes on a mesh; the rule set fired is PH-CON-001 (mass conservation),
+Navier-Stokes on a mesh; the rule methodology exercised is PH-CON-001 (mass conservation),
 with PH-CON-002 and PH-CON-003 correctly emitting `SKIP` via the
 `open-driven-dissipative` substrate-class dispatch (D0-22 + D0-23 v9 — KE is
 neither strictly dissipative nor strictly conservative on a cylinder-wake
@@ -48,7 +48,10 @@ the mass-conservation identity (∫ρ over the domain, ∇·v on incompressible
 NS) is reapplied by the harness, validated against the analytical mass-
 conservation fixture. This is NOT "rule ran without modification" — it is
 the class-level pattern for V1 rules with input-domain restrictions, and
-the load-bearing methodology claim of CS02.
+the load-bearing methodology claim of CS02. The shipped CLI and Action do
+not yet ingest the mesh substrate either (`loader.py` rejects
+`field.type = "mesh"`); CLI/Action loader integration for mesh — and for
+particle — is planned for v1.2.0 (see `docs/backlog/v1.2.md`).
 
 The detailed validation harness, the per-trajectory table, the cross-stack
 table integrating with rung-4a/4b, and the full "what physics-lint did NOT

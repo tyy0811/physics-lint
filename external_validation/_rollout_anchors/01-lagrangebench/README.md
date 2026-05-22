@@ -5,18 +5,19 @@
 LagrangeBench (Toshev et al., NeurIPS 2023; `tumaer/lagrangebench`) ships pretrained
 checkpoints for two architectures — GNS (non-equivariant) and SEGNN
 (E(2)-equivariant by design) — across seven particle-based fluid datasets in JAX.
-**Substrate scope.** physics-lint v1.1.0 ships rules over two substrates —
-structured grids and unstructured meshes. LagrangeBench is *particle-based*
-(Lagrangian SPH), a substrate the pip-installable `physics-lint` package and
-its GitHub Action do not yet ingest. This case study therefore applies the
-physics-lint **rule methodology** — the PH-SYM-001 (rotation) and PH-SYM-002
-(reflection) equivariance checks, the calibrated bands, the SARIF result
-schema — to particle-rollout data through a dedicated research harness
-(`external_validation/_rollout_anchors/_harness/`), not through the public
-`physics-lint check` CLI. That harness is not part of the shipped package.
-Native particle support for the CLI and Action is in progress for v1.2.0; the
-result below is a methodology demonstration on a particle substrate — and
-evidence that the rule design transfers cleanly to it.
+**Substrate scope.** physics-lint's shipped CLI and GitHub Action ingest
+*structured-grid* model data — `.npz`/`.npy` dumps and grid adapters.
+LagrangeBench is *particle-based* (Lagrangian SPH), a substrate the
+pip-installable `physics-lint` package does not yet ingest. This case study
+therefore applies the physics-lint **rule methodology** — the PH-SYM-001
+(rotation) and PH-SYM-002 (reflection) equivariance checks, the calibrated
+bands, the SARIF result schema — to particle-rollout data through a dedicated
+research harness (`external_validation/_rollout_anchors/_harness/`), not
+through the public `physics-lint check` CLI. That harness is not part of the
+shipped package. CLI/Action loader integration for the mesh and particle
+substrates is planned for v1.2.0 (see `docs/backlog/v1.2.md`); the result
+below is a methodology demonstration on a particle substrate — and evidence
+that the rule design transfers cleanly when that integration lands.
 
 **Headline result — equivariance gap detected on published checkpoints.**
 Across 20 trajectories per (rule, stack) at single-step inference

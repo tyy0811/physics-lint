@@ -202,6 +202,16 @@ CONSEQUENCE: Tasks 2-7 are blocked on a user decision (pivot target / build
 particle support / reframe the engagement). Escalated -- see session.
 
 NOTE: this does NOT invalidate the v1.1.0 release. v1.1.0 = P3.1 docs site +
-P3.2 Action; the Action works correctly for grid/mesh models (P3.2 self-test
-is green). Only P3.3's *target* (LagrangeBench) is affected.
+P3.2 Action; the Action works correctly for structured-grid models (P3.2
+self-test is green -- its fixtures are grid .npz dumps + a grid adapter).
+Only P3.3's *target* (LagrangeBench) is affected.
+
+CODEX-REVIEW ADDENDUM (PR #21): the Codex review of the docs-correction PR
+found that mesh is ALSO not CLI/loader-reachable -- loader.py rejects
+field.type='mesh'. So the shipped CLI/Action is structured-grid ONLY; CS02
+(PhysicsNeMo MGN, mesh) also runs via a research harness, not the package.
+The earlier "grid/mesh" framing in this file + the original docs was wrong.
+Corrected across CS01 + CS02 + the shared substrate framing in PR #21; a
+v1.2 backlog stub (docs/backlog/v1.2.md, 2026-05-22) now grounds the
+mesh + particle loader-integration commitment.
 
