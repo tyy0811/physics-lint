@@ -226,7 +226,7 @@ Each rule has a stable ID (`PH-<CATEGORY>-<NNN>`), a default severity, documente
 | `PH-CON-004` | Per-element conservation hotspot | warning | adapter + dump (mesh) |
 | `PH-POS-001` | Positivity violation | error | adapter + dump |
 | `PH-POS-002` | Maximum principle violation | error | adapter + dump |
-| `PH-SYM-001` | $C_4$ rotation equivariance violation | warning | adapter + dump |
+| `PH-SYM-001` | C₄ rotation equivariance violation | warning | adapter + dump |
 | `PH-SYM-002` | Reflection equivariance violation | warning | adapter + dump |
 | `PH-SYM-003` | SO(2) Lie derivative equivariance violation | warning | adapter only |
 | `PH-SYM-004` | Translation equivariance violation (periodic-only in v1) | warning | adapter + dump |
@@ -262,10 +262,10 @@ The harness layer at `external_validation/_rollout_anchors/_harness/` demonstrat
 
 | PDE | Residual | Norm |
 |-----|----------|------|
-| Laplace | $R = -\Delta u$ | $H^{-1}$ |
-| Poisson | $R = -\Delta u - f$ | $H^{-1}$ |
-| Heat | $R = u_t - \kappa\Delta u$ | Bochner $L^2(0,T; H^{-1})$ |
-| Wave | $R = u_{tt} - c^2\Delta u$ | Bochner $L^2(0,T; H^{-1})$ (conjectural; see `PH-VAR-002`) |
+| Laplace | R = -Δu | H⁻¹ |
+| Poisson | R = -Δu - f | H⁻¹ |
+| Heat | R = uₜ - κΔu | Bochner L²(0,T; H⁻¹) |
+| Wave | R = uₜₜ - c²Δu | Bochner L²(0,T; H⁻¹) (conjectural; see `PH-VAR-002`) |
 
 Domains: 2D and 3D structured Cartesian grids. Optional unstructured meshes via scikit-fem (install via `pip install physics-lint[mesh]`).
 
@@ -279,18 +279,22 @@ Domains: 2D and 3D structured Cartesian grids. Optional unstructured meshes via 
 
 **1. Norm-equivalence to error, scoped to the chosen residual formulation.** Every residual rule satisfies a two-sided bound
 
-$$c_B \|r_B(u^\delta)\|_{Y'} \leq \|u - u^\delta\|_W \leq C_B \|r_B(u^\delta)\|_{Y'}$$
+```
+c_B ||r_B(u^δ)||_Y'  ≤  ||u - u^δ||_W  ≤  C_B ||r_B(u^δ)||_Y'
+```
 
-(Bachmayr et al. 2024 Eq. 2.13; Ernst et al. 2025 Eq. 3.2–3.3). The constants and the test-space norm $Y'$ depend on the formulation, not the PDE class alone. physics-lint implements the standard second-order residual. For hyperbolic problems, `PH-VAR-002` notes that norm-equivalence is weaker and conjectural.
+(Bachmayr et al. 2024 Eq. 2.13; Ernst et al. 2025 Eq. 3.2–3.3). The constants and the test-space norm Y' depend on the formulation, not the PDE class alone. physics-lint implements the standard second-order residual. For hyperbolic problems, `PH-VAR-002` notes that norm-equivalence is weaker and conjectural.
 
 **2. Self-calibration against numerical floor.** Every rule reports
 
-$$\text{violation\_ratio} = \frac{\text{raw\_violation}}{\text{analytical\_floor}}$$
+```
+violation_ratio = raw_violation / analytical_floor
+```
 
 where the analytical floor is measured by running the same rule on a known analytical solution at the same resolution. Default thresholds: ratio < 10 → PASS; [10, 100] → WARN; > 100 → FAIL. Per-rule overridable via config. Floors live in `physics_lint/data/floors.toml` with per-floor multiplicative tolerance.
 
 **3. Reproduce known empirical results.** The test suite demonstrates physics-lint detects:
-- deliberately non-equivariant CNN with positional embeddings violates $C_4$ symmetry by $>2\times$ baseline (see `physics_lint.validation.broken_cnn`);
+- deliberately non-equivariant CNN with positional embeddings violates C₄ symmetry by >2× baseline (see `physics_lint.validation.broken_cnn`);
 - real-model disagreement surfaces in the 3-surrogate laplace-uq-bench dogfood (`dogfood/run_dogfood_real.py`);
 - the broken-model gallery (`examples/broken_model_gallery.ipynb`) exhibits three MSE-vs-physics-lint disagreement cases;
 - the cross-stack rollout anchors run the same rule schemas unmodified across LagrangeBench SEGNN + GNS rollouts and (in progress) a PhysicsNeMo MeshGraphNet checkpoint (`external_validation/_rollout_anchors/`).
