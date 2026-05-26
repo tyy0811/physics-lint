@@ -57,9 +57,11 @@ dev = [
 physics-lint = "physics_lint.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/tyy0811/physics-lint"
-Repository = "https://github.com/tyy0811/physics-lint"
+Homepage = "https://tyy0811.github.io/physics-lint/"
+Documentation = "https://tyy0811.github.io/physics-lint/"
+Source = "https://github.com/tyy0811/physics-lint"
 Issues = "https://github.com/tyy0811/physics-lint/issues"
+Changelog = "https://github.com/tyy0811/physics-lint/blob/master/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/physics_lint"]
