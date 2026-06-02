@@ -23,7 +23,7 @@ BCKind = Literal[
     "neumann",
 ]
 
-PDEKind = Literal["laplace", "poisson", "heat", "wave"]
+PDEKind = Literal["laplace", "poisson", "heat", "wave", "incompressible_ns"]
 
 SymmetryLiteral = Literal[
     "D4",
@@ -35,7 +35,7 @@ SymmetryLiteral = Literal[
     "SO2",
 ]
 
-FieldType = Literal["grid", "callable", "mesh"]
+FieldType = Literal["grid", "callable", "mesh", "mesh_vector"]
 FieldBackend = Literal["fd", "spectral", "auto"]
 
 
@@ -124,10 +124,10 @@ class DomainSpec(BaseModel):
     """Top-level validated spec consumed by every rule."""
 
     pde: PDEKind
-    grid_shape: tuple[int, ...] = Field(min_length=2, max_length=3)
-    domain: GridDomain
+    grid_shape: tuple[int, ...] | None = Field(default=None, min_length=2, max_length=3)
+    domain: GridDomain | None = None
     periodic: bool = False
-    boundary_condition: BCSpec
+    boundary_condition: BCSpec | None = None
     symmetries: SymmetrySpec = Field(default_factory=SymmetrySpec)
     field: FieldSourceSpec
 
@@ -137,20 +137,46 @@ class DomainSpec(BaseModel):
     sarif: SARIFSpec | None = None
 
     @model_validator(mode="after")
+    def grid_fields_required_for_grid_targets(self) -> DomainSpec:
+        if self.field.type != "mesh_vector":
+            missing = [
+                name
+                for name, val in (
+                    ("grid_shape", self.grid_shape),
+                    ("domain", self.domain),
+                    ("boundary_condition", self.boundary_condition),
+                )
+                if val is None
+            ]
+            if missing:
+                raise ValueError(
+                    f"field.type={self.field.type!r} requires grid-centric fields "
+                    f"{missing}; only field.type='mesh_vector' may omit them"
+                )
+        return self
+
+    @model_validator(mode="after")
     def pde_params_consistent(self) -> DomainSpec:
         if self.pde == "heat" and self.diffusivity is None:
             raise ValueError("PDE 'heat' requires 'diffusivity'")
         if self.pde == "wave" and self.wave_speed is None:
             raise ValueError("PDE 'wave' requires 'wave_speed'")
-        if self.pde in {"heat", "wave"} and not self.domain.is_time_dependent:
+        if self.pde in {"heat", "wave"} and (
+            self.domain is None or not self.domain.is_time_dependent
+        ):
             raise ValueError(
                 f"PDE '{self.pde}' requires a time domain 't'; "
                 "add 't = [t_start, t_end]' to [tool.physics-lint.domain]"
             )
+        # incompressible_ns: no diffusivity/wave_speed/time-domain requirement;
+        # PH-CON-005 reads none of them. The pde value is an honest label so a
+        # mesh_vector target need not declare a grid PDE.
         return self
 
     @model_validator(mode="after")
     def symmetries_compatible_with_domain(self) -> DomainSpec:
+        if self.domain is None:
+            return self  # mesh_vector targets carry no GridDomain
         if any(s in self.symmetries.declared for s in ("D4", "C4", "SO2")):
             lx, ly = self.domain.spatial_lengths[:2]
             if abs(lx - ly) / max(lx, ly) > 1e-6:
