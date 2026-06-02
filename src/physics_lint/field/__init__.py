@@ -9,10 +9,12 @@ from physics_lint.field.grid import GridField
 
 try:
     from physics_lint.field.mesh import MeshField
+    from physics_lint.field.mesh_vector import MeshVectorField
 
     _HAS_MESH = True
 except ImportError:
     _HAS_MESH = False
     MeshField = None  # type: ignore[assignment,misc]
+    MeshVectorField = None  # type: ignore[assignment,misc]
 
-__all__ = ["CallableField", "Field", "GridField", "MeshField"]
+__all__ = ["CallableField", "Field", "GridField", "MeshField", "MeshVectorField"]
