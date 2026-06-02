@@ -181,6 +181,14 @@ def _load_dump(
         raise LoaderError(f"dump file not found: {path}")
 
     loaded = np.load(path, allow_pickle=True)
+    if isinstance(loaded, np.lib.npyio.NpzFile) and {
+        "node_positions",
+        "cells",
+        "velocity",
+    } <= set(loaded.files):
+        return _load_mesh_vector_dump(
+            loaded, path, toml_spec=toml_spec, cli_overrides=cli_overrides
+        )
     if isinstance(loaded, np.ndarray):
         # .npy: bare prediction array, no embedded metadata. Spec must come
         # from toml_spec / cli_overrides; if neither supplies the required
@@ -267,6 +275,49 @@ def _load_dump(
     if isinstance(loaded, np.lib.npyio.NpzFile) and "boundary_target" in loaded.files:
         boundary_target = np.asarray(loaded["boundary_target"])
     return LoadedTarget(spec=spec, field=field, model=None, boundary_target=boundary_target)
+
+
+def _load_mesh_vector_dump(
+    loaded: Any,
+    path: Path,
+    *,
+    toml_spec: dict[str, Any],
+    cli_overrides: dict[str, Any],
+) -> LoadedTarget:
+    """Load a graph-mesh velocity dump into a MeshVectorField (design 4.3).
+
+    Detected upstream in _load_dump by the presence of the node_positions /
+    cells / velocity keys. Mirrors _load_dump's spec-merge path but builds a
+    MeshVectorField (skipping the grid shape check) and defaults pde to
+    incompressible_ns. dt is ignored (PH-CON-005 does not read it).
+    """
+    from physics_lint.field import MeshVectorField
+
+    if MeshVectorField is None:
+        raise LoaderError(
+            "mesh_vector dumps require the scikit-fem extra: pip install physics-lint[mesh]"
+        )
+    metadata_raw = loaded.get("metadata") if "metadata" in loaded.files else None
+    adapter_spec_dict: dict[str, Any] = {}
+    if metadata_raw is not None:
+        adapter_spec_dict = metadata_raw.item() if metadata_raw.shape == () else dict(metadata_raw)
+        if not isinstance(adapter_spec_dict, dict):
+            raise LoaderError(f"{path}: metadata must be a dict")
+    adapter_spec_dict.setdefault("pde", "incompressible_ns")
+    adapter_spec_dict.setdefault("field", {})
+    adapter_spec_dict["field"]["type"] = "mesh_vector"
+    adapter_spec_dict["field"]["dump_path"] = str(path)
+    adapter_spec_dict["field"].pop("adapter_path", None)
+
+    merged = merge_into_spec(toml_spec, adapter_spec=adapter_spec_dict, cli_overrides=cli_overrides)
+    spec = DomainSpec.model_validate(merged)
+
+    field = MeshVectorField(
+        node_positions=np.asarray(loaded["node_positions"]),
+        cells=np.asarray(loaded["cells"]),
+        velocity=np.asarray(loaded["velocity"]),
+    )
+    return LoadedTarget(spec=spec, field=field, model=None)
 
 
 def _compute_h_from_spec(spec: DomainSpec) -> tuple[float, ...]:
