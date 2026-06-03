@@ -14,8 +14,10 @@ therefore applies the physics-lint **rule methodology** — the PH-SYM-001
 bands, the SARIF result schema — to particle-rollout data through a dedicated
 research harness (`external_validation/_rollout_anchors/_harness/`), not
 through the public `physics-lint check` CLI. That harness is not part of the
-shipped package. CLI/Action loader integration for the mesh and particle
-substrates is planned for v1.2.0 (see `docs/backlog/v1.2.md`); the result
+shipped package. physics-lint v1.2.0 added a public path for the *graph-mesh* substrate (the
+`mesh_vector` field type + the ∇·v rule PH-CON-005, used by CS02);
+*particle*-substrate loader integration — what this case study needs — is
+deferred to v1.3.0 (see `docs/backlog/v1.2.md`); the result
 below is a methodology demonstration on a particle substrate — and evidence
 that the rule design transfers cleanly when that integration lands.
 
