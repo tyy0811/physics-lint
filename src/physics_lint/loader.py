@@ -150,6 +150,14 @@ def _load_adapter(
             "planned loader integration."
         )
 
+    if spec.field.type == "mesh_vector":
+        raise LoaderError(
+            "field.type = 'mesh_vector' is not supported in adapter mode in "
+            "v1.2.0; the committed surface is the mesh_vector .npz dump schema "
+            "(node_positions / cells / velocity). Write a dump and run "
+            "`physics-lint check <rollout.npz>`."
+        )
+
     # For Week 1 we materialize the callable onto a GridField via CallableField.
     # Build a sampling grid from the spec. `_build_sampling_grid` imports
     # torch inline so dump-only use never pays the module-level import cost.
@@ -181,11 +189,14 @@ def _load_dump(
         raise LoaderError(f"dump file not found: {path}")
 
     loaded = np.load(path, allow_pickle=True)
-    if isinstance(loaded, np.lib.npyio.NpzFile) and {
-        "node_positions",
-        "cells",
-        "velocity",
-    } <= set(loaded.files):
+    if (
+        isinstance(loaded, np.lib.npyio.NpzFile)
+        and "prediction" not in loaded.files
+        and {"node_positions", "cells", "velocity"} <= set(loaded.files)
+    ):
+        # A grid dump carries 'prediction'; requiring it absent here means a grid
+        # dump that also happens to ship node_positions/cells/velocity is never
+        # misclassified as mesh_vector.
         return _load_mesh_vector_dump(
             loaded, path, toml_spec=toml_spec, cli_overrides=cli_overrides
         )
@@ -286,8 +297,9 @@ def _load_mesh_vector_dump(
 ) -> LoadedTarget:
     """Load a graph-mesh velocity dump into a MeshVectorField (design 4.3).
 
-    Detected upstream in _load_dump by the presence of the node_positions /
-    cells / velocity keys. Mirrors _load_dump's spec-merge path but builds a
+    Detected upstream in _load_dump by the absence of 'prediction' plus the
+    presence of the node_positions / cells / velocity keys. Mirrors _load_dump's
+    spec-merge path but builds a
     MeshVectorField (skipping the grid shape check) and defaults pde to
     incompressible_ns. dt is ignored (PH-CON-005 does not read it).
     """

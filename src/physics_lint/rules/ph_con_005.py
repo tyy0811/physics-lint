@@ -25,7 +25,9 @@ from physics_lint.spec import DomainSpec
 __rule_id__ = "PH-CON-005"
 __rule_name__ = "Incompressibility (divergence-free) defect"
 __default_severity__ = "info"
-__input_modes__ = frozenset({"adapter", "dump"})
+__input_modes__ = frozenset(
+    {"dump"}
+)  # mesh_vector is dump-only in v1.2.0 (adapter mode is a follow-on)
 __field_types__ = frozenset({"mesh_vector"})
 
 _DOC_URL = "https://physics-lint.readthedocs.io/rules/PH-CON-005"

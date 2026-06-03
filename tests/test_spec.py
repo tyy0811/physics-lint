@@ -199,3 +199,15 @@ def test_grid_pde_still_requires_grid_fields():
         DomainSpec.model_validate(
             {"pde": "laplace", "field": {"type": "grid", "dump_path": "x.npz"}}
         )
+
+
+def test_mesh_vector_with_grid_pde_rejected():
+    # Grid-centric fields are optional ONLY for mesh_vector + incompressible_ns.
+    # A mesh_vector field with a grid PDE is contradictory and must be rejected
+    # (laplace/poisson need no diffusivity, so the grid-field requirement is the
+    # sole forcing factor here).
+    for pde in ("laplace", "poisson"):
+        with pytest.raises(ValidationError):
+            DomainSpec.model_validate(
+                {"pde": pde, "field": {"type": "mesh_vector", "dump_path": "x.npz"}}
+            )

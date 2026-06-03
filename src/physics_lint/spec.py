@@ -138,7 +138,12 @@ class DomainSpec(BaseModel):
 
     @model_validator(mode="after")
     def grid_fields_required_for_grid_targets(self) -> DomainSpec:
-        if self.field.type != "mesh_vector":
+        # Grid-centric fields are optional ONLY for a mesh_vector + incompressible_ns
+        # target (the mesh carries its geometry in node_positions/cells, and
+        # incompressible_ns is the non-grid PDE). Every other combination -- any grid
+        # PDE, or any non-mesh_vector field type -- requires them.
+        mesh_vector_ns = self.field.type == "mesh_vector" and self.pde == "incompressible_ns"
+        if not mesh_vector_ns:
             missing = [
                 name
                 for name, val in (
@@ -150,8 +155,9 @@ class DomainSpec(BaseModel):
             ]
             if missing:
                 raise ValueError(
-                    f"field.type={self.field.type!r} requires grid-centric fields "
-                    f"{missing}; only field.type='mesh_vector' may omit them"
+                    f"field.type={self.field.type!r} with pde={self.pde!r} requires "
+                    f"grid-centric fields {missing}; only a mesh_vector target with "
+                    f"pde='incompressible_ns' may omit them"
                 )
         return self
 

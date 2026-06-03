@@ -314,3 +314,35 @@ def test_mesh_vector_target_yields_one_active_eighteen_skips(tmp_path):
     assert [r.rule_id for r in active] == ["PH-CON-005"]
     assert len(skipped) == 18
     assert all("mesh_vector" in r.reason for r in skipped)  # type-specific
+
+
+def _write_mesh_vector_cli_dump(path):
+    np.savez(
+        path,
+        node_positions=np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=np.float32),
+        cells=np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int64),
+        velocity=np.zeros((1, 4, 2), dtype=np.float32),
+        metadata=np.array({"pde": "incompressible_ns"}, dtype=object),
+    )
+
+
+def test_mesh_vector_target_renders_all_formats_without_crash(tmp_path):
+    """End-to-end via the CLI: a mesh_vector dump (grid_shape=None) must render
+    text/json/sarif without crashing. Regression: report.summary()/to_dict()
+    iterated self.grid_shape, which is None for a mesh_vector target."""
+    pytest.importorskip("skfem")
+    import json as _json
+
+    dump = tmp_path / "r.npz"
+    _write_mesh_vector_cli_dump(dump)
+    for fmt in ("text", "json", "sarif"):
+        result = runner.invoke(app, ["check", str(dump), "--format", fmt])
+        assert result.exit_code == 0, (
+            f"{fmt}: exit={result.exit_code} exc={result.exception!r} "
+            f"stdout={result.stdout[:300]!r}"
+        )
+        assert "PH-CON-005" in result.stdout, fmt
+    result = runner.invoke(app, ["check", str(dump), "--format", "json"])
+    parsed = _json.loads(result.stdout)
+    assert parsed["grid_shape"] is None  # mesh_vector target carries no grid shape
+    assert "PH-CON-005" in {r["rule_id"] for r in parsed["rules"]}

@@ -31,9 +31,12 @@ the temptation to "just widen MeshField a bit" appears.
 trimmed structural-identities-held framing replaces v2's "ran without rule
 modification across two completely different stacks" claim.]*
 
-On the mesh side (NVIDIA PhysicsNeMo MeshGraphNet), the existing public
-Field/rule API consumes per-timestep materializations of trained
-third-party output without rule modification. On the particle side
+On the mesh side (NVIDIA PhysicsNeMo MeshGraphNet), CS02's conservation
+defects were reapplied via a private harness (PH-CON-001 structural-identity
+reapplication, since the shipped PH-CON-001 is heat-only); as of v1.2.0 the
+∇·v incompressibility defect specifically runs through the public CLI as the
+new rule PH-CON-005, while energy-drift and dissipation-sign remain
+harness-side. On the particle side
 (LagrangeBench SEGNN/GNS), the rule API does not natively accept particle
 clouds; the rule structural identities — finite-group equivariance for
 `PH-SYM-001`/`002`, conservation balance for `PH-CON-001`/`002`/`003` — are
