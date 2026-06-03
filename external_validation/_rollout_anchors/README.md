@@ -70,14 +70,16 @@ signal that matters for Audience A reviewers (Munich/Stuttgart SciML).
   the harness computes global-finite multi-output equivariance. The
   harness emits a different quantity than `PH-SYM-003` and labels it
   accordingly via SARIF `properties.source = "rollout-anchor-harness"`.
-- `PH-CON-001` as shipped in physics-lint v0.0.0.dev0 returns SKIPPED on
-  `pde != "heat"`. On the NS side (PhysicsNeMo MGN vortex shedding), the
-  harness reapplies the structural mass-conservation identity via the
-  same mechanism used for the particle-side rules — this is a
-  structural-identity reapplication, not a public-API rule invocation.
-  Extending `PH-CON-001`'s V1 implementation to NS-applicable input
-  domains is a separate physics-lint v1.0-resolution task and is out of
-  scope for this branch.
+- `PH-CON-001` as shipped returns SKIPPED on `pde != "heat"`, and still does.
+  On the NS side (PhysicsNeMo MGN vortex shedding) the structural
+  mass-conservation identity was originally reapplied only by the private
+  harness. **As of physics-lint v1.2.0 the ∇·v incompressibility defect has a
+  public path** — rule `PH-CON-005` runs through `physics-lint check` on a
+  `mesh_vector` target, reproducing the harness `_fe_divergence_defect_max`
+  within ε ≤ 1e-4. This covers the ∇·v law only: `PH-CON-001` itself is
+  unchanged, and the energy-drift / dissipation-sign NS defects remain
+  harness-side (structural-identity reapplications, not public-API rule
+  invocations) until the v1.2.x follow-ons ship.
 - Plasticity / irreversibility rules are not yet implemented (PH-CSH-*
   roadmap, separate issue).
 - Contact-non-penetration on deforming meshes is not tested (no public
