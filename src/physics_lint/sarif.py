@@ -70,8 +70,15 @@ def to_sarif(report: PhysicsLintReport, category: str = "physics-lint") -> dict[
             notifications.append(_skipped_notification(r))
             continue
         if r.status == "PASS":
-            # PASS rules do not emit SARIF results — see module docstring.
-            # GitHub code scanning treats every result as an alert.
+            # PASS rules emit no SARIF *result* — see module docstring (GitHub
+            # code scanning treats every result as an alert regardless of level).
+            # An emit-only diagnostic (info severity) that carries a measurement
+            # still belongs in the artifact, so route its scalar to the
+            # non-alerting notification channel at note level. Gating-rule PASSes
+            # and info rules with no scalar (PH-VAR-002, raw_value=None) emit
+            # nothing.
+            if r.severity == "info" and r.raw_value is not None:
+                notifications.append(_diagnostic_notification(r))
             continue
         results.append(_result_object(r, target_path, sarif_source if source_mapped else None))
 
@@ -172,4 +179,23 @@ def _skipped_notification(r: RuleResult) -> dict[str, Any]:
         "level": "note",
         "message": {"text": f"{r.rule_id} skipped: {r.reason or 'unknown reason'}"},
         "descriptor": {"id": r.rule_id},
+    }
+
+
+def _diagnostic_notification(r: RuleResult) -> dict[str, Any]:
+    """Note-level notification carrying an emit-only rule's scalar measurement.
+
+    Emit-only diagnostics (PASS + info + a raw_value, e.g. PH-CON-005) are
+    measurements, not findings. SARIF results render as code-scanning alerts
+    regardless of level, so a measurement must not go there;
+    toolExecutionNotifications is SARIF's channel for non-finding tool output
+    (the same channel SKIPPED uses). The scalar travels in the message and a
+    properties bag so an artifact consumer (CI aggregator / dashboard) can read
+    it without a Security-tab alert.
+    """
+    return {
+        "level": "note",
+        "message": {"text": _message_text(r)},
+        "descriptor": {"id": r.rule_id},
+        "properties": {"raw_value": r.raw_value},
     }

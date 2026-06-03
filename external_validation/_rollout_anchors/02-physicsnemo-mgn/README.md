@@ -48,10 +48,18 @@ the mass-conservation identity (∫ρ over the domain, ∇·v on incompressible
 NS) is reapplied by the harness, validated against the analytical mass-
 conservation fixture. This is NOT "rule ran without modification" — it is
 the class-level pattern for V1 rules with input-domain restrictions, and
-the load-bearing methodology claim of CS02. The shipped CLI and Action do
-not yet ingest the mesh substrate either (`loader.py` rejects
-`field.type = "mesh"`); CLI/Action loader integration for mesh — and for
-particle — is planned for v1.2.0 (see `docs/backlog/v1.2.md`).
+the load-bearing methodology claim of CS02. **As of physics-lint v1.2.0, the
+∇·v incompressibility defect specifically has a public path:** rule
+**PH-CON-005** runs through `physics-lint check` on a `mesh_vector` target
+(graph-mesh velocity) and reproduces the harness `_fe_divergence_defect_max`
+within ε ≤ 1e-4 on a controlled fixture (Gate B). This covers the ∇·v law
+only — `PH-CON-001` itself is unchanged (still `SKIPPED` on `pde != "heat"`),
+the scalar `MeshField` loader (`field.type = "mesh"`) is still rejected, and the
+energy-drift / dissipation-sign NS defects remain harness-side (v1.2.x
+follow-ons). The CS02 result above was measured via the harness; PH-CON-005 is
+the v1.2.0 public-API addition, and the end-to-end CS02 run uses the
+Modal-staged checkpoint (not a CI gate). Particle-substrate loader support moves
+to v1.3.0 (see `docs/backlog/v1.2.md`).
 
 The detailed validation harness, the per-trajectory table, the cross-stack
 table integrating with rung-4a/4b, and the full "what physics-lint did NOT
@@ -166,6 +174,16 @@ modification." See the matching bullet in `_rollout_anchors/README.md`
 "What physics-lint did NOT catch" and the v3 plan §6 risk-register
 class-level entry on V1 rules with input-domain restrictions.
 
+**v1.2.0 update — the ∇·v law now has a public path.** As of physics-lint
+v1.2.0, the incompressibility (∇·v) defect specifically runs through the public
+`physics-lint check` as a new emit-only rule, **PH-CON-005**, on a `mesh_vector`
+target — reproducing the harness `_fe_divergence_defect_max` within ε ≤ 1e-4
+(Gate B). This does not change the above: PH-CON-005 is a *new* rule on a new
+field type, not an invocation of `PH-CON-001` on NS; `PH-CON-001` itself is still
+heat-only and the NS mass-conservation routing through the harness stands; and
+the energy-drift / dissipation-sign NS defects remain harness-side (v1.2.x
+follow-ons). See DECISIONS D0-29.
+
 ## What physics-lint did NOT catch
 
 This section names the limits of what Phase 2's PH-CON-001/002/003 fires demonstrate, so the writeup's narrow claims are not over-read into broader ones they do not support.
@@ -186,7 +204,7 @@ Phase 2's pre-fire Strouhal audit found 23 / 100 test trajectories in the litera
 
 ### 3. PH-CON-001 routing — harness, not public rule (class-level: V1-rules-with-input-domain-restrictions)
 
-PH-CON-001 as shipped in physics-lint v0.0.0.dev0 returns SKIPPED on `pde != "heat"` (per [DECISIONS.md D0-03](../methodology/DECISIONS.md)). The mesh case study routes PH-CON-001 through the mesh harness as **structural-identity reapplication** — the structural mass-conservation identity (∫ρ over the domain; ∇·v on incompressible NS) is reapplied by the harness, validated against the analytical mass-conservation fixture at [`_harness/tests/fixtures/mass_conservation_fixture.py`](../_harness/tests/fixtures/mass_conservation_fixture.py). This is NOT "rule ran without modification." The class-level pattern (V1 rules with input-domain restrictions; the harness reapplies the structural identity rather than the v1.0 rule code itself) is the load-bearing methodology claim; see `physics-lint-validation-plan-v3.md` §6 risk-register class-level entry on V1 rules with input-domain restrictions for the cross-rung pattern catalogue.
+PH-CON-001 as shipped in physics-lint v0.0.0.dev0 returns SKIPPED on `pde != "heat"` (per [DECISIONS.md D0-03](../methodology/DECISIONS.md)). The mesh case study routes PH-CON-001 through the mesh harness as **structural-identity reapplication** — the structural mass-conservation identity (∫ρ over the domain; ∇·v on incompressible NS) is reapplied by the harness, validated against the analytical mass-conservation fixture at [`_harness/tests/fixtures/mass_conservation_fixture.py`](../_harness/tests/fixtures/mass_conservation_fixture.py). This is NOT "rule ran without modification." The class-level pattern (V1 rules with input-domain restrictions; the harness reapplies the structural identity rather than the v1.0 rule code itself) is the load-bearing methodology claim; see `physics-lint-validation-plan-v3.md` §6 risk-register class-level entry on V1 rules with input-domain restrictions for the cross-rung pattern catalogue. **(v1.2.0 update: the ∇·v identity specifically now also runs as a public rule — PH-CON-005 on a `mesh_vector` target, reproducing the harness within ε ≤ 1e-4. `PH-CON-001` itself is still heat-only; the energy-drift / dissipation-sign defects remain harness-side. See the "PH-CON-001 routing — harness, not public rule" section above and DECISIONS D0-29.)**
 
 ### 4. PH-NUM-002 multi-resolution → v1.1 backlog
 

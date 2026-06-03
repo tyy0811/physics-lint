@@ -29,6 +29,7 @@ class RegistryEntry:
     default_severity: str
     input_modes: frozenset[str]
     module_name: str
+    field_types: frozenset[str] = frozenset({"grid", "callable"})
     check_fn: Callable[..., Any] | None = None
 
 
@@ -60,6 +61,7 @@ def list_rules() -> list[RegistryEntry]:
                 default_severity=getattr(module, "__default_severity__", "warning"),
                 input_modes=frozenset(getattr(module, "__input_modes__", ())),
                 module_name=full_name,
+                field_types=frozenset(getattr(module, "__field_types__", ("grid", "callable"))),
                 check_fn=None,  # NOT loaded here
             )
         )

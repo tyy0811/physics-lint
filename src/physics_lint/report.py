@@ -43,7 +43,7 @@ class RuleResult:
 @dataclass
 class PhysicsLintReport:
     pde: str
-    grid_shape: tuple[int, ...]
+    grid_shape: tuple[int, ...] | None
     rules: list[RuleResult]
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -71,12 +71,15 @@ class PhysicsLintReport:
         """Human-readable text summary with status glyphs."""
         lines: list[str] = []
         counts = self.status_counts
-        header_grid = "×".join(str(d) for d in self.grid_shape)  # noqa: RUF001 — intentional MULTIPLICATION SIGN
         exit_int = self.exit_code
         overall = self.overall_status
+        if self.grid_shape is not None:
+            header_grid = "×".join(str(d) for d in self.grid_shape)  # noqa: RUF001 — intentional MULTIPLICATION SIGN
+            domain_desc = f" on {header_grid} grid"
+        else:
+            domain_desc = ""  # mesh_vector / non-grid substrate carries no grid shape
         lines.append(
-            f"physics-lint report — {self.pde} on {header_grid} grid — "
-            f"overall: {overall} (exit {exit_int})"
+            f"physics-lint report — {self.pde}{domain_desc} — overall: {overall} (exit {exit_int})"
         )
         lines.append(
             f"   {counts['FAIL']} fail · {counts['WARN']} warn · "
@@ -106,7 +109,7 @@ class PhysicsLintReport:
     def to_dict(self) -> dict[str, Any]:
         return {
             "pde": self.pde,
-            "grid_shape": list(self.grid_shape),
+            "grid_shape": list(self.grid_shape) if self.grid_shape is not None else None,
             "overall_status": self.overall_status,
             "exit_code": self.exit_code,
             "status_counts": self.status_counts,

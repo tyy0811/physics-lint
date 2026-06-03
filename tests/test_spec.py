@@ -171,3 +171,43 @@ def test_field_source_backend_defaults_auto():
     # Spec says default backend is "auto"
     f = FieldSourceSpec(type="grid", dump_path="x.npz")
     assert f.backend == "auto"
+
+
+def _mesh_vector_spec_dict():
+    return {
+        "pde": "incompressible_ns",
+        "field": {"type": "mesh_vector", "dump_path": "rollout.npz"},
+    }
+
+
+def test_mesh_vector_spec_validates_without_grid_fields():
+    spec = DomainSpec.model_validate(_mesh_vector_spec_dict())
+    assert spec.pde == "incompressible_ns"
+    assert spec.field.type == "mesh_vector"
+    assert spec.grid_shape is None
+    assert spec.domain is None
+    assert spec.boundary_condition is None
+
+
+def test_incompressible_ns_requires_no_diffusivity_or_wave_speed():
+    spec = DomainSpec.model_validate(_mesh_vector_spec_dict())
+    assert spec.diffusivity is None and spec.wave_speed is None
+
+
+def test_grid_pde_still_requires_grid_fields():
+    with pytest.raises(ValidationError):
+        DomainSpec.model_validate(
+            {"pde": "laplace", "field": {"type": "grid", "dump_path": "x.npz"}}
+        )
+
+
+def test_mesh_vector_with_grid_pde_rejected():
+    # Grid-centric fields are optional ONLY for mesh_vector + incompressible_ns.
+    # A mesh_vector field with a grid PDE is contradictory and must be rejected
+    # (laplace/poisson need no diffusivity, so the grid-field requirement is the
+    # sole forcing factor here).
+    for pde in ("laplace", "poisson"):
+        with pytest.raises(ValidationError):
+            DomainSpec.model_validate(
+                {"pde": pde, "field": {"type": "mesh_vector", "dump_path": "x.npz"}}
+            )

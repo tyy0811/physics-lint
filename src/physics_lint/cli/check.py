@@ -95,6 +95,71 @@ def _skipped_for_missing_kwargs(entry, extras: list[str]) -> RuleResult:
     )
 
 
+def _field_type_applies(entry, field_type: str) -> bool:
+    return field_type in entry.field_types
+
+
+def _skipped_for_field_type(entry, field_type: str) -> RuleResult:
+    """Emit a SKIPPED RuleResult for a rule that does not accept this field type.
+
+    The central applicability filter runs before check() so a grid rule never
+    reaches a MeshVectorField (where ensure_grid_field raises TypeError) and a
+    mesh_vector rule never reaches a grid field. The reason names the substrate
+    mismatch so the SKIP list reads as a substrate-applicability map.
+    """
+    return RuleResult(
+        rule_id=entry.rule_id,
+        rule_name=entry.rule_name,
+        severity=entry.default_severity,
+        status="SKIPPED",
+        raw_value=None,
+        violation_ratio=None,
+        mode=None,
+        reason=(
+            f"{entry.rule_id} does not apply to {field_type} fields "
+            f"(accepts: {', '.join(sorted(entry.field_types))})"
+        ),
+        refinement_rate=None,
+        spatial_map=None,
+        recommended_norm="",
+        citation="",
+        doc_url="",
+    )
+
+
+def _run_rules_for_test(loaded: LoadedTarget, disable: set[str] | None = None) -> list[RuleResult]:
+    """Run all applicable rules against a loaded target; return their results.
+
+    Shared by check_cmd and the CLI tests so the end-to-end dispatch (the
+    central field-type filter, then kwarg auto-extraction, then check()) is
+    exercised by both. The field-type filter is the FIRST gate: it SKIPs a rule
+    whose declared __field_types__ does not include the target's field type,
+    closing the latent crash surface where a grid rule's ensure_grid_field
+    raises TypeError on a MeshVectorField. check() is still called without a
+    try/except, so rule-internal TypeErrors propagate (not silently swallowed).
+    """
+    disabled = disable or set()
+    entries = [e for e in _registry.list_rules() if e.rule_id not in disabled]
+    field_type = loaded.spec.field.type
+    results: list[RuleResult] = []
+    for entry in entries:
+        if not _field_type_applies(entry, field_type):
+            results.append(_skipped_for_field_type(entry, field_type))
+            continue
+        check_fn = _registry.load_check(entry)
+        extras = _extra_required_params(check_fn)
+        auto_kwargs: dict[str, Any] = {}
+        if extras:
+            auto_kwargs, remaining = _autoextract_kwargs(extras, loaded)
+            if remaining:
+                results.append(_skipped_for_missing_kwargs(entry, remaining))
+                continue
+        result = check_fn(loaded.field, loaded.spec, **auto_kwargs)
+        if result is not None:
+            results.append(result)
+    return results
+
+
 def check_cmd(
     target: Path = typer.Argument(..., help="Adapter .py or dump .npz/.npy"),
     config: Optional[Path] = typer.Option(None, "--config", help="Path to pyproject.toml"),
@@ -111,34 +176,15 @@ def check_cmd(
         typer.echo(f"error: {e}", err=True)
         raise typer.Exit(code=3) from e
 
-    disabled = set(disable)
-    entries = [e for e in _registry.list_rules() if e.rule_id not in disabled]
-    results: list[RuleResult] = []
-    for entry in entries:
-        check_fn = _registry.load_check(entry)
-        extras = _extra_required_params(check_fn)
-        auto_kwargs: dict[str, Any] = {}
-        if extras:
-            # V1.0 auto-extraction: fill boundary_target / boundary_values
-            # from the loader's shipped BC data or from dirichlet_homogeneous
-            # zeros. Anything we can't fill (refined_field, non-homogeneous
-            # dirichlet without shipped BC) stays in `remaining` and the rule
-            # is skipped cleanly. We detect by signature rather than catching
-            # TypeError — rule-internal TypeErrors still propagate.
-            auto_kwargs, remaining = _autoextract_kwargs(extras, loaded)
-            if remaining:
-                # Emit a SKIPPED RuleResult so the skip is visible in the
-                # summary, not silently absent.
-                results.append(_skipped_for_missing_kwargs(entry, remaining))
-                if verbose:
-                    typer.echo(
-                        f"  (skipping {entry.rule_id}: needs kwargs {remaining})",
-                        err=True,
-                    )
-                continue
-        result = check_fn(loaded.field, loaded.spec, **auto_kwargs)
-        if result is not None:
-            results.append(result)
+    # Dispatch is centralized in _run_rules_for_test (also the CLI test seam):
+    # field-type applicability filter first, then kwarg auto-extraction, then
+    # check(). The verbose echo surfaces each SKIP (type-mismatch or missing
+    # kwargs) on stderr without changing the report payload.
+    results = _run_rules_for_test(loaded, disable=set(disable))
+    if verbose:
+        for r in results:
+            if r.status == "SKIPPED":
+                typer.echo(f"  (skipped {r.rule_id}: {r.reason})", err=True)
 
     metadata: dict[str, object] = {"target_path": str(target)}
     # Plumb [tool.physics-lint.sarif] into SARIF metadata so source-mapped
