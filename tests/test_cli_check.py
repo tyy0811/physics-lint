@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import numpy as np
+import pytest
 from typer.testing import CliRunner
 
 from physics_lint.cli import app
@@ -290,3 +291,26 @@ def test_cli_check_does_not_swallow_rule_internal_type_error(tmp_path, monkeypat
         f"Rule-internal TypeError was silently swallowed. "
         f"exit={result.exit_code}, stdout preview: {result.stdout[:300]!r}"
     )
+
+
+def test_mesh_vector_target_yields_one_active_eighteen_skips(tmp_path):
+    """End-to-end: a mesh_vector dump yields exactly 1 active rule (PH-CON-005)
+    + 18 type-specific SKIPs through the real dispatch."""
+    pytest.importorskip("skfem")
+    from physics_lint.cli.check import _run_rules_for_test
+    from physics_lint.loader import load_target
+
+    np.savez(
+        tmp_path / "r.npz",
+        node_positions=np.array([[0, 0], [1, 0], [1, 1], [0, 1]], dtype=np.float32),
+        cells=np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int64),
+        velocity=np.zeros((1, 4, 2), dtype=np.float32),
+        metadata=np.array({"pde": "incompressible_ns"}, dtype=object),
+    )
+    loaded = load_target(tmp_path / "r.npz", cli_overrides={}, toml_path=None)
+    results = _run_rules_for_test(loaded)
+    active = [r for r in results if r.status != "SKIPPED"]
+    skipped = [r for r in results if r.status == "SKIPPED"]
+    assert [r.rule_id for r in active] == ["PH-CON-005"]
+    assert len(skipped) == 18
+    assert all("mesh_vector" in r.reason for r in skipped)  # type-specific
