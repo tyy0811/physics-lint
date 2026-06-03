@@ -3,6 +3,7 @@ import pytest
 
 pytest.importorskip("skfem")
 from physics_lint.field import GridField, MeshVectorField
+from physics_lint.report import PhysicsLintReport
 from physics_lint.rules import ph_con_005
 from physics_lint.spec import DomainSpec
 
@@ -44,3 +45,12 @@ def test_skips_on_grid_field():
     res = ph_con_005.check(g, _ns_spec())
     assert res.status == "SKIPPED"
     assert "MeshVectorField" in res.reason
+
+
+def test_high_divergence_does_not_fail_run():
+    f = _mesh(lambda p: np.stack([p[:, 0] ** 2, np.zeros(len(p))], axis=1))  # nonzero div v
+    res = ph_con_005.check(f, _ns_spec())
+    assert res.raw_value > 0
+    report = PhysicsLintReport(pde="incompressible_ns", grid_shape=(0,), rules=[res])
+    assert report.exit_code == 0  # severity=info never trips exit
+    assert report.overall_status == "PASS"  # PASS never degrades the aggregate

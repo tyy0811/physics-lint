@@ -132,3 +132,45 @@ def test_sarif_severity_level_mapping():
     assert levels["PH-RES-001"] == "error"
     assert levels["PH-SYM-001"] == "warning"
     assert levels["PH-VAR-001"] == "note"
+
+
+def test_emit_only_pass_with_raw_value_emits_note_notification():
+    """Emit-only diagnostics (PASS + info + raw_value, e.g. PH-CON-005) are
+    measurements, not findings: they must NOT emit a result (every result is a
+    code-scanning alert regardless of level) but surface as a note-level
+    toolExecutionNotification carrying the scalar, so an artifact consumer reads
+    the measurement without a Security-tab alert."""
+    rules = [_rr("PH-CON-005", "PASS", severity="info", raw_value=5.8e-2)]
+    sarif = _base_report(rules=rules).to_sarif()
+    run = sarif["runs"][0]
+    # Not a result (no code-scanning alert).
+    assert "PH-CON-005" not in {r["ruleId"] for r in run["results"]}
+    # A note-level notification carrying the scalar.
+    notifs = run["invocations"][0]["toolExecutionNotifications"]
+    diag = [n for n in notifs if n["descriptor"]["id"] == "PH-CON-005"]
+    assert len(diag) == 1
+    assert diag[0]["level"] == "note"
+    assert diag[0]["properties"]["raw_value"] == 5.8e-2
+
+
+def test_emit_only_pass_without_raw_value_stays_silent():
+    """An emit-only PASS with raw_value=None (PH-VAR-002 pattern) surfaces
+    nothing in SARIF: neither a result nor a notification."""
+    rules = [_rr("PH-VAR-002", "PASS", severity="info", raw_value=None)]
+    sarif = _base_report(rules=rules).to_sarif()
+    run = sarif["runs"][0]
+    assert "PH-VAR-002" not in {r["ruleId"] for r in run["results"]}
+    notif_ids = {n["descriptor"]["id"] for n in run["invocations"][0]["toolExecutionNotifications"]}
+    assert "PH-VAR-002" not in notif_ids
+
+
+def test_pass_gating_rule_with_raw_value_stays_silent_in_sarif():
+    """A gating rule (error/warning severity) that PASSes still emits nothing in
+    SARIF, even with a raw_value — only info-severity emit-only diagnostics route
+    to the note notification channel. Guards the scoping."""
+    rules = [_rr("PH-RES-001", "PASS", severity="error", raw_value=1e-8)]
+    sarif = _base_report(rules=rules).to_sarif()
+    run = sarif["runs"][0]
+    assert run["results"] == []
+    notif_ids = {n["descriptor"]["id"] for n in run["invocations"][0]["toolExecutionNotifications"]}
+    assert "PH-RES-001" not in notif_ids
